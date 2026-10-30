@@ -57,4 +57,8 @@ enum CopyKey: String, CaseIterable {
     case noResults = "No results"
     case fmtNoMatchesForQuery = "fmt: No matches for query"
     case checkTheSpellingTryFewerWords = "Check the spelling, try fewer words"
+    case showPageSidebar = "Show page sidebar"
+    case hidePageSidebar = "Hide page sidebar"
+    case showInspector = "Show inspector"
+    case hideInspector = "Hide inspector"
 }

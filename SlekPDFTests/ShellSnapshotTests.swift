@@ -38,6 +38,15 @@ final class ShellSnapshotTests: XCTestCase {
             searched.fulfill()
         }
         wait(for: [searched], timeout: 10)
+        let collapsed = DocumentSession()
+        let collapsedOpened = expectation(description: "collapsed")
+        Task {
+            await collapsed.open(try XCTUnwrap(bundle.url(forResource: "khmer-multipage", withExtension: "pdf")))
+            collapsed.isSidebarVisible = false
+            collapsed.isInspectorVisible = false
+            collapsedOpened.fulfill()
+        }
+        wait(for: [collapsedOpened], timeout: 10)
         let start = DocumentSession()
         let dragOver = DocumentSession()
         dragOver.isDropTargeted = true
@@ -53,7 +62,7 @@ final class ShellSnapshotTests: XCTestCase {
 
         // Prototype references: 01 Read (164:6246), 11 Open a document (164:6378), 44 Open · drag over (410:51293).
         // 13 This PDF needs a password (164:6408), 35 This file can’t be opened (408:48432).
-        for (screen, session) in [("01-read", reading), ("24-search", searching), ("11-start", start), ("44-dragover", dragOver),
+        for (screen, session) in [("01-read", reading), ("01-collapsed", collapsed), ("24-search", searching), ("11-start", start), ("44-dragover", dragOver),
                                   ("13-password", password), ("35-cantopen", cantOpen)] {
             for language in AppLanguage.allCases {
                 for (appearanceName, label) in [(NSAppearance.Name.aqua, "light"), (.darkAqua, "dark")] {

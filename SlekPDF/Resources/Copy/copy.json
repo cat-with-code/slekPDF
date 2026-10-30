@@ -231,5 +231,21 @@
     "km": "សូមពិនិត្យអក្ខរាវិរុទ្ធ សាកល្បងពាក្យតិចជាងនេះ ឬបិទ «ពាក្យទាំងមូល»។",
     "en": "Check the spelling, try fewer words, or turn off Whole word.",
     "note": "Not a Figma variable (component placeholder text only). Khmer is Claude's draft — needs fluent review; add as Copy/* in Figma."
+  },
+  "Show page sidebar": {
+    "km": "បង្ហាញរបារទំព័រ",
+    "en": "Show page sidebar"
+  },
+  "Hide page sidebar": {
+    "km": "លាក់របារទំព័រ",
+    "en": "Hide page sidebar"
+  },
+  "Show inspector": {
+    "km": "បង្ហាញផ្ទាំងព័ត៌មាន",
+    "en": "Show inspector"
+  },
+  "Hide inspector": {
+    "km": "លាក់ផ្ទាំងព័ត៌មាន",
+    "en": "Hide inspector"
   }
 }

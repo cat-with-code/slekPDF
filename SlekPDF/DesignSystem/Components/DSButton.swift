@@ -80,17 +80,19 @@ struct DSButtonStyle: ButtonStyle {
 struct DSIconButton: View {
     let icon: DSIcon
     var size: CGFloat = 28
+    var iconSize: CGFloat = 16
     let action: () -> Void
 
-    init(_ icon: DSIcon, size: CGFloat = 28, action: @escaping () -> Void = {}) {
+    init(_ icon: DSIcon, size: CGFloat = 28, iconSize: CGFloat = 16, action: @escaping () -> Void = {}) {
         self.icon = icon
         self.size = size
+        self.iconSize = iconSize
         self.action = action
     }
 
     var body: some View {
         Button(action: action) {
-            icon.image()
+            icon.image(size: iconSize)
                 .foregroundColor(DSColor.textPrimary)
                 .frame(width: size, height: size)
                 .contentShape(Rectangle())

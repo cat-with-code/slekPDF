@@ -11,7 +11,8 @@ struct PageSidebarView: View {
             HStack {
                 DSLabel(.pages, style: .label).foregroundColor(DSColor.textPrimary)
                 Spacer()
-                DSIconButton(.left, size: 20) { session.isSidebarVisible = false }
+                DSIconButton(.left, size: 24, iconSize: 14) { session.isSidebarVisible = false }
+                    .help(CopyCatalog.shared.string(.hidePageSidebar, language))
             }
             ScrollViewReader { proxy in
                 ScrollView {
@@ -56,6 +57,48 @@ struct PageSidebarView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Figma "Sidebar" (105:115) Side=Pages, State=Collapsed: a 40 pt rail with Expand and Pages buttons.
+struct CollapsedSidebarRail: View {
+    @EnvironmentObject private var session: DocumentSession
+    @Environment(\.appLanguage) private var language
+
+    var body: some View {
+        VStack(spacing: DSSpace.s8) {
+            DSIconButton(.right, size: 24, iconSize: 14) { session.isSidebarVisible = true }
+                .help(CopyCatalog.shared.string(.showPageSidebar, language))
+            DSIconButton(.page, size: 24, iconSize: 14) { session.isSidebarVisible = true }
+                .help(CopyCatalog.shared.string(.pages, language))
+            Spacer()
+        }
+        .padding(.top, DSSpace.s8)
+        .frame(width: 40)
+        .background(DSColor.backgroundWindow)
+    }
+}
+
+/// Figma "Inspector Panel" (159:554) State=Collapsed: a 40 pt rail with Expand and Search buttons.
+struct CollapsedInspectorRail: View {
+    @EnvironmentObject private var session: DocumentSession
+    @Environment(\.appLanguage) private var language
+
+    var body: some View {
+        VStack(spacing: DSSpace.s8) {
+            DSIconButton(.left, size: 24, iconSize: 14) { session.isInspectorVisible = true }
+                .help(CopyCatalog.shared.string(.showInspector, language))
+            DSIconButton(.search, size: 24, iconSize: 14) {
+                session.isInspectorVisible = true
+                // Focus once the expanded panel's search field exists.
+                DispatchQueue.main.async { session.focusSearch() }
+            }
+            .help(CopyCatalog.shared.string(.search, language))
+            Spacer()
+        }
+        .padding(.top, DSSpace.s8)
+        .frame(width: 40)
+        .background(DSColor.backgroundSurface)
     }
 }
 
@@ -149,7 +192,8 @@ struct ReadInspectorView: View {
                 HStack {
                     DSLabel(.readSearch, style: .heading).foregroundColor(DSColor.textPrimary)
                     Spacer()
-                    DSIconButton(.right, size: 24) { session.isInspectorVisible = false }
+                    DSIconButton(.right, size: 24, iconSize: 14) { session.isInspectorVisible = false }
+                        .help(CopyCatalog.shared.string(.hideInspector, language))
                 }
                 DSSearchField(text: $session.searchQuery,
                               matchLabel: matchLabel,

@@ -53,11 +53,17 @@ struct MainWindowView: View {
                             PageSidebarView()
                                 .frame(width: sizeClass.sidebarWidth ?? WindowSizeClass.regular.sidebarWidth)
                             DSDivider(axis: .vertical)
+                        } else if sizeClass != .compact {
+                            // Collapsed: keep a rail so the sidebar can be brought back (Compact uses the toolbar toggle).
+                            CollapsedSidebarRail()
+                            DSDivider(axis: .vertical)
                         }
                         DocumentCanvas()
+                        DSDivider(axis: .vertical)
                         if session.isInspectorVisible {
-                            DSDivider(axis: .vertical)
                             ReadInspectorView().frame(width: sizeClass.inspectorWidth)
+                        } else {
+                            CollapsedInspectorRail()
                         }
                     } else {
                         StartScreenView()

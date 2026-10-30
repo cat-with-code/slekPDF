@@ -25,6 +25,18 @@ struct AppCommands: Commands {
                 .disabled(!canSearch || session?.searchResults.isEmpty != false)
         }
         CommandGroup(after: .toolbar) {
+            let language = appState.language
+            Button(CopyCatalog.shared.string(session?.isSidebarVisible == false ? .showPageSidebar : .hidePageSidebar, language)) {
+                session?.isSidebarVisible.toggle()
+            }
+            .keyboardShortcut("s", modifiers: [.command, .control])
+            .disabled(session?.document == nil || session?.isModalPresented == true)
+            Button(CopyCatalog.shared.string(session?.isInspectorVisible == false ? .showInspector : .hideInspector, language)) {
+                session?.isInspectorVisible.toggle()
+            }
+            .keyboardShortcut("i", modifiers: [.command, .option])
+            .disabled(session?.document == nil || session?.isModalPresented == true)
+            Divider()
             Picker("Interface Language", selection: $appState.language) {
                 Text("ខ្មែរ").tag(AppLanguage.km)
                 Text("English").tag(AppLanguage.en)

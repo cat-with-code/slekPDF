@@ -6,6 +6,8 @@ import SwiftUI
 /// copy will be routed through PDFium before release.
 struct PDFCanvasView: NSViewRepresentable {
     @ObservedObject var session: DocumentSession
+    /// Space above the first page for the floating page navigation (12 pt + 36 pt card + 12 pt).
+    static let topInset: CGFloat = 60
 
     func makeCoordinator() -> Coordinator { Coordinator(session: session) }
 
@@ -30,9 +32,21 @@ struct PDFCanvasView: NSViewRepresentable {
     func updateNSView(_ view: PDFView, context: Context) {
         if view.document !== session.document {
             view.document = session.document
-            DispatchQueue.main.async { session.applyFitPage() }
+            DispatchQueue.main.async {
+                Self.applyTopInset(to: view)
+                session.applyFitPage()
+            }
         }
         context.coordinator.highlights?.update(matches: session.searchResults, current: session.currentMatchIndex)
+    }
+
+    /// Pages scroll underneath the floating card, but start below it.
+    static func applyTopInset(to view: PDFView) {
+        guard let scroll = view.documentView?.enclosingScrollView else { return }
+        scroll.automaticallyAdjustsContentInsets = false
+        if scroll.contentInsets.top != topInset {
+            scroll.contentInsets = NSEdgeInsets(top: topInset, left: 0, bottom: 0, right: 0)
+        }
     }
 
     static func dismantleNSView(_ view: PDFView, coordinator: Coordinator) {

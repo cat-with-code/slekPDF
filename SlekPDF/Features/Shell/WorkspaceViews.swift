@@ -107,19 +107,18 @@ struct DocumentCanvas: View {
     @EnvironmentObject private var session: DocumentSession
 
     var body: some View {
-        // The page navigation sits in a band above the pages (Figma: pill 12 pt from the top, page from ~80 pt),
-        // so pages never scroll underneath it.
-        VStack(spacing: 0) {
-            ZStack {
-                HStack {
-                    DSLabel(.document, style: .caption).foregroundColor(DSColor.textSecondary)
-                    Spacer()
-                }
-                .padding(.horizontal, DSSpace.s24)
-                PageNavigationPill()
-            }
-            .frame(height: 60)
+        // Pages fill the whole canvas; the page navigation floats over them (Figma: 12 pt from the top).
+        // PDFCanvasView insets its scroll area so the first page starts below the card.
+        ZStack(alignment: .top) {
             PDFCanvasView(session: session)
+            HStack {
+                DSLabel(.document, style: .caption).foregroundColor(DSColor.textSecondary)
+                Spacer()
+            }
+            .padding(.horizontal, DSSpace.s24)
+            .padding(.top, DSSpace.s24)
+            .allowsHitTesting(false)
+            PageNavigationPill().padding(.top, DSSpace.s12)
         }
         .background(DSColor.backgroundCanvas)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

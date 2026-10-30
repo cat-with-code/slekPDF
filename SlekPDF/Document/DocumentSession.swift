@@ -151,7 +151,7 @@ final class DocumentSession: ObservableObject {
         if page.rotation % 180 != 0 { size = CGSize(width: size.height, height: size.width) }
         let margins = view.pageBreakMargins
         let available = CGSize(width: view.bounds.width - margins.left - margins.right,
-                               height: view.bounds.height - margins.top - margins.bottom)
+                               height: view.bounds.height - PDFCanvasView.topInset - margins.top - margins.bottom)
         guard size.width > 0, size.height > 0, available.width > 0, available.height > 0 else { return }
         view.autoScales = false
         view.scaleFactor = min(available.width / size.width, available.height / size.height)

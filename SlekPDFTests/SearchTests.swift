@@ -61,3 +61,17 @@ final class SearchTests: XCTestCase {
         }
     }
 }
+
+@MainActor
+final class SearchShortcutTests: XCTestCase {
+    func testSearchShortcutExpandsCollapsedInspectorThenFocuses() async throws {
+        let session = DocumentSession()
+        session.isInspectorVisible = false
+        let before = session.searchFocusRequest
+        session.focusSearch()
+        XCTAssertTrue(session.isInspectorVisible, "⌘F/⌘K must bring the inspector back")
+        XCTAssertEqual(session.searchFocusRequest, before, "focus waits until the panel is on screen")
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(session.searchFocusRequest, before + 1)
+    }
+}

@@ -88,11 +88,7 @@ struct CollapsedInspectorRail: View {
         VStack(spacing: DSSpace.s8) {
             DSIconButton(.left, size: 24, iconSize: 14) { session.isInspectorVisible = true }
                 .help(CopyCatalog.shared.string(.showInspector, language))
-            DSIconButton(.search, size: 24, iconSize: 14) {
-                session.isInspectorVisible = true
-                // Focus once the expanded panel's search field exists.
-                DispatchQueue.main.async { session.focusSearch() }
-            }
+            DSIconButton(.search, size: 24, iconSize: 14) { session.focusSearch() }
             .help(CopyCatalog.shared.string(.search, language))
             Spacer()
         }

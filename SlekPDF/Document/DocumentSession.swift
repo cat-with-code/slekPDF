@@ -184,7 +184,16 @@ final class DocumentSession: ObservableObject {
     var isSearchActive: Bool { !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     var searchPageCount: Int { Set(searchResults.map(\.page)).count }
 
-    func focusSearch() { searchFocusRequest += 1 }
+    /// ⌘F / ⌘K / the rail's search button: show the inspector if it is collapsed, then focus its search field
+    /// (on the next run-loop turn, once the expanded panel's field exists).
+    func focusSearch() {
+        guard !isInspectorVisible else {
+            searchFocusRequest += 1
+            return
+        }
+        isInspectorVisible = true
+        DispatchQueue.main.async { [weak self] in self?.searchFocusRequest += 1 }
+    }
     func clearSearch() { searchQuery = "" }
 
     private func scheduleSearch() {

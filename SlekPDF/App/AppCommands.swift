@@ -27,12 +27,12 @@ struct AppCommands: Commands {
         CommandGroup(after: .toolbar) {
             let language = appState.language
             Button(CopyCatalog.shared.string(session?.isSidebarVisible == false ? .showPageSidebar : .hidePageSidebar, language)) {
-                session?.isSidebarVisible.toggle()
+                session.map { $0.setSidebarVisible(!$0.isSidebarVisible, animated: false) }
             }
             .keyboardShortcut("s", modifiers: [.command, .control])
             .disabled(session?.document == nil || session?.isModalPresented == true)
             Button(CopyCatalog.shared.string(session?.isInspectorVisible == false ? .showInspector : .hideInspector, language)) {
-                session?.isInspectorVisible.toggle()
+                session.map { $0.setInspectorVisible(!$0.isInspectorVisible, animated: false) }
             }
             .keyboardShortcut("i", modifiers: [.command, .option])
             .disabled(session?.document == nil || session?.isModalPresented == true)

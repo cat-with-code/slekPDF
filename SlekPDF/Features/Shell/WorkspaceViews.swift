@@ -11,7 +11,7 @@ struct PageSidebarView: View {
             HStack {
                 DSLabel(.pages, style: .label).foregroundColor(DSColor.textPrimary)
                 Spacer()
-                DSIconButton(.left, size: 24, iconSize: 14) { session.isSidebarVisible = false }
+                DSIconButton(.left, size: 24, iconSize: 14) { session.setSidebarVisible(false) }
                     .help(CopyCatalog.shared.string(.hidePageSidebar, language))
             }
             ScrollViewReader { proxy in
@@ -67,9 +67,9 @@ struct CollapsedSidebarRail: View {
 
     var body: some View {
         VStack(spacing: DSSpace.s8) {
-            DSIconButton(.right, size: 24, iconSize: 14) { session.isSidebarVisible = true }
+            DSIconButton(.right, size: 24, iconSize: 14) { session.setSidebarVisible(true) }
                 .help(CopyCatalog.shared.string(.showPageSidebar, language))
-            DSIconButton(.page, size: 24, iconSize: 14) { session.isSidebarVisible = true }
+            DSIconButton(.page, size: 24, iconSize: 14) { session.setSidebarVisible(true) }
                 .help(CopyCatalog.shared.string(.pages, language))
             Spacer()
         }
@@ -86,9 +86,9 @@ struct CollapsedInspectorRail: View {
 
     var body: some View {
         VStack(spacing: DSSpace.s8) {
-            DSIconButton(.left, size: 24, iconSize: 14) { session.isInspectorVisible = true }
+            DSIconButton(.left, size: 24, iconSize: 14) { session.setInspectorVisible(true) }
                 .help(CopyCatalog.shared.string(.showInspector, language))
-            DSIconButton(.search, size: 24, iconSize: 14) { session.focusSearch() }
+            DSIconButton(.search, size: 24, iconSize: 14) { session.focusSearch(animated: true) }
             .help(CopyCatalog.shared.string(.search, language))
             Spacer()
         }
@@ -187,7 +187,7 @@ struct ReadInspectorView: View {
                 HStack {
                     DSLabel(.readSearch, style: .heading).foregroundColor(DSColor.textPrimary)
                     Spacer()
-                    DSIconButton(.right, size: 24, iconSize: 14) { session.isInspectorVisible = false }
+                    DSIconButton(.right, size: 24, iconSize: 14) { session.setInspectorVisible(false) }
                         .help(CopyCatalog.shared.string(.hideInspector, language))
                 }
                 DSSearchField(text: $session.searchQuery,

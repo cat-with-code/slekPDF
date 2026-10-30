@@ -38,6 +38,7 @@ struct DocumentWindow: View {
 /// Rows: title bar 44 · toolbar 50 · workspace tabs 44 · workspace (sidebar | canvas | inspector) · status bar 36.
 struct MainWindowView: View {
     @EnvironmentObject private var session: DocumentSession
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { proxy in
@@ -52,24 +53,28 @@ struct MainWindowView: View {
                         if showsSidebar(in: sizeClass) {
                             PageSidebarView()
                                 .frame(width: sizeClass.sidebarWidth ?? WindowSizeClass.regular.sidebarWidth)
+                                .transition(panelTransition(edge: .leading))
                             DSDivider(axis: .vertical)
                         } else if sizeClass != .compact {
                             // Collapsed: keep a rail so the sidebar can be brought back (Compact uses the toolbar toggle).
-                            CollapsedSidebarRail()
+                            CollapsedSidebarRail().transition(.opacity)
                             DSDivider(axis: .vertical)
                         }
                         DocumentCanvas()
                         DSDivider(axis: .vertical)
                         if session.isInspectorVisible {
-                            ReadInspectorView().frame(width: sizeClass.inspectorWidth)
+                            ReadInspectorView()
+                                .frame(width: sizeClass.inspectorWidth)
+                                .transition(panelTransition(edge: .trailing))
                         } else {
-                            CollapsedInspectorRail()
+                            CollapsedInspectorRail().transition(.opacity)
                         }
                     } else {
                         StartScreenView()
                     }
                 }
                 .frame(maxHeight: .infinity)
+                .clipped()  // sliding panels stay inside the workspace row
                 }
                 // Elevation/4 Backdrop: background blur 6 behind dialogs (SwiftUI radius ≈ half of Figma's).
                 .blur(radius: session.isModalPresented ? 3 : 0)
@@ -92,6 +97,11 @@ struct MainWindowView: View {
         }
         .animation(.easeOut(duration: 0.15), value: session.isModalPresented)
         .ignoresSafeArea()
+    }
+
+    /// Panels slide in from their own edge while fading; with Reduce Motion they only fade.
+    private func panelTransition(edge: Edge) -> AnyTransition {
+        reduceMotion ? .opacity : .move(edge: edge).combined(with: .opacity)
     }
 
     /// Compact hides the page sidebar by default; the toolbar toggle shows it.

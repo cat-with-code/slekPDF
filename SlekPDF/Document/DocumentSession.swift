@@ -1,5 +1,6 @@
 import AppKit
 import PDFKit
+import SwiftUI
 
 /// One window's open document. PDFKit displays pages; PDFium (through `PDFiumService`) handles Khmer
 /// text and search. App-wide settings (language, appearance) stay in `AppState`.
@@ -185,14 +186,48 @@ final class DocumentSession: ObservableObject {
     var searchPageCount: Int { Set(searchResults.map(\.page)).count }
 
     /// ⌘F / ⌘K / the rail's search button: show the inspector if it is collapsed, then focus its search field
-    /// (on the next run-loop turn, once the expanded panel's field exists).
-    func focusSearch() {
+    /// (on the next run-loop turn, once the expanded panel's field exists). Keyboard shortcuts pass
+    /// `animated: false` — they are used constantly and must feel instant.
+    func focusSearch(animated: Bool = false) {
         guard !isInspectorVisible else {
             searchFocusRequest += 1
             return
         }
-        isInspectorVisible = true
+        setInspectorVisible(true, animated: animated)
         DispatchQueue.main.async { [weak self] in self?.searchFocusRequest += 1 }
+    }
+
+    // MARK: - Panels
+
+    /// Panel show/hide motion: the iOS-style drawer curve (cubic-bezier 0.32, 0.72, 0, 1) at 250 ms.
+    /// With Reduce Motion, a short fade only (no sliding).
+    static func panelAnimation(reduceMotion: Bool) -> Animation {
+        reduceMotion ? .easeOut(duration: 0.15) : .timingCurve(0.32, 0.72, 0, 1, duration: 0.25)
+    }
+
+    private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+
+    /// Clicks animate; keyboard shortcuts and menu items pass `animated: false`.
+    func setSidebarVisible(_ visible: Bool, animated: Bool = true) {
+        guard visible != isSidebarVisible else { return }
+        if animated {
+            withAnimation(Self.panelAnimation(reduceMotion: reduceMotion)) { isSidebarVisible = visible }
+        } else {
+            isSidebarVisible = visible
+        }
+    }
+
+    func setInspectorVisible(_ visible: Bool, animated: Bool = true) {
+        guard visible != isInspectorVisible else { return }
+        if animated {
+            withAnimation(Self.panelAnimation(reduceMotion: reduceMotion)) { isInspectorVisible = visible }
+        } else {
+            isInspectorVisible = visible
+        }
+    }
+
+    func toggleCompactSidebar() {
+        withAnimation(Self.panelAnimation(reduceMotion: reduceMotion)) { isCompactSidebarShown.toggle() }
     }
     func clearSearch() { searchQuery = "" }
 

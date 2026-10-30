@@ -38,7 +38,7 @@ struct ToolbarView: View {
         let hasDocument = session.document != nil
         HStack(spacing: DSSpace.s8) {
             if sizeClass == .compact {
-                DSIconButton(.leftBar) { session.isCompactSidebarShown.toggle() }
+                DSIconButton(.leftBar) { session.toggleCompactSidebar() }
             }
             DSButton(.openPDF, icon: .folderOpen) { session.isImporterPresented = true }
             DSButton(.saveWork, icon: .save).disabled(!hasDocument)

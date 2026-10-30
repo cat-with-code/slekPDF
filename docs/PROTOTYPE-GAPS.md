@@ -1,6 +1,6 @@
-# Where native macOS 12 can and can't match the prototype
+# Where native macOS 13 can and can't match the prototype
 
-Status after the shell scaffold (30 Oct 2026). "Verified" means built, tested and rendered here (macOS 27 dev machine; macOS 12 runtime not yet tested).
+Status after the shell scaffold (30 Oct 2026). "Verified" means built, tested and rendered here (macOS 27 dev machine; macOS 13 runtime not yet tested). Minimum raised from macOS 12 to 13 on 30 Oct 2026.
 
 ## Verified — matches the prototype
 
@@ -11,12 +11,12 @@ Status after the shell scaffold (30 Oct 2026). "Verified" means built, tested an
 | Typography | Bundled Noto Sans Khmer + Inter (OFL). Every Figma line height ≥ the font's natural height (Khmer: Body 22 vs 18, Heading 26 vs 21), so no clipping; extra space is split above/below like Figma |
 | Icons | All 70 icons from the Iconography page as vector template assets; app icon from 106:189 |
 | Window sizes | Min 1024×720, default 1280×900, sidebar/inspector widths per size class |
-| macOS 12 + both architectures | Universal binary, `minos 12.0`, `LSMinimumSystemVersion 12.0` |
+| macOS 13 + both architectures | Universal binary incl. embedded PDFium, `minos 13.0`, `LSMinimumSystemVersion 13.0` |
 | Sandbox | App Sandbox, user-selected read/write, bookmarks, print — test host proves writes outside the container are blocked |
 
 ## Decisions needed
 
-1. **Dialogs and the scrim.** The prototype dims the window (35%) behind dialogs and adds a blur. Native `.sheet` on macOS 12 slides from the title bar with no scrim. *Recommendation:* in-window SwiftUI overlays (scrim + card) to match Figma; we then own Esc/Return handling, focus trapping and VoiceOver modal behaviour.
+1. **Dialogs and the scrim.** The prototype dims the window (35%) behind dialogs and adds a blur. Native `.sheet` on macOS slides from the title bar with no scrim. *Recommendation:* in-window SwiftUI overlays (scrim + card) to match Figma; we then own Esc/Return handling, focus trapping and VoiceOver modal behaviour.
 2. **Secondary windows (About, Help, Developer, Release Notes, Report, Feedback, D-27…D-34).** The prototype shows them over a scrim inside the main window. Real macOS apps open these as separate windows (no scrim possible). *Choose:* separate windows (native) or in-window panels (matches prototype).
 3. **Title bar.** With a hidden title bar the system traffic lights sit near the top, not vertically centred in the 44 pt bar as in Figma. Options: accept the small offset, or reposition the buttons via AppKit (works but must be re-applied on resize/full screen).
 4. **Menu bar.** It is the real macOS menu (SwiftUI `Commands`). Custom items can follow the live Khmer switch; standard items supplied by macOS (Window menu entries, Services, some Edit items) appear in the system language because macOS has no Khmer localisation. The App menu can be reduced to About · Developer · Preferences · Quit as designed. Needs a short spike.
@@ -31,4 +31,4 @@ Status after the shell scaffold (30 Oct 2026). "Verified" means built, tested an
 - Remaining ~1,035 `Copy/*` strings (import procedure in README).
 - Exact component measurements via `get_design_context` per component.
 - Prototype click-through links (hotspots/flows) not yet extracted; read them with `use_figma` when wiring navigation.
-- Runtime test on real macOS 12 Intel and Apple Silicon Macs.
+- Runtime test on real macOS 13 Intel and Apple Silicon Macs.

@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A0000000000000000000A081 /* libpdfium.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A0000000000000000000A080 /* libpdfium.dylib */; };
+		A0000000000000000000A082 /* libpdfium.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = A0000000000000000000A080 /* libpdfium.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		A0000000000000000000A071 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -16,9 +21,24 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		A0000000000000000000A043 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				A0000000000000000000A082 /* libpdfium.dylib in Embed Libraries */,
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		A0000000000000000000A011 /* SlekPDF.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SlekPDF.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0000000000000000000A021 /* SlekPDFTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SlekPDFTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A0000000000000000000A080 /* libpdfium.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libpdfium.dylib; path = Vendor/pdfium/lib/libpdfium.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -44,6 +64,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A0000000000000000000A081 /* libpdfium.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -63,6 +84,7 @@
 				A0000000000000000000A030 /* SlekPDF */,
 				A0000000000000000000A031 /* SlekPDFTests */,
 				A0000000000000000000A032 /* Config */,
+				A0000000000000000000A083 /* Vendor */,
 				A0000000000000000000A003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -76,6 +98,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		A0000000000000000000A083 /* Vendor */ = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000A080 /* libpdfium.dylib */,
+			);
+			name = Vendor;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -86,6 +116,7 @@
 				A0000000000000000000A040 /* Sources */,
 				A0000000000000000000A041 /* Frameworks */,
 				A0000000000000000000A042 /* Resources */,
+				A0000000000000000000A043 /* Embed Libraries */,
 			);
 			buildRules = (
 			);
@@ -223,10 +254,12 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/lib";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_INCLUDE_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/include";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
 			};
@@ -243,9 +276,11 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/lib";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_INCLUDE_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/include";
 				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
@@ -306,10 +341,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.SlekPDFTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SlekPDF.app/Contents/MacOS/SlekPDF";
@@ -320,10 +355,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.SlekPDFTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SlekPDF.app/Contents/MacOS/SlekPDF";

@@ -27,7 +27,15 @@ Limits: synthetic fixtures only (no real-world PDFs yet); tested on macOS 27, no
 4. Many existing Khmer PDFs have broken text layers, whatever the engine. This supports offering "Recognize text (OCR)" even on digital PDFs whose extracted Khmer looks wrong; worth a "text layer looks damaged" check in the product.
 5. The searchable-PDF export (OCR text layer) should use the same E5 text-layer technique (or Tesseract's own text layer — test in spike 02).
 
-## Decision needed
+## Decision (30 Oct 2026): PDFium added, minimum raised to macOS 13
+
+PDFium's prebuilt binaries require macOS 13 since July 2026 (last macOS 12 build: chromium/7920, 29 Jun 2026). The user chose to raise the app's minimum to macOS 13 and use current PDFium (vendored `chromium/8086`, see `Vendor/pdfium/SOURCE.md`) rather than pin an unpatched build.
+
+Repeated through the app's own wrapper (`SlekPDF/Document/PDFium/PDFiumDocument.swift`), inside the sandboxed app (`SlekPDFTests/Spikes/PDFiumKhmerTests.swift`):
+- Search: Core Text PDF 6/7 words, Chrome PDF 7/7 (PDFKit: 2/4, 0/4).
+- Overlay + incremental save: original file bytes kept unchanged as the prefix of the output (28,535 → 79,839 bytes); added line copies/searches correctly in pypdf, pdfminer and PDFium; original text extraction unchanged; renders correctly.
+
+## Options considered
 
 Add a native PDF library to the app:
 

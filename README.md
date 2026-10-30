@@ -1,12 +1,13 @@
 # Slek PDF — macOS app
 
-Native Swift app (SwiftUI + AppKit + PDFKit), minimum macOS 12.0, Apple Silicon and Intel.
+Native Swift app (SwiftUI + AppKit, PDFKit for display, PDFium for Khmer text/search and delivered copies), minimum macOS 13.0, Apple Silicon and Intel.
 Product spec: `../../Assets/Khmer-PDF-App-Setup.md` and `Khmer-PDF-App-Release-Checklist.md`.
 Visual reference: Figma file `GrvVYMZQvBs11vwtYNfYvH` (KhmerPDF), Prototype page — see `docs/PROTOTYPE-MAP.md`.
 
 ## Requirements
 
-- Xcode 27.1 or later that still supports a macOS 12.0 deployment target (27.1's SDK allows 12.0).
+- Xcode 27.1 or later that still supports a macOS 13.0 deployment target.
+- Vendored PDFium binary in `Vendor/pdfium` (see `Vendor/pdfium/SOURCE.md`); it is linked and embedded by the project, nothing to install. Unit tests need macOS 14+ (XCTest); the app itself runs on 13+.
 - No package manager or code generators. The project uses Xcode synchronized folders, so new files in `SlekPDF/` or `SlekPDFTests/` are picked up automatically.
 
 ## Commands
@@ -20,7 +21,7 @@ Visual reference: Figma file `GrvVYMZQvBs11vwtYNfYvH` (KhmerPDF), Prototype page
 | Regenerate tokens + copy keys | `python3 Tools/generate_tokens.py` |
 | Regenerate icons + app icon | `python3 Tools/import_icons.py` |
 
-Verify a release binary: `lipo -info …/SlekPDF.app/Contents/MacOS/SlekPDF` (x86_64 arm64) and `otool -l … | grep minos` (12.0).
+Verify a release binary: `lipo -info …/SlekPDF.app/Contents/MacOS/SlekPDF` (x86_64 arm64) and `otool -l … | grep minos` (13.0) — check `Contents/Frameworks/libpdfium.dylib` too.
 
 ## Figma → code pipeline
 
@@ -40,7 +41,8 @@ Rules carried over from the design system:
 - Text buttons are pills (`DSButton`); icon-only buttons are rounded squares (`DSIconButton`).
 - Spacing/radius/stroke come from `DSSpace`, `DSRadius`, `DSStroke`.
 - Interface language switches live (status bar, View ▸ Interface Language) and is independent of the system language.
-- No macOS 13+ API without `if #available` (no `NavigationSplitView`, `@Observable`, `defaultSize`, `Grid`, `ViewThatFits`, `LabeledContent`, `TextField(axis:)`).
+- No macOS 14+ API without `if #available` (no `@Observable`/Observation, `onChange(of:initial:)` two-parameter form, `ContentUnavailableView`). macOS 13 APIs (`NavigationSplitView`, `Grid`, `ViewThatFits`, `defaultSize`) are fine.
+- PDF text: use `PDFiumDocument` for Khmer text extraction, search and writing delivered copies; never redraw an original page to add content (it damages Khmer text — docs/spikes/01-pdfkit-khmer.md). PDFKit is for display and annotations.
 
 ### Adding copy
 
@@ -58,7 +60,8 @@ SlekPDF/Resources/        Fonts (OFL), copy.json, Assets.xcassets
 SlekPDFTests/             Token, copy, font, icon tests; shell snapshot renderer
 Config/                   Info.plist additions, entitlements (sandbox, user-selected files, print)
 Design/                   Figma exports (source of generated code)
-Licenses/                 Third-party licences to ship with the app
+Licenses/                 Third-party licences to ship with the app (PDFium's are in Vendor/pdfium/LICENSE + licenses/)
+Vendor/                   Vendored native libraries (PDFium)
 Tools/                    Generators and snapshot script
 docs/                     Prototype map and prototype-vs-native gaps
 ```
@@ -66,4 +69,4 @@ docs/                     Prototype map and prototype-vs-native gaps
 ## Placeholders to replace before release
 
 - Bundle identifier `com.example.SlekPDF` and ad-hoc signing (`CODE_SIGN_IDENTITY = "-"`); needs the real identifier and a Developer ID team.
-- Not yet run on a Mac with macOS 12: building with a 12.0 target only shows that the APIs it uses exist on macOS 12.
+- Not yet run on a Mac with macOS 13: building with a 13.0 target only shows that the APIs it uses exist on macOS 13.

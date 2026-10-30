@@ -1,0 +1,12 @@
+module PDFium {
+    header "fpdfview.h"
+    header "fpdf_text.h"
+    header "fpdf_edit.h"
+    header "fpdf_save.h"
+    header "fpdf_ppo.h"
+    header "fpdf_annot.h"
+    header "fpdf_doc.h"
+    header "fpdf_searchex.h"
+    link "pdfium"
+    export *
+}

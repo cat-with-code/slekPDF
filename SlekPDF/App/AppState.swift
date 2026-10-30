@@ -40,7 +40,7 @@ enum AppearancePreference: String, CaseIterable {
     }
 }
 
-/// App-wide UI state. ObservableObject (not @Observable) because the deployment target is macOS 12.
+/// App-wide UI state. ObservableObject (not @Observable, which needs macOS 14) because the deployment target is macOS 13.
 final class AppState: ObservableObject {
     @Published var language: AppLanguage {
         didSet { defaults.set(language.rawValue, forKey: Keys.language) }

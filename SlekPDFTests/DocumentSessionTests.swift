@@ -58,7 +58,7 @@ final class RecentDocumentsTests: XCTestCase {
         let b = try XCTUnwrap(bundle.url(forResource: "khmer-multipage", withExtension: "pdf"))
         recents.add(a); recents.add(b); recents.add(a)
         XCTAssertEqual(recents.entries.map(\.name), ["khmer-coretext.pdf", "khmer-multipage.pdf"])
-        XCTAssertEqual(recents.resolve(recents.entries[0])?.lastPathComponent, "khmer-coretext.pdf")
+        XCTAssertEqual(recents.url(for: recents.entries[0])?.lastPathComponent, "khmer-coretext.pdf")
     }
 
     func testRecentDateFormatsMatchPrototype() {
@@ -101,5 +101,16 @@ final class PasswordFlowTests: XCTestCase {
         XCTAssertFalse(session.isModalPresented)
         await session.unlock(with: "user")
         XCTAssertNil(session.document, "unlock after cancel must not open anything")
+    }
+}
+
+@MainActor
+final class ExternalOpenTests: XCTestCase {
+    func testFinderOpenIsQueuedOnceForTheFirstWindow() throws {
+        let pdf = try XCTUnwrap(Bundle(for: ExternalOpenTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
+        AppDelegate().application(NSApplication.shared, open: [pdf, URL(fileURLWithPath: "/tmp/notes.txt")])
+        XCTAssertEqual(ExternalOpenRequests.shared.pending, [pdf], "only PDFs are queued")
+        XCTAssertEqual(ExternalOpenRequests.shared.take(), pdf)
+        XCTAssertNil(ExternalOpenRequests.shared.take(), "a second window must not open it again")
     }
 }

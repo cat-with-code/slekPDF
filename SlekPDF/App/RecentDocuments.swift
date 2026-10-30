@@ -12,6 +12,9 @@ final class RecentDocuments: ObservableObject {
     }
 
     @Published private(set) var entries: [Entry] = []
+    /// Resolved file per entry (nil = moved, deleted or no longer readable). Filled by `refresh()`,
+    /// never during a view update.
+    @Published private(set) var resolvedURLs: [Data: URL] = [:]
     private let defaults: UserDefaults
     private let key = "recentDocuments"
     private let limit = 5
@@ -21,14 +24,35 @@ final class RecentDocuments: ObservableObject {
         if let data = defaults.data(forKey: key), let decoded = try? JSONDecoder().decode([Entry].self, from: data) {
             entries = decoded
         }
+        refresh()
     }
 
     func add(_ url: URL) {
         guard let bookmark = Self.bookmark(for: url) else { return }
-        entries.removeAll { resolve($0)?.standardizedFileURL == url.standardizedFileURL }
+        entries.removeAll { resolve($0.bookmark)?.0.standardizedFileURL == url.standardizedFileURL }
         entries.insert(Entry(bookmark: bookmark, name: url.lastPathComponent, lastOpened: Date()), at: 0)
         entries = Array(entries.prefix(limit))
         save()
+        refresh()
+    }
+
+    func url(for entry: Entry) -> URL? { resolvedURLs[entry.bookmark] }
+
+    /// Resolves every entry (disk access): call when the start screen appears or after a change.
+    /// Stale bookmarks are renewed in place.
+    func refresh() {
+        var resolved: [Data: URL] = [:]
+        var renewed = false
+        for index in entries.indices {
+            guard let (url, fresh) = resolve(entries[index].bookmark) else { continue }
+            if let fresh {
+                entries[index].bookmark = fresh
+                renewed = true
+            }
+            resolved[entries[index].bookmark] = url
+        }
+        if renewed { save() }
+        resolvedURLs = resolved
     }
 
     /// Security-scoped for files the user picked or dropped; a plain bookmark for files the app can
@@ -38,17 +62,17 @@ final class RecentDocuments: ObservableObject {
             ?? (try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil))
     }
 
-    /// Resolves an entry; nil if the file was moved or deleted. Refreshes stale bookmarks.
-    func resolve(_ entry: Entry) -> URL? {
+    /// The file a bookmark points to if it still exists and is readable, plus renewed bookmark data when stale.
+    private func resolve(_ bookmark: Data) -> (URL, Data?)? {
         var stale = false
-        let url = (try? URL(resolvingBookmarkData: entry.bookmark, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &stale))
-            ?? (try? URL(resolvingBookmarkData: entry.bookmark, options: [], relativeTo: nil, bookmarkDataIsStale: &stale))
-        guard let url, FileManager.default.fileExists(atPath: url.path) else { return nil }
-        if stale, let index = entries.firstIndex(of: entry), let fresh = Self.bookmark(for: url) {
-            entries[index].bookmark = fresh
-            save()
-        }
-        return url
+        let url = (try? URL(resolvingBookmarkData: bookmark, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &stale))
+            ?? (try? URL(resolvingBookmarkData: bookmark, options: [], relativeTo: nil, bookmarkDataIsStale: &stale))
+        guard let url else { return nil }
+        // Check while holding the sandbox access the bookmark grants; outside it, user files look absent.
+        let didAccess = url.startAccessingSecurityScopedResource()
+        defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
+        guard FileManager.default.isReadableFile(atPath: url.path) else { return nil }
+        return (url, stale ? Self.bookmark(for: url) : nil)
     }
 
     private func save() {

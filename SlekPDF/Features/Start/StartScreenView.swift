@@ -27,6 +27,7 @@ struct StartScreenView: View {
             .frame(maxWidth: .infinity)
         }
         .background(DSColor.backgroundCanvas)
+        .onAppear { recents.refresh() }
     }
 }
 
@@ -69,7 +70,7 @@ struct RecentFileRow: View {
     @State private var isHovered = false
 
     var body: some View {
-        let url = recents.resolve(entry)
+        let url = recents.url(for: entry)
         Button {
             if let url { Task { await session.open(url) } }
         } label: {

@@ -10,6 +10,14 @@ struct DocumentWindow: View {
         MainWindowView()
             .environmentObject(session)
             .onAppear { session.onOpened = { [weak recents] url in recents?.add(url) } }
+            // Release PDFium and the file's sandbox access when the window closes.
+            .onDisappear { Task { await session.close() } }
+            // Files opened from Finder (double-click, Open With, drag onto the Dock icon).
+            .onReceive(ExternalOpenRequests.shared.$pending) { pending in
+                guard !pending.isEmpty, !session.isModalPresented,
+                      let url = ExternalOpenRequests.shared.take() else { return }
+                Task { await session.open(url) }
+            }
             .focusedSceneObject(session)
             .fileImporter(isPresented: $session.isImporterPresented, allowedContentTypes: [.pdf]) { result in
                 guard case let .success(url) = result else { return }

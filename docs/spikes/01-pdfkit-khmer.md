@@ -46,3 +46,26 @@ Add a native PDF library to the app:
 | PDFKit only | No dependency | Khmer search fails on many real PDFs; added text can only be annotations, not flattened safely |
 
 Recommendation: **PDFium** for text extraction/search and for writing delivered copies; keep PDFKit for on-screen page display and annotations. Next check before committing: a PDFium build for arm64 + x86_64 with minimum macOS 12, inside the sandbox, and repeat E2/E7 through PDFium's C API.
+
+## Follow-up (30 Oct 2026): readable copy and search from existing PDFs
+
+`SlekPDF/Document/KhmerTextRebuilder.swift` rebuilds Khmer from PDFium's per-character records (origin, box,
+generated flag, render mode): drops PDFium's generated line breaks inside a line, removes duplicate ligature
+glyphs, attaches marks to the consonant they are drawn on and pre-base vowels/្រ to the consonant on their right,
+reorders only the syllables it changed, merges split vowels, and leaves invisible (already logical) text alone.
+Copy (⌘C, context menu) and search use it; search ignores whitespace.
+
+Exact lines (NFC, spaces included) — `KhmerTextRebuilderTests.testScoresOnFixtures`:
+
+| Fixture (producer) | PDFKit | PDFium raw | Rebuilt |
+| --- | --- | --- | --- |
+| khmer-coretext (Apple Core Text) | 1/6 | 1/6 | **5/6** |
+| khmer-multipage (Apple Core Text) | 3/12 | 1/12 | **7/12** |
+| khmer-chrome (Chrome/Skia) | 0/6 | 0/6 | 0/6 |
+
+All Khmer letters are now correct on every line of both producers. Remaining differences are spaces only:
+Core Text files miss a space PDFium never reports (before Khmer digits: "ទំព័រទី១"); Chrome files contain no
+space glyphs, so PDFium's generated spaces include stray ones inside words ("សាលារៀ ន") that cannot be told
+apart from real ones by geometry — kept rather than risk gluing phrases. Search ignores spaces, so both still
+match. Tuned on two synthetic producers only; real-world PDFs (Word, Google Docs, government PDFs) are needed.
+Legacy-encoded (non-Unicode) Khmer cannot be repaired this way — OCR instead.

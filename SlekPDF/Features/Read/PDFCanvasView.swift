@@ -10,7 +10,8 @@ struct PDFCanvasView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(session: session) }
 
     func makeNSView(context: Context) -> PDFView {
-        let view = PDFView()
+        let view = KhmerPDFView()
+        view.copyHandler = { [weak session] selection in session?.copy(selection) }
         view.displayMode = .singlePageContinuous
         view.displaysPageBreaks = true
         view.pageBreakMargins = NSEdgeInsets(top: 24, left: 24, bottom: 24, right: 24)
@@ -128,5 +129,16 @@ final class SearchHighlightView: NSView {
                 }
             }
         }
+    }
+}
+
+/// PDFView whose Copy (⌘C, Edit ▸ Copy, context menu) uses PDFium + the Khmer rebuilder instead of
+/// PDFKit's drawing-order text.
+final class KhmerPDFView: PDFView {
+    var copyHandler: ((PDFSelection) -> Void)?
+
+    override func copy(_ sender: Any?) {
+        guard let selection = currentSelection, let copyHandler else { return super.copy(sender) }
+        copyHandler(selection)
     }
 }

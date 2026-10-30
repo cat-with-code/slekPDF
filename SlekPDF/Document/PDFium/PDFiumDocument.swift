@@ -73,6 +73,31 @@ nonisolated final class PDFiumDocument {
         }
     }
 
+    /// Every character PDFium reports on a page, with the geometry the Khmer text rebuilder needs.
+    func characters(onPage index: Int) throws -> [PDFiumChar] {
+        try withTextPage(index) { textPage in
+            let count = Int(FPDFText_CountChars(textPage))
+            var chars: [PDFiumChar] = []
+            chars.reserveCapacity(count)
+            for i in 0..<count {
+                let code = FPDFText_GetUnicode(textPage, Int32(i))
+                guard code != 0, let scalar = Unicode.Scalar(code) else { continue }
+                var x = 0.0, y = 0.0, left = 0.0, right = 0.0, bottom = 0.0, top = 0.0
+                FPDFText_GetCharOrigin(textPage, Int32(i), &x, &y)
+                FPDFText_GetCharBox(textPage, Int32(i), &left, &right, &bottom, &top)
+                var invisible = false
+                if let object = FPDFText_GetTextObject(textPage, Int32(i)) {
+                    invisible = FPDFTextObj_GetTextRenderMode(object) == FPDF_TEXTRENDERMODE_INVISIBLE
+                }
+                chars.append(PDFiumChar(index: i, scalar: scalar, isGenerated: FPDFText_IsGenerated(textPage, Int32(i)) == 1,
+                                        isInvisible: invisible, origin: CGPoint(x: x, y: y),
+                                        box: CGRect(x: left, y: bottom, width: right - left, height: top - bottom),
+                                        fontSize: FPDFText_GetFontSize(textPage, Int32(i))))
+            }
+            return chars
+        }
+    }
+
     /// All matches of `query` on a page: character range, rectangles in PDF page space (points, origin
     /// bottom-left — the same space PDFKit's `PDFPage` uses) and a snippet around the match.
     func matches(of query: String, onPage index: Int, matchCase: Bool, wholeWord: Bool) throws -> [PDFiumMatch] {
@@ -138,6 +163,18 @@ nonisolated final class PDFiumDocument {
         defer { FPDFText_ClosePage(textPage) }
         return try body(textPage)
     }
+}
+
+nonisolated struct PDFiumChar: Sendable, Equatable {
+    let index: Int
+    let scalar: Unicode.Scalar
+    /// Inserted by PDFium (spaces, line breaks), not present in the file.
+    let isGenerated: Bool
+    /// Text render mode 3: invisible text layers (OCR, Slek PDF's own) are already in reading order.
+    let isInvisible: Bool
+    let origin: CGPoint
+    let box: CGRect
+    let fontSize: Double
 }
 
 nonisolated struct PDFiumMatch: Sendable, Equatable {

@@ -228,6 +228,27 @@ final class DocumentSession: ObservableObject {
         currentPageIndex = match.page
     }
 
+    // MARK: - Copy (readable Khmer via PDFium, not PDFKit's drawing-order text)
+
+    /// Readable text of a PDFKit selection: each selected line's rectangle is read from PDFium and rebuilt.
+    func text(of selection: PDFSelection) async -> String {
+        guard let id = pdfiumID, let document else { return selection.string ?? "" }
+        let lines: [(page: Int, rect: CGRect)] = selection.selectionsByLine().compactMap { line in
+            guard let page = line.pages.first else { return nil }
+            return (document.index(for: page), line.bounds(for: page))
+        }
+        return await PDFiumService.shared.copyText(id, lines: lines)
+    }
+
+    func copy(_ selection: PDFSelection) {
+        Task {
+            let text = await text(of: selection)
+            guard !text.isEmpty else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+        }
+    }
+
     func thumbnail(for index: Int, size: CGSize) -> NSImage? {
         if let cached = thumbnailCache[index] { return cached }
         guard let page = document?.page(at: index) else { return nil }

@@ -154,12 +154,20 @@ final class DocumentSession: ObservableObject {
                                height: view.bounds.height - PDFCanvasView.topInset - margins.top - margins.bottom)
         guard size.width > 0, size.height > 0, available.width > 0, available.height > 0 else { return }
         view.autoScales = false
-        view.scaleFactor = min(available.width / size.width, available.height / size.height)
+        fitScale = min(available.width / size.width, available.height / size.height)
+        view.scaleFactor = fitScale
         show(page)
     }
 
+    /// The scale "Fit page" last applied; any other scale means the user zoomed.
+    private var fitScale: CGFloat = 0
+
     func pdfViewDidChangePage(_ index: Int) { currentPageIndex = index }
-    func pdfViewDidChangeScale(_ scale: CGFloat) { scaleFactor = scale }
+    /// Pinch, ⌘+/⌘− and other zooming inside the PDF view leave Fit page, so later layout changes keep the zoom.
+    func pdfViewDidChangeScale(_ scale: CGFloat) {
+        scaleFactor = scale
+        if isFitPage, abs(scale - fitScale) > 0.001 { isFitPage = false }
+    }
 
     // MARK: - Search (PDFium text: reliable Khmer search, unlike PDFKit's — docs/spikes/01)
 

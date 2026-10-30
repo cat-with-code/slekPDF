@@ -1,3 +1,5 @@
+import SwiftUI
+import AppKit
 import XCTest
 @testable import SlekPDF
 
@@ -112,5 +114,37 @@ final class ExternalOpenTests: XCTestCase {
         XCTAssertEqual(ExternalOpenRequests.shared.pending, [pdf], "only PDFs are queued")
         XCTAssertEqual(ExternalOpenRequests.shared.take(), pdf)
         XCTAssertNil(ExternalOpenRequests.shared.take(), "a second window must not open it again")
+    }
+}
+
+@MainActor
+final class ZoomStabilityTests: XCTestCase {
+    /// A zoom made inside the PDF view (pinch, ⌘+) leaves Fit page, and toggling panels keeps that zoom.
+    func testUserZoomSurvivesPanelToggles() async throws {
+        let url = try XCTUnwrap(Bundle(for: ZoomStabilityTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
+        let session = DocumentSession()
+        await session.open(url)
+        let canvas = PDFCanvasView(session: session)
+        let host = NSHostingView(rootView: canvas.frame(width: 800, height: 700))
+        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 800, height: 700), styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+        window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        try await Task.sleep(nanoseconds: 500000000)
+        let view = try XCTUnwrap(session.pdfView)
+        XCTAssertTrue(session.isFitPage)
+
+        view.scaleFactor = 2.0   // as a pinch would
+        try await Task.sleep(nanoseconds: 200000000)
+        XCTAssertFalse(session.isFitPage)
+
+        // A panel toggle resizes the PDF view but not the window.
+        view.setFrameSize(NSSize(width: view.frame.width - 120, height: view.frame.height))
+        try await Task.sleep(nanoseconds: 200000000)
+        view.setFrameSize(NSSize(width: view.frame.width + 120, height: view.frame.height))
+        try await Task.sleep(nanoseconds: 200000000)
+        XCTAssertEqual(view.scaleFactor, 2.0, accuracy: 0.001)
+
+        session.fitPage()
+        XCTAssertTrue(session.isFitPage)
     }
 }

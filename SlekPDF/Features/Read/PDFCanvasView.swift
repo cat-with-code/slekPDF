@@ -58,6 +58,7 @@ struct PDFCanvasView: NSViewRepresentable {
         private let session: DocumentSession
         private var tokens: [NSObjectProtocol] = []
         var highlights: SearchHighlightView?
+        private var lastWindowSize: CGSize?
 
         init(session: DocumentSession) { self.session = session }
 
@@ -69,8 +70,14 @@ struct PDFCanvasView: NSViewRepresentable {
                     self?.session.pdfViewDidChangePage(document.index(for: page))
                 }
             })
-            tokens.append(center.addObserver(forName: NSView.frameDidChangeNotification, object: view, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.session.applyFitPage() }
+            // Re-fit only when the window is resized. Showing or hiding the page sidebar or inspector also changes
+            // this view's size, but must never change the zoom.
+            tokens.append(center.addObserver(forName: NSView.frameDidChangeNotification, object: view, queue: .main) { [weak self, weak view] _ in
+                MainActor.assumeIsolated {
+                    guard let self, let size = view?.window?.frame.size, size != self.lastWindowSize else { return }
+                    self.lastWindowSize = size
+                    self.session.applyFitPage()
+                }
             })
             // Redraw search highlights while scrolling.
             if let clip = view.documentView?.enclosingScrollView?.contentView {

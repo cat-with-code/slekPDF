@@ -16,8 +16,8 @@ Status after the shell scaffold (30 Oct 2026). "Verified" means built, tested an
 
 ## Decisions needed
 
-1. **Dialogs and the scrim.** The prototype dims the window (35%) behind dialogs and adds a blur. Native `.sheet` on macOS slides from the title bar with no scrim. *Recommendation:* in-window SwiftUI overlays (scrim + card) to match Figma; we then own Esc/Return handling, focus trapping and VoiceOver modal behaviour.
-2. **Secondary windows (About, Help, Developer, Release Notes, Report, Feedback, D-27…D-34).** The prototype shows them over a scrim inside the main window. Real macOS apps open these as separate windows (no scrim possible). *Choose:* separate windows (native) or in-window panels (matches prototype).
+1. ~~Dialogs and the scrim~~ — **decided by the design rule "every overlay gets a backdrop"**: in-window overlays (`ModalLayer` + `DSDialog`): title bar/toolbar stay visible but inert, Background/Scrim at 35% over y 94–864, content blurred, Esc/Return wired, Open/drop disabled, `.isModal` for VoiceOver. Built for screens 13 and 35. The blur cannot be captured by the snapshot renderer (cacheDisplay); check it in the running app.
+2. ~~Secondary windows~~ — same rule: About, Help, Developer, Release Notes, Report, Feedback open as in-window panels over the scrim (not separate NSWindows).
 3. **Title bar.** With a hidden title bar the system traffic lights sit near the top, not vertically centred in the 44 pt bar as in Figma. Options: accept the small offset, or reposition the buttons via AppKit (works but must be re-applied on resize/full screen).
 4. **Menu bar.** It is the real macOS menu (SwiftUI `Commands`). Custom items can follow the live Khmer switch; standard items supplied by macOS (Window menu entries, Services, some Edit items) appear in the system language because macOS has no Khmer localisation. The App menu can be reduced to About · Developer · Preferences · Quit as designed. Needs a short spike.
 5. **System panels.** Open, Save, Print and font panels are drawn by macOS in the system language (English for most users), not Khmer. Unavoidable with native panels.

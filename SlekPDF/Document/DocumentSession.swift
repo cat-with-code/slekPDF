@@ -34,25 +34,67 @@ final class DocumentSession: ObservableObject {
     var pageCount: Int { document?.pageCount ?? 0 }
     var fileName: String? { url?.lastPathComponent }
 
+    /// A password-protected file waiting for its password; keeps security-scoped access while the dialog is open.
+    /// The password itself is never stored.
+    private var pending: (url: URL, document: PDFDocument, didAccess: Bool)?
+    @Published private(set) var passwordRejected = false
+
+    /// True while an in-window dialog (password, can't open) is shown; blocks toolbar, menus and drops.
+    var isModalPresented: Bool { openError != nil }
+
     func open(_ url: URL) async {
+        dismissOpenError()
         let didAccess = url.startAccessingSecurityScopedResource()
         let name = url.lastPathComponent
-        func fail(_ error: OpenError) {
+        guard let pdf = PDFDocument(url: url), pdf.pageCount > 0 else {
             if didAccess { url.stopAccessingSecurityScopedResource() }
-            openError = error
+            openError = .unreadable(fileName: name)
+            return
         }
-        guard let pdf = PDFDocument(url: url), pdf.pageCount > 0 else { return fail(.unreadable(fileName: name)) }
-        guard !pdf.isLocked else { return fail(.needsPassword(fileName: name)) }
+        if pdf.isLocked {
+            pending = (url, pdf, didAccess)
+            openError = .needsPassword(fileName: name)
+            return
+        }
+        await finishOpening(url, pdf, didAccess: didAccess, password: nil)
+    }
+
+    /// Password dialog: unlock PDFKit's copy, then open PDFium with the same password.
+    func unlock(with password: String) async {
+        guard let pending else { return }
+        guard pending.document.unlock(withPassword: password) else {
+            passwordRejected = true
+            return
+        }
+        self.pending = nil
+        passwordRejected = false
+        openError = nil
+        await finishOpening(pending.url, pending.document, didAccess: pending.didAccess, password: password)
+    }
+
+    func dismissOpenError() {
+        if let pending, pending.didAccess { pending.url.stopAccessingSecurityScopedResource() }
+        pending = nil
+        passwordRejected = false
+        openError = nil
+    }
+
+    private func finishOpening(_ url: URL, _ pdf: PDFDocument, didAccess: Bool, password: String?) async {
+        let name = url.lastPathComponent
+        func fail() {
+            if didAccess { url.stopAccessingSecurityScopedResource() }
+            openError = .unreadable(fileName: name)
+        }
         let opened: (id: PDFiumService.DocumentID, pageCount: Int)
         do {
-            opened = try await PDFiumService.shared.open(url: url)
+            opened = try await PDFiumService.shared.open(url: url, password: password)
         } catch {
-            return fail(.unreadable(fileName: name))
+            return fail()
         }
         // Display (PDFKit) and text/search (PDFium) must agree on the pages, or search would point at the wrong page.
         guard opened.pageCount == pdf.pageCount else {
             await PDFiumService.shared.close(opened.id)
-            return fail(.unreadable(fileName: name))
+            return fail()
         }
         await close()
         document = pdf

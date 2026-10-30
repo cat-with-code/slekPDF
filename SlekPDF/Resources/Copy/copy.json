@@ -136,5 +136,48 @@
     "km": "ឯកសារត្រូវបានផ្លាស់ទី ឬលុបចោល",
     "en": "File was moved or deleted",
     "note": "Not a Figma variable (Recent File State=Missing has English only). Khmer is Claude's draft — needs fluent review; add as Copy/* in Figma."
+  },
+  "This PDF needs a password": {
+    "km": "PDF នេះត្រូវការពាក្យសម្ងាត់",
+    "en": "This PDF needs a password"
+  },
+  "fmt: File is protected, enter password": {
+    "km": "“{0}” ត្រូវបានការពារ។ បញ្ចូលពាក្យសម្ងាត់ ដើម្បីបើកនៅលើ Mac នេះ។",
+    "en": "“{0}” is protected. Enter its password to open it on this Mac.",
+    "note": "Template derived from Figma Copy/“Exam results pdf” is protected Enter it"
+  },
+  "The password is used only to open the fi": {
+    "km": "ពាក្យសម្ងាត់ប្រើសម្រាប់តែបើកឯកសារ ហើយមិនត្រូវបានរក្សាទុកទេ។",
+    "en": "The password is used only to open the file and is not stored."
+  },
+  "Password": {
+    "km": "ពាក្យសម្ងាត់",
+    "en": "Password"
+  },
+  "Open": {
+    "km": "បើក",
+    "en": "Open"
+  },
+  "Cancel": {
+    "km": "បោះបង់",
+    "en": "Cancel"
+  },
+  "That password didn’t work": {
+    "km": "ពាក្យសម្ងាត់នេះមិនត្រឹមត្រូវទេ។ សូមព្យាយាមម្ដងទៀត។",
+    "en": "That password didn’t work. Try again.",
+    "note": "Not in Figma (Text Field State=Error has placeholder text only). Khmer is Claude's draft — needs fluent review; add as Copy/* in Figma."
+  },
+  "This file can’t be opened": {
+    "km": "មិនអាចបើកឯកសារនេះបានទេ",
+    "en": "This file can’t be opened"
+  },
+  "fmt: File is damaged or unsupported": {
+    "km": "“{0}” ខូច ឬមិនមែនជា PDF ដែលគាំទ្រ។ សូមសាកល្បងនាំចេញវាម្ដងទៀតពីកម្មវិធីដែលបានបង្កើតវា។",
+    "en": "“{0}” is damaged or isn’t a supported PDF. Try exporting it again from the app that created it.",
+    "note": "Template derived from Figma Copy/“Scan 2024 pdf” is damaged or isn’t a su"
+  },
+  "Choose another file…": {
+    "km": "ជ្រើសឯកសារផ្សេង…",
+    "en": "Choose another file…"
   }
 }

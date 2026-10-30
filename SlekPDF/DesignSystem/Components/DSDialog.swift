@@ -1,0 +1,52 @@
+import SwiftUI
+
+/// Figma "Dialog" (135:230): 448 pt card, 24 pt padding, 16 pt gaps, radius 12, Background/Raised,
+/// Border/Subtle, Elevation/3. Header = 32 pt icon + title/message/content; actions right-aligned.
+struct DSDialog<Content: View>: View {
+    let icon: DSIcon
+    var iconColor: Color = DSColor.textSecondary
+    let title: String
+    let message: String
+    let cancel: CopyKey
+    let confirm: CopyKey
+    var confirmDisabled = false
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DSSpace.s16) {
+            HStack(alignment: .top, spacing: DSSpace.s16) {
+                icon.image(size: 32).foregroundColor(iconColor)
+                VStack(alignment: .leading, spacing: DSSpace.s6) {
+                    Text(title).dsText(.title).foregroundColor(DSColor.textPrimary)
+                    Text(message).dsText(.body).foregroundColor(DSColor.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    content
+                }
+            }
+            HStack(spacing: DSSpace.s8) {
+                Spacer()
+                DSButton(cancel, action: onCancel).keyboardShortcut(.cancelAction)
+                DSButton(confirm, style: .primary, action: onConfirm)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(confirmDisabled)
+            }
+        }
+        .padding(DSSpace.s24)
+        .frame(width: 448)
+        .background(RoundedRectangle(cornerRadius: DSRadius.lg).fill(DSColor.backgroundRaised))
+        .overlay(RoundedRectangle(cornerRadius: DSRadius.lg).strokeBorder(DSColor.borderSubtle, lineWidth: DSStroke.default))
+        .dsElevation(.dialog)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
+    }
+}
+
+extension DSDialog where Content == EmptyView {
+    init(icon: DSIcon, iconColor: Color = DSColor.textSecondary, title: String, message: String, cancel: CopyKey, confirm: CopyKey,
+         onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void) {
+        self.init(icon: icon, iconColor: iconColor, title: title, message: message, cancel: cancel, confirm: confirm,
+                  onCancel: onCancel, onConfirm: onConfirm) { EmptyView() }
+    }
+}

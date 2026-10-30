@@ -70,7 +70,7 @@ struct WorkspaceTabBar: View {
             Spacer()
         }
         .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.45)
+        .opacity(isEnabled ? 1 : 0.4)
         .padding(.horizontal, DSSpace.s8)
         .frame(height: ChromeMetrics.workspaceTabsHeight)
         .background(DSColor.backgroundWindow)

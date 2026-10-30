@@ -10,16 +10,16 @@ struct StartScreenView: View {
             VStack(alignment: .leading, spacing: DSSpace.s12) {
                 FileDropZone(isTargeted: session.isDropTargeted) { session.isImporterPresented = true }
                 if !recents.entries.isEmpty {
-                    DSLabel(.recentDocuments, style: .label)
-                        .foregroundColor(DSColor.textPrimary)
+                    DSLabel(.recentDocuments, style: .labelSmall)
+                        .foregroundColor(DSColor.textSecondary)
                         .padding(.top, DSSpace.s12)
-                    VStack(spacing: 0) {
+                    VStack(spacing: DSSpace.s2) {
                         ForEach(recents.entries) { entry in
                             RecentFileRow(entry: entry)
                         }
                     }
                     .padding(DSSpace.s4)
-                    .background(RoundedRectangle(cornerRadius: DSRadius.lg).fill(DSColor.backgroundSurface))
+                    .background(RoundedRectangle(cornerRadius: DSRadius.shell).fill(DSColor.backgroundSurface))
                 }
             }
             .frame(width: 520)

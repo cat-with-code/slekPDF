@@ -76,3 +76,30 @@ final class RecentDocumentsTests: XCTestCase {
         XCTAssertEqual(RecentDateFormatter.string(older, language: .en, now: now, calendar: calendar), "12 Oct")
     }
 }
+
+@MainActor
+final class PasswordFlowTests: XCTestCase {
+    func testWrongThenRightPasswordOpensInPDFKitAndPDFium() async throws {
+        let url = try XCTUnwrap(Bundle(for: PasswordFlowTests.self).url(forResource: "khmer-encrypted", withExtension: "pdf"))
+        let session = DocumentSession()
+        await session.open(url)
+        XCTAssertTrue(session.isModalPresented)
+        await session.unlock(with: "wrong")
+        XCTAssertTrue(session.passwordRejected)
+        XCTAssertNil(session.document)
+        await session.unlock(with: "user")
+        XCTAssertFalse(session.isModalPresented)
+        XCTAssertEqual(session.pageCount, 3)
+        XCTAssertNotNil(session.pdfiumID)
+    }
+
+    func testCancelClearsPendingFile() async throws {
+        let url = try XCTUnwrap(Bundle(for: PasswordFlowTests.self).url(forResource: "khmer-encrypted", withExtension: "pdf"))
+        let session = DocumentSession()
+        await session.open(url)
+        session.dismissOpenError()
+        XCTAssertFalse(session.isModalPresented)
+        await session.unlock(with: "user")
+        XCTAssertNil(session.document, "unlock after cancel must not open anything")
+    }
+}

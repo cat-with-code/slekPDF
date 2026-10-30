@@ -50,11 +50,11 @@ struct DSButtonStyle: ButtonStyle {
             .background(Capsule().fill(background(pressed: configuration.isPressed)))
             .overlay(Capsule().inset(by: DSStroke.default / 2).stroke(border, lineWidth: DSStroke.default))
             .contentShape(Capsule())
+            .opacity(isEnabled ? 1 : 0.4)
             .onHover { isHovered = $0 }
     }
 
     private var foreground: Color {
-        guard isEnabled else { return DSColor.textDisabled }
         switch style {
         case .primary, .destructive: return DSColor.textOnAccent
         case .secondary, .plain: return DSColor.textPrimary
@@ -62,7 +62,7 @@ struct DSButtonStyle: ButtonStyle {
     }
 
     private func background(pressed: Bool) -> Color {
-        guard isEnabled else { return style == .plain ? .clear : DSColor.backgroundDisabled }
+        let isHovered = isHovered && isEnabled
         switch style {
         case .primary: return pressed ? DSColor.accentPressed : isHovered ? DSColor.accentHover : DSColor.accentDefault
         case .destructive: return pressed ? DSColor.statusDangerPressed : isHovered ? DSColor.statusDangerHover : DSColor.statusDangerFill

@@ -16,7 +16,7 @@ struct DocumentWindow: View {
                 Task { await session.open(url) }
             }
             .onDrop(of: [.fileURL], isTargeted: $session.isDropTargeted) { providers in
-                guard let provider = providers.first else { return false }
+                guard !session.isModalPresented, let provider = providers.first else { return false }
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
                     guard let url else { return }
                     Task { @MainActor in await session.open(url) }
@@ -37,6 +37,7 @@ struct MainWindowView: View {
             VStack(spacing: 0) {
                 TitleBarView(fileName: session.fileName)
                 ToolbarView(sizeClass: sizeClass)
+                VStack(spacing: 0) {
                 WorkspaceTabBar(selection: $session.workspace, isEnabled: session.document != nil)
                 HStack(spacing: 0) {
                     if session.document != nil {
@@ -55,10 +56,20 @@ struct MainWindowView: View {
                     }
                 }
                 .frame(maxHeight: .infinity)
+                }
+                // Elevation/4 Backdrop: background blur 6 behind dialogs (SwiftUI radius ≈ half of Figma's).
+                .blur(radius: session.isModalPresented ? 3 : 0)
+                .allowsHitTesting(!session.isModalPresented)
                 StatusBarView()
             }
         }
         .background(DSColor.backgroundWindow)
+        .overlay {
+            if let error = session.openError {
+                ModalLayer { OpenErrorDialog(error: error) }
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: session.isModalPresented)
         .ignoresSafeArea()
     }
 

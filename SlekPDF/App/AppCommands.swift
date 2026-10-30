@@ -10,7 +10,7 @@ struct AppCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button(CopyCatalog.shared.string(.openPDF, appState.language) + "…") { session?.isImporterPresented = true }
                 .keyboardShortcut("o")
-                .disabled(session == nil)
+                .disabled(session == nil || session?.isModalPresented == true)
         }
         CommandGroup(after: .toolbar) {
             Picker("Interface Language", selection: $appState.language) {

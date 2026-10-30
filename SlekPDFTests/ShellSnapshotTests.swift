@@ -32,9 +32,20 @@ final class ShellSnapshotTests: XCTestCase {
         let start = DocumentSession()
         let dragOver = DocumentSession()
         dragOver.isDropTargeted = true
+        let password = DocumentSession()
+        let cantOpen = DocumentSession()
+        let failed = expectation(description: "failed opens")
+        Task {
+            await password.open(try XCTUnwrap(bundle.url(forResource: "khmer-encrypted", withExtension: "pdf")))
+            await cantOpen.open(try XCTUnwrap(bundle.url(forResource: "khmer-truncated", withExtension: "pdf")))
+            failed.fulfill()
+        }
+        wait(for: [failed], timeout: 10)
 
         // Prototype references: 01 Read (164:6246), 11 Open a document (164:6378), 44 Open · drag over (410:51293).
-        for (screen, session) in [("01-read", reading), ("11-start", start), ("44-dragover", dragOver)] {
+        // 13 This PDF needs a password (164:6408), 35 This file can’t be opened (408:48432).
+        for (screen, session) in [("01-read", reading), ("11-start", start), ("44-dragover", dragOver),
+                                  ("13-password", password), ("35-cantopen", cantOpen)] {
             for language in AppLanguage.allCases {
                 for (appearanceName, label) in [(NSAppearance.Name.aqua, "light"), (.darkAqua, "dark")] {
                     let state = AppState(defaults: UserDefaults(suiteName: "snapshot-\(UUID())")!)

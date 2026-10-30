@@ -17,6 +17,9 @@ final class DocumentSession: ObservableObject {
     /// "Fit page" keeps the whole current page visible, also when the window is resized.
     @Published private(set) var isFitPage = true
     @Published var isImporterPresented = false
+    @Published var isDropTargeted = false
+    /// Called after a successful open (DocumentWindow records it in Recent documents).
+    var onOpened: ((URL) -> Void)?
     @Published var openError: OpenError?
     @Published var workspace: Workspace = .read
     @Published var isSidebarVisible = true
@@ -59,6 +62,7 @@ final class DocumentSession: ObservableObject {
         currentPageIndex = 0
         isFitPage = true
         openError = nil
+        onOpened?(url)
     }
 
     func close() async {

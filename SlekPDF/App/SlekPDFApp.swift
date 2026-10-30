@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct SlekPDFApp: App {
     @StateObject private var appState = AppState()
+    @StateObject private var recents = RecentDocuments()
 
     init() {
         FontRegistry.registerBundledFonts()
@@ -12,6 +13,7 @@ struct SlekPDFApp: App {
         WindowGroup {
             DocumentWindow()
                 .environmentObject(appState)
+                .environmentObject(recents)
                 .environment(\.appLanguage, appState.language)
                 .frame(
                     minWidth: ChromeMetrics.minimumWindowSize.width,

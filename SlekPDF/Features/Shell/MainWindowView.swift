@@ -4,17 +4,18 @@ import UniformTypeIdentifiers
 /// One document window: owns its `DocumentSession`, the Open panel and drag & drop.
 struct DocumentWindow: View {
     @StateObject private var session = DocumentSession()
-    @State private var isDropTargeted = false
+    @EnvironmentObject private var recents: RecentDocuments
 
     var body: some View {
         MainWindowView()
             .environmentObject(session)
+            .onAppear { session.onOpened = { [weak recents] url in recents?.add(url) } }
             .focusedSceneObject(session)
             .fileImporter(isPresented: $session.isImporterPresented, allowedContentTypes: [.pdf]) { result in
                 guard case let .success(url) = result else { return }
                 Task { await session.open(url) }
             }
-            .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+            .onDrop(of: [.fileURL], isTargeted: $session.isDropTargeted) { providers in
                 guard let provider = providers.first else { return false }
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
                     guard let url else { return }
@@ -50,8 +51,7 @@ struct MainWindowView: View {
                             ReadInspectorView().frame(width: sizeClass.inspectorWidth)
                         }
                     } else {
-                        // Start screen (11 Open a document) arrives in slice 2.
-                        DSColor.backgroundCanvas
+                        StartScreenView()
                     }
                 }
                 .frame(maxHeight: .infinity)

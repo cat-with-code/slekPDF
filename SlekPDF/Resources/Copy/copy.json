@@ -111,5 +111,30 @@
     "km": "ទំព័រ {0} នៃ {1} · ឯកសារដើមត្រូវបានរក្សា · ដំណើរការនៅលើម៉ាស៊ីន",
     "en": "Page {0} of {1} · Source preserved · local processing",
     "note": "Template derived from Figma Copy/Page 1 of 3 · Source preserved · local p"
+  },
+  "Open a PDF": {
+    "km": "បើកឯកសារ PDF",
+    "en": "Open a PDF"
+  },
+  "Drag a PDF here, or choose one from your": {
+    "km": "អូស PDF មកទីនេះ ឬជ្រើសពី Mac របស់អ្នក។",
+    "en": "Drag a PDF here, or choose one from your Mac."
+  },
+  "Choose PDF…": {
+    "km": "ជ្រើស PDF…",
+    "en": "Choose PDF…"
+  },
+  "Files stay on this Mac · nothing is uplo": {
+    "km": "ឯកសារនៅលើ Mac នេះ · មិនផ្ទុកឡើងទេ",
+    "en": "Files stay on this Mac · nothing is uploaded"
+  },
+  "Recent documents": {
+    "km": "ឯកសារថ្មីៗ",
+    "en": "Recent documents"
+  },
+  "File was moved or deleted": {
+    "km": "ឯកសារត្រូវបានផ្លាស់ទី ឬលុបចោល",
+    "en": "File was moved or deleted",
+    "note": "Not a Figma variable (Recent File State=Missing has English only). Khmer is Claude's draft — needs fluent review; add as Copy/* in Figma."
   }
 }

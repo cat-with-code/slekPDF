@@ -18,34 +18,47 @@ final class ShellSnapshotTests: XCTestCase {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         FontRegistry.registerBundledFonts()
         let size = ChromeMetrics.defaultWindowSize
-        let session = DocumentSession()
-        let fixture = try XCTUnwrap(Bundle(for: ShellSnapshotTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
-        let opened = expectation(description: "open")
-        Task { await session.open(fixture); opened.fulfill() }
-        wait(for: [opened], timeout: 10)
-        XCTAssertEqual(session.pageCount, 3)
-        for language in AppLanguage.allCases {
-            for (appearanceName, label) in [(NSAppearance.Name.aqua, "light"), (.darkAqua, "dark")] {
-                let state = AppState(defaults: UserDefaults(suiteName: "snapshot-\(UUID())")!)
-                state.language = language
-                let root = MainWindowView()
-                    .environmentObject(state)
-                    .environmentObject(session)
-                    .environment(\.appLanguage, language)
-                    .frame(width: size.width, height: size.height)
-                let host = NSHostingView(rootView: root)
-                host.frame = CGRect(origin: .zero, size: size)
-                let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
-                window.appearance = NSAppearance(named: appearanceName)
-                window.contentView = host
-                host.layoutSubtreeIfNeeded()
-                // PDFView draws pages in tiles asynchronously; give it time before capturing.
-                RunLoop.main.run(until: Date().addingTimeInterval(1.0))
+        let bundle = Bundle(for: ShellSnapshotTests.self)
+        let recents = RecentDocuments(defaults: UserDefaults(suiteName: "snapshot-recents-\(UUID())")!)
+        for name in ["khmer-chrome", "khmer-coretext", "khmer-multipage"] {
+            recents.add(try XCTUnwrap(bundle.url(forResource: name, withExtension: "pdf")))
+        }
 
-                let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-                host.cacheDisplay(in: host.bounds, to: rep)
-                let png = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
-                try png.write(to: dir.appendingPathComponent("shell-\(language.rawValue)-\(label).png"))
+        let reading = DocumentSession()
+        let opened = expectation(description: "open")
+        Task { await reading.open(try XCTUnwrap(bundle.url(forResource: "khmer-multipage", withExtension: "pdf"))); opened.fulfill() }
+        wait(for: [opened], timeout: 10)
+        XCTAssertEqual(reading.pageCount, 3)
+        let start = DocumentSession()
+        let dragOver = DocumentSession()
+        dragOver.isDropTargeted = true
+
+        // Prototype references: 01 Read (164:6246), 11 Open a document (164:6378), 44 Open · drag over (410:51293).
+        for (screen, session) in [("01-read", reading), ("11-start", start), ("44-dragover", dragOver)] {
+            for language in AppLanguage.allCases {
+                for (appearanceName, label) in [(NSAppearance.Name.aqua, "light"), (.darkAqua, "dark")] {
+                    let state = AppState(defaults: UserDefaults(suiteName: "snapshot-\(UUID())")!)
+                    state.language = language
+                    let root = MainWindowView()
+                        .environmentObject(state)
+                        .environmentObject(session)
+                        .environmentObject(recents)
+                        .environment(\.appLanguage, language)
+                        .frame(width: size.width, height: size.height)
+                    let host = NSHostingView(rootView: root)
+                    host.frame = CGRect(origin: .zero, size: size)
+                    let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+                    window.appearance = NSAppearance(named: appearanceName)
+                    window.contentView = host
+                    host.layoutSubtreeIfNeeded()
+                    // PDFView draws pages in tiles asynchronously; give it time before capturing.
+                    RunLoop.main.run(until: Date().addingTimeInterval(session === reading ? 1.0 : 0.2))
+
+                    let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                    host.cacheDisplay(in: host.bounds, to: rep)
+                    let png = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
+                    try png.write(to: dir.appendingPathComponent("\(screen)-\(language.rawValue)-\(label).png"))
+                }
             }
         }
 

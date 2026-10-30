@@ -30,4 +30,10 @@ enum CopyKey: String, CaseIterable {
     case noDocumentOpen = "No document open"
     case noDocumentDragAPDFIntoTheWindow = "No document · drag a PDF into the window"
     case fmtPageNOfMStatus = "fmt: Page N of M status"
+    case openAPDF = "Open a PDF"
+    case dragAPDFHereOrChooseOneFromYour = "Drag a PDF here, or choose one from your"
+    case choosePDF = "Choose PDF…"
+    case filesStayOnThisMacNothingIsUplo = "Files stay on this Mac · nothing is uplo"
+    case recentDocuments = "Recent documents"
+    case fileWasMovedOrDeleted = "File was moved or deleted"
 }

@@ -20,6 +20,8 @@ Visual reference: Figma file `GrvVYMZQvBs11vwtYNfYvH` (KhmerPDF), Prototype page
 | Render shell snapshots (KM/EN × Light/Dark, 1280×900) | `Tools/render_snapshots.sh` → `build/snapshots/` |
 | Regenerate tokens + copy keys | `python3 Tools/generate_tokens.py` |
 | Regenerate icons + app icon | `python3 Tools/import_icons.py` |
+| Rebuild Tesseract/Leptonica | `Tools/build_tesseract.sh <source dir>` (needs `brew install cmake`) |
+| Spikes | `Tools/fixtures/run_pdfkit_spike.sh`, `Tools/fixtures/run_ocr_spike.sh` — findings in `docs/spikes/` |
 
 Verify a release binary: `lipo -info …/SlekPDF.app/Contents/MacOS/SlekPDF` (x86_64 arm64) and `otool -l … | grep minos` (13.0) — check `Contents/Frameworks/libpdfium.dylib` too.
 
@@ -61,7 +63,7 @@ SlekPDFTests/             Token, copy, font, icon tests; shell snapshot renderer
 Config/                   Info.plist additions, entitlements (sandbox, user-selected files, print)
 Design/                   Figma exports (source of generated code)
 Licenses/                 Third-party licences to ship with the app (PDFium's are in Vendor/pdfium/LICENSE + licenses/)
-Vendor/                   Vendored native libraries (PDFium)
+Vendor/                   Vendored native libraries: PDFium (prebuilt), Tesseract + Leptonica (Tools/build_tesseract.sh)
 Tools/                    Generators and snapshot script
 docs/                     Prototype map and prototype-vs-native gaps
 ```

@@ -254,12 +254,15 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/lib";
+				LIBRARY_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/Vendor/pdfium/lib",
+					"$(PROJECT_DIR)/Vendor/tesseract/lib",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_INCLUDE_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/include";
+				SWIFT_INCLUDE_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/include $(PROJECT_DIR)/Vendor/tesseract/include";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
 			};
@@ -276,11 +279,14 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/lib";
+				LIBRARY_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/Vendor/pdfium/lib",
+					"$(PROJECT_DIR)/Vendor/tesseract/lib",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_INCLUDE_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/include";
+				SWIFT_INCLUDE_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/include $(PROJECT_DIR)/Vendor/tesseract/include";
 				SWIFT_VERSION = 6.0;
 			};
 			name = Release;

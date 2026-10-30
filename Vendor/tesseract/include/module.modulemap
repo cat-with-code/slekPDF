@@ -1,0 +1,7 @@
+module Tesseract {
+    header "tesseract/capi.h"
+    link "tesseract"
+    link "leptonica"
+    link "c++"
+    export *
+}

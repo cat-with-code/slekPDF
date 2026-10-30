@@ -1,5 +1,6 @@
 // Three-page A4 Khmer fixture for navigation, thumbnails and search (Core Text).
-// Usage: swift Tools/fixtures/make_multipage_pdf.swift <fonts dir> <out.pdf>
+// Usage: swift Tools/fixtures/make_multipage_pdf.swift <fonts dir> <out.pdf> [crop]
+// With "crop", every page gets a crop box offset from the media box (tests coordinate mapping).
 import AppKit
 import CoreText
 
@@ -15,8 +16,15 @@ let pages: [[String]] = [
 var mediaBox = CGRect(x: 0, y: 0, width: 595, height: 842)
 let context = CGContext(URL(fileURLWithPath: args[2]) as CFURL, mediaBox: &mediaBox, nil)!
 let font = NSFont(name: "NotoSansKhmer-Regular", size: 14)!
+let crop = args.count > 3 && args[3] == "crop"
 for lines in pages {
-    context.beginPDFPage(nil)
+    if crop {
+        var box = CGRect(x: 30, y: 60, width: 520, height: 740)
+        let data = Data(bytes: &box, count: MemoryLayout<CGRect>.size) as CFData
+        context.beginPDFPage([kCGPDFContextCropBox as String: data] as CFDictionary)
+    } else {
+        context.beginPDFPage(nil)
+    }
     var y: CGFloat = 770
     for line in lines {
         context.textPosition = CGPoint(x: 60, y: y)

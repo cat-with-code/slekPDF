@@ -64,6 +64,13 @@ struct MainWindowView: View {
             }
         }
         .background(DSColor.backgroundWindow)
+        .background(
+            // ⌘K, shown on the search field's badge, focuses search like ⌘F.
+            Button("") { session.focusSearch() }
+                .keyboardShortcut("k")
+                .disabled(session.document == nil || session.isModalPresented)
+                .opacity(0)
+        )
         .overlay {
             if let error = session.openError {
                 ModalLayer { OpenErrorDialog(error: error) }

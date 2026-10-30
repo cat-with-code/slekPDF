@@ -12,6 +12,18 @@ struct AppCommands: Commands {
                 .keyboardShortcut("o")
                 .disabled(session == nil || session?.isModalPresented == true)
         }
+        CommandGroup(replacing: .textEditing) {
+            let canSearch = session?.document != nil && session?.isModalPresented == false
+            Button(CopyCatalog.shared.string(.search, appState.language)) { session?.focusSearch() }
+                .keyboardShortcut("f")
+                .disabled(!canSearch)
+            Button(CopyCatalog.shared.string(.nextMatch, appState.language)) { session?.nextMatch() }
+                .keyboardShortcut("g")
+                .disabled(!canSearch || session?.searchResults.isEmpty != false)
+            Button(CopyCatalog.shared.string(.previousMatch, appState.language)) { session?.previousMatch() }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+                .disabled(!canSearch || session?.searchResults.isEmpty != false)
+        }
         CommandGroup(after: .toolbar) {
             Picker("Interface Language", selection: $appState.language) {
                 Text("ខ្មែរ").tag(AppLanguage.km)

@@ -3,20 +3,33 @@
 Figma file `GrvVYMZQvBs11vwtYNfYvH`, Prototype page `1:10` (120 Khmer screens; English via the Typography mode switch).
 Build each screen against its **Regular 1280×900** frame, then check Compact (C-), Large (L-), Wide (W-) and Desktop (D-, 1512×982 with menu bar).
 
-## Window shell — done (scaffold)
+## Window shell — done
 
 | Figma | Swift | Status |
 | --- | --- | --- |
 | Title Bar 102:39 (44) | `TitleBarView` | Layout done; traffic-light alignment differs (see gaps) |
 | Toolbar 103:776 Full/Compact (50) | `ToolbarView` | Done; Compact shows sidebar toggle |
 | Workspace Tabs 98:331 (44) | `WorkspaceTabBar` | Done |
-| Sidebar 105:115 Pages | `PageSidebarView` | Placeholder thumbnails; PDFKit next |
-| Document Canvas 109:197, Page Navigation 107:120 | `DocumentCanvasPlaceholder`, `PageNavigationPill` | Placeholder page; PDFKit `PDFView` next |
-| Inspector Panel 159:554 (Read) | `ReadInspectorView` | Done (static) |
+| Sidebar 105:115 Pages | `PageSidebarView` | Done: live PDFKit thumbnails, selection follows the page |
+| Document Canvas 109:197, Page Navigation 107:120 | `DocumentCanvas` (`PDFCanvasView`), `PageNavigationPill` | Done: PDFView, whole-page fit, zoom, editable page number (Khmer or Latin digits) |
+| Inspector Panel 159:554 (Read) / Search Results Panel 142:87 | `ReadInspectorView` | Search done (PDFium); Select/copy, Rotate view, Open Khmer OCR buttons not wired yet |
 | Status Bar 101:82, Theme Switch 179:606, Language Switch 179:633 (36) | `StatusBarView`, `ThemeSwitch`, `LanguageSwitch` | Done and live |
 | Responsive page 1:6 | `WindowSizeClass` (1024/1280/1440/1920; sidebar –/120/140/160, inspector 280/296/320/360) | Done |
 
 Reference renders: `Tools/render_snapshots.sh` → compare with "KM · 01 Read" (164:6246).
+
+## Built screens (Phase 2)
+
+| Screen | Status |
+| --- | --- |
+| 01 Read | Built — real PDFs, thumbnails, navigation, zoom, status bar |
+| 24 Read · search results | Built — PDFium search, highlights, ⌘F/⌘K, ⌘G/⇧⌘G, Match case/Whole word, no-results state |
+| 11 Open a document | Built — drop zone, Choose PDF…, recent documents (More menu hidden until its items are designed) |
+| 44 Open · drag over | Built |
+| 13 This PDF needs a password | Built — wrong-password message drafted (needs Khmer review) |
+| 35 This file can’t be opened | Built |
+
+Snapshots of each in Khmer/English × light/dark: `Tools/render_snapshots.sh` → `build/snapshots/<screen>-<lang>-<theme>.png`.
 
 ## Screens (Regular · Desktop IDs)
 

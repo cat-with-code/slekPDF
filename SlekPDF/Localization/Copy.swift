@@ -12,6 +12,19 @@ enum AppLanguage: String, CaseIterable, Sendable {
 struct CopyCatalog: Sendable {
     private let entries: [String: [String: String]]
 
+    /// English plural variants of "fmt: N results on M pages" (Khmer has no plural form).
+    func resultsSummary(results: Int, pages: Int, _ language: AppLanguage) -> String {
+        let entry = entries[CopyKey.fmtNResultsOnMPages.rawValue] ?? [:]
+        let template: String? = switch (language, results, pages) {
+        case (.en, 1, _): entry["en_result1"]
+        case (.en, _, 1): entry["en_page1"]
+        default: entry[language.rawValue]
+        }
+        return (template ?? "{0} / {1}")
+            .replacingOccurrences(of: "{0}", with: language.number(results))
+            .replacingOccurrences(of: "{1}", with: language.number(pages))
+    }
+
     static let shared = CopyCatalog(bundle: .main)
 
     init(bundle: Bundle) {

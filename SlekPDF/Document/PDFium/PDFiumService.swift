@@ -30,4 +30,15 @@ final class PDFiumService {
     func close(_ id: DocumentID) {
         documents[id] = nil
     }
+
+    /// Searches every page, stopping early if the calling task is cancelled (a newer query replaced it).
+    func search(_ id: DocumentID, query: String, matchCase: Bool, wholeWord: Bool) -> [PDFiumMatch] {
+        guard let document = documents[id], !query.isEmpty else { return [] }
+        var results: [PDFiumMatch] = []
+        for page in 0..<document.pageCount {
+            if Task.isCancelled { return [] }
+            results += (try? document.matches(of: query, onPage: page, matchCase: matchCase, wholeWord: wholeWord)) ?? []
+        }
+        return results
+    }
 }

@@ -179,5 +179,57 @@
   "Choose another file…": {
     "km": "ជ្រើសឯកសារផ្សេង…",
     "en": "Choose another file…"
+  },
+  "Previous match": {
+    "km": "រកមុន",
+    "en": "Previous match"
+  },
+  "Next match": {
+    "km": "រកបន្ទាប់",
+    "en": "Next match"
+  },
+  "Clear search": {
+    "km": "សម្អាតការស្វែងរក",
+    "en": "Clear search"
+  },
+  "Match case": {
+    "km": "ផ្គូផ្គងអក្សរធំតូច",
+    "en": "Match case"
+  },
+  "Whole word": {
+    "km": "ពាក្យទាំងមូល",
+    "en": "Whole word"
+  },
+  "fmt: N of M": {
+    "km": "{0} នៃ {1}",
+    "en": "{0} of {1}",
+    "note": "Template derived from Figma Copy/3 of 12"
+  },
+  "fmt: Page N": {
+    "km": "ទំព័រ {0}",
+    "en": "Page {0}",
+    "note": "Template derived from Figma Copy/Page 1"
+  },
+  "fmt: N results on M pages": {
+    "km": "លទ្ធផល {0} នៅលើទំព័រ {1}",
+    "en": "{0} results on {1} pages",
+    "en_result1": "1 result on 1 page",
+    "en_page1": "{0} results on 1 page",
+    "note": "Template derived from Figma Copy/12 results on 3 pages. Khmer 'នៅលើទំព័រ ៣' may read as 'on page 3' rather than 'on 3 pages' — needs fluent review."
+  },
+  "No results": {
+    "km": "គ្មានលទ្ធផល",
+    "en": "No results",
+    "note": "Not a Figma variable (component placeholder text only). Khmer is Claude's draft — needs fluent review; add as Copy/* in Figma."
+  },
+  "fmt: No matches for query": {
+    "km": "រកមិនឃើញ “{0}”",
+    "en": "No matches for “{0}”",
+    "note": "Not a Figma variable (component placeholder text only). Khmer is Claude's draft — needs fluent review; add as Copy/* in Figma."
+  },
+  "Check the spelling, try fewer words": {
+    "km": "សូមពិនិត្យអក្ខរាវិរុទ្ធ សាកល្បងពាក្យតិចជាងនេះ ឬបិទ «ពាក្យទាំងមូល»។",
+    "en": "Check the spelling, try fewer words, or turn off Whole word.",
+    "note": "Not a Figma variable (component placeholder text only). Khmer is Claude's draft — needs fluent review; add as Copy/* in Figma."
   }
 }

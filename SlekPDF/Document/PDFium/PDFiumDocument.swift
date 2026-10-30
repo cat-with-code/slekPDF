@@ -73,6 +73,44 @@ nonisolated final class PDFiumDocument {
         }
     }
 
+    /// All matches of `query` on a page: character range, rectangles in PDF page space (points, origin
+    /// bottom-left — the same space PDFKit's `PDFPage` uses) and a snippet around the match.
+    func matches(of query: String, onPage index: Int, matchCase: Bool, wholeWord: Bool) throws -> [PDFiumMatch] {
+        try withTextPage(index) { textPage in
+            let needle = Array(query.utf16) + [0]
+            var flags: UInt = 0
+            if matchCase { flags |= UInt(FPDF_MATCHCASE) }
+            if wholeWord { flags |= UInt(FPDF_MATCHWHOLEWORD) }
+            guard let search = FPDFText_FindStart(textPage, needle, UInt(flags), 0) else { return [] }
+            defer { FPDFText_FindClose(search) }
+            let total = Int(FPDFText_CountChars(textPage))
+            var found: [PDFiumMatch] = []
+            while FPDFText_FindNext(search) != 0 {
+                let start = Int(FPDFText_GetSchResultIndex(search))
+                let count = Int(FPDFText_GetSchCount(search))
+                var rects: [CGRect] = []
+                let rectCount = FPDFText_CountRects(textPage, Int32(start), Int32(count))
+                for i in 0..<max(rectCount, 0) {
+                    var left = 0.0, top = 0.0, right = 0.0, bottom = 0.0
+                    if FPDFText_GetRect(textPage, i, &left, &top, &right, &bottom) != 0 {
+                        rects.append(CGRect(x: left, y: bottom, width: right - left, height: top - bottom))
+                    }
+                }
+                func text(_ from: Int, _ to: Int) -> String {
+                    let lower = max(0, from), upper = min(total, to)
+                    guard upper > lower else { return "" }
+                    var buffer = [UInt16](repeating: 0, count: upper - lower + 1)
+                    let written = FPDFText_GetText(textPage, Int32(lower), Int32(upper - lower), &buffer)
+                    return String(decoding: buffer.prefix(max(Int(written) - 1, 0)), as: UTF16.self)
+                }
+                found.append(PDFiumMatch(page: index, charIndex: start, charCount: count, rects: rects,
+                                         before: text(start - 24, start), match: text(start, start + count),
+                                         after: text(start + count, start + count + 32)))
+            }
+            return found
+        }
+    }
+
     /// Draws page `sourceIndex` of `layer` on top of page `index` as a form XObject.
     /// The original page content stays in place; only a new content stream for the form object is added.
     func overlay(page index: Int, with layer: PDFiumDocument, layerPage sourceIndex: Int = 0) throws {
@@ -100,6 +138,16 @@ nonisolated final class PDFiumDocument {
         defer { FPDFText_ClosePage(textPage) }
         return try body(textPage)
     }
+}
+
+nonisolated struct PDFiumMatch: Sendable, Equatable {
+    let page: Int
+    let charIndex: Int
+    let charCount: Int
+    let rects: [CGRect]
+    let before: String
+    let match: String
+    let after: String
 }
 
 /// Bridges PDFium's C write callback to a Swift `Data` buffer.

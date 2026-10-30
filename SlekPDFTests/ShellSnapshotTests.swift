@@ -29,6 +29,15 @@ final class ShellSnapshotTests: XCTestCase {
         Task { await reading.open(try XCTUnwrap(bundle.url(forResource: "khmer-multipage", withExtension: "pdf"))); opened.fulfill() }
         wait(for: [opened], timeout: 10)
         XCTAssertEqual(reading.pageCount, 3)
+        let searching = DocumentSession()
+        let searched = expectation(description: "search")
+        Task {
+            await searching.open(try XCTUnwrap(bundle.url(forResource: "khmer-multipage", withExtension: "pdf")))
+            searching.searchQuery = "សាលារៀន"
+            await searching.waitForSearch()
+            searched.fulfill()
+        }
+        wait(for: [searched], timeout: 10)
         let start = DocumentSession()
         let dragOver = DocumentSession()
         dragOver.isDropTargeted = true
@@ -44,7 +53,7 @@ final class ShellSnapshotTests: XCTestCase {
 
         // Prototype references: 01 Read (164:6246), 11 Open a document (164:6378), 44 Open · drag over (410:51293).
         // 13 This PDF needs a password (164:6408), 35 This file can’t be opened (408:48432).
-        for (screen, session) in [("01-read", reading), ("11-start", start), ("44-dragover", dragOver),
+        for (screen, session) in [("01-read", reading), ("24-search", searching), ("11-start", start), ("44-dragover", dragOver),
                                   ("13-password", password), ("35-cantopen", cantOpen)] {
             for language in AppLanguage.allCases {
                 for (appearanceName, label) in [(NSAppearance.Name.aqua, "light"), (.darkAqua, "dark")] {
@@ -63,7 +72,8 @@ final class ShellSnapshotTests: XCTestCase {
                     window.contentView = host
                     host.layoutSubtreeIfNeeded()
                     // PDFView draws pages in tiles asynchronously; give it time before capturing.
-                    RunLoop.main.run(until: Date().addingTimeInterval(session === reading ? 1.0 : 0.2))
+                    RunLoop.main.run(until: Date().addingTimeInterval(session.document != nil ? 1.0 : 0.2))
+                    if session === searching { searching.selectMatch(1); RunLoop.main.run(until: Date().addingTimeInterval(0.5)) }
 
                     let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
                     host.cacheDisplay(in: host.bounds, to: rep)

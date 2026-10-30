@@ -108,6 +108,10 @@ final class DocumentSession: ObservableObject {
     }
 
     func close() async {
+        searchTask?.cancel()
+        searchResults = []
+        currentMatchIndex = nil
+        searchQuery = ""
         if let id = pdfiumID { await PDFiumService.shared.close(id) }
         pdfiumID = nil
         accessedURL?.stopAccessingSecurityScopedResource()
@@ -156,6 +160,73 @@ final class DocumentSession: ObservableObject {
 
     func pdfViewDidChangePage(_ index: Int) { currentPageIndex = index }
     func pdfViewDidChangeScale(_ scale: CGFloat) { scaleFactor = scale }
+
+    // MARK: - Search (PDFium text: reliable Khmer search, unlike PDFKit's — docs/spikes/01)
+
+    @Published var searchQuery = "" { didSet { if searchQuery != oldValue { scheduleSearch() } } }
+    @Published var matchCase = false { didSet { scheduleSearch() } }
+    @Published var wholeWord = false { didSet { scheduleSearch() } }
+    @Published private(set) var searchResults: [PDFiumMatch] = []
+    @Published private(set) var currentMatchIndex: Int?
+    @Published private(set) var isSearching = false
+    /// Incremented by ⌘F / ⌘K to move focus to the search field.
+    @Published private(set) var searchFocusRequest = 0
+    private var searchTask: Task<Void, Never>?
+
+    var isSearchActive: Bool { !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    var searchPageCount: Int { Set(searchResults.map(\.page)).count }
+
+    func focusSearch() { searchFocusRequest += 1 }
+    func clearSearch() { searchQuery = "" }
+
+    private func scheduleSearch() {
+        searchTask?.cancel()
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let id = pdfiumID, !query.isEmpty else {
+            searchResults = []
+            currentMatchIndex = nil
+            isSearching = false
+            return
+        }
+        let matchCase = matchCase, wholeWord = wholeWord
+        isSearching = true
+        searchTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 200_000_000)  // debounce typing
+            guard !Task.isCancelled else { return }
+            let results = await PDFiumService.shared.search(id, query: query, matchCase: matchCase, wholeWord: wholeWord)
+            guard !Task.isCancelled, let self else { return }
+            searchResults = results
+            isSearching = false
+            currentMatchIndex = results.isEmpty ? nil : (results.firstIndex { $0.page >= self.currentPageIndex } ?? 0)
+            if let index = currentMatchIndex { reveal(results[index]) }
+        }
+    }
+
+    /// Waits for the pending search (tests).
+    func waitForSearch() async { await searchTask?.value }
+
+    func selectMatch(_ index: Int) {
+        guard searchResults.indices.contains(index) else { return }
+        currentMatchIndex = index
+        reveal(searchResults[index])
+    }
+
+    func nextMatch() {
+        guard !searchResults.isEmpty else { return }
+        selectMatch(((currentMatchIndex ?? -1) + 1) % searchResults.count)
+    }
+
+    func previousMatch() {
+        guard !searchResults.isEmpty else { return }
+        selectMatch(((currentMatchIndex ?? 0) - 1 + searchResults.count) % searchResults.count)
+    }
+
+    private func reveal(_ match: PDFiumMatch) {
+        guard let page = document?.page(at: match.page), let first = match.rects.first else { return }
+        let area = match.rects.dropFirst().reduce(first) { $0.union($1) }
+        pdfView?.go(to: area.insetBy(dx: -48, dy: -96), on: page)
+        currentPageIndex = match.page
+    }
 
     func thumbnail(for index: Int, size: CGSize) -> NSImage? {
         if let cached = thumbnailCache[index] { return cached }

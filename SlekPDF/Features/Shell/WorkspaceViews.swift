@@ -137,38 +137,138 @@ struct PageNavigationPill: View {
     }
 }
 
-/// Figma "Inspector Panel" (159:554) for the Read workspace. Search is wired to PDFium in slice 4.
+/// Figma "Inspector Panel" (159:554) for the Read workspace; while searching it becomes the
+/// "Search Results Panel" (142:87, prototype 24 Read · search results).
 struct ReadInspectorView: View {
     @EnvironmentObject private var session: DocumentSession
-    @State private var query = ""
+    @Environment(\.appLanguage) private var language
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: DSSpace.s16) {
+            VStack(alignment: .leading, spacing: session.isSearchActive ? DSSpace.s12 : DSSpace.s16) {
                 HStack {
                     DSLabel(.readSearch, style: .heading).foregroundColor(DSColor.textPrimary)
                     Spacer()
                     DSIconButton(.right, size: 24) { session.isInspectorVisible = false }
                 }
-                DSSearchField(text: $query)
-                HStack(spacing: DSSpace.s8) {
-                    DSButton(.previousResult, fullWidth: true)
-                    DSButton(.nextResult, fullWidth: true)
+                DSSearchField(text: $session.searchQuery,
+                              matchLabel: matchLabel,
+                              noResults: session.isSearchActive && !session.isSearching && session.searchResults.isEmpty,
+                              focusRequest: session.searchFocusRequest,
+                              onPrevious: session.previousMatch, onNext: session.nextMatch, onSubmit: session.nextMatch)
+                if session.isSearchActive {
+                    searchResults
+                } else {
+                    readTools
                 }
-                DSLabel(.searchResultsAppearHere, style: .caption).foregroundColor(DSColor.textSecondary)
-                DSDivider()
-                DSButton(.selectCopyText, icon: .copy, fullWidth: true)
-                DSButton(.rotateView, icon: .rotate, fullWidth: true)
-                DSDivider()
-                VStack(alignment: .leading, spacing: DSSpace.s4) {
-                    DSLabel(.scannedPages, style: .heading).foregroundColor(DSColor.textPrimary)
-                    DSLabel(.recognizeTextToEnableSearchingAndC, style: .caption).foregroundColor(DSColor.textSecondary)
-                }
-                DSButton(.openKhmerOCR, icon: .textRecognition, style: .primary, fullWidth: true)
             }
             .padding(DSSpace.s16)
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(DSColor.backgroundSurface)
+    }
+
+    private var matchLabel: String? {
+        guard let current = session.currentMatchIndex else { return nil }
+        return CopyCatalog.shared.format(.fmtNOfM, language, current + 1, session.searchResults.count)
+    }
+
+    @ViewBuilder private var searchResults: some View {
+        HStack(spacing: DSSpace.s16) {
+            DSCheckbox(label: .matchCase, isOn: $session.matchCase)
+            DSCheckbox(label: .wholeWord, isOn: $session.wholeWord)
+        }
+        if session.isSearching {
+            ProgressView().controlSize(.small).frame(maxWidth: .infinity)
+        } else if session.searchResults.isEmpty {
+            NoSearchResults(query: session.searchQuery)
+        } else {
+            Text(CopyCatalog.shared.resultsSummary(results: session.searchResults.count, pages: session.searchPageCount, language))
+                .dsText(.labelSmall)
+                .foregroundColor(DSColor.textSecondary)
+            LazyVStack(spacing: DSSpace.s2) {
+                ForEach(Array(session.searchResults.enumerated()), id: \.offset) { index, match in
+                    SearchResultRow(match: match, isSelected: index == session.currentMatchIndex) { session.selectMatch(index) }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var readTools: some View {
+        HStack(spacing: DSSpace.s8) {
+            DSButton(.previousResult, fullWidth: true).disabled(true)
+            DSButton(.nextResult, fullWidth: true).disabled(true)
+        }
+        DSLabel(.searchResultsAppearHere, style: .caption).foregroundColor(DSColor.textSecondary)
+        DSDivider()
+        DSButton(.selectCopyText, icon: .copy, fullWidth: true)
+        DSButton(.rotateView, icon: .rotate, fullWidth: true)
+        DSDivider()
+        VStack(alignment: .leading, spacing: DSSpace.s4) {
+            DSLabel(.scannedPages, style: .heading).foregroundColor(DSColor.textPrimary)
+            DSLabel(.recognizeTextToEnableSearchingAndC, style: .caption).foregroundColor(DSColor.textSecondary)
+        }
+        DSButton(.openKhmerOCR, icon: .textRecognition, style: .primary, fullWidth: true)
+    }
+}
+
+/// Figma "Search Result" (142:86): page location + snippet with the match in the accent colour.
+struct SearchResultRow: View {
+    let match: PDFiumMatch
+    let isSelected: Bool
+    let action: () -> Void
+    @Environment(\.appLanguage) private var language
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: DSSpace.s2) {
+                Text(CopyCatalog.shared.format(.fmtPageN, language, match.page + 1))
+                    .dsText(.caption)
+                    .foregroundColor(isSelected ? DSColor.textAccent : DSColor.textTertiary)
+                snippet.lineLimit(1).truncationMode(.tail)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, DSSpace.s8)
+            .padding(.horizontal, DSSpace.s12)
+            .background(RoundedRectangle(cornerRadius: DSRadius.sm)
+                .fill(isSelected ? DSColor.backgroundSelected : isHovered ? DSColor.backgroundHover : .clear))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+    }
+
+    private var snippet: Text {
+        func clean(_ text: String) -> String { text.components(separatedBy: .newlines).joined(separator: " ") }
+        // Short lead-in so the match is always visible (Figma: "…ឈ្មោះ សាលារៀន បឋមសិក្សា…").
+        let before = String(clean(match.before).suffix(10))
+        let body = DSTextStyle.body.spec(for: language), strong = DSTextStyle.bodyStrong.spec(for: language)
+        return Text("…" + before).font(.custom(body.postScriptName, fixedSize: body.size)).foregroundColor(DSColor.textPrimary)
+            + Text(clean(match.match)).font(.custom(strong.postScriptName, fixedSize: strong.size)).foregroundColor(DSColor.textAccent)
+            + Text(clean(match.after) + "…").font(.custom(body.postScriptName, fixedSize: body.size)).foregroundColor(DSColor.textPrimary)
+    }
+}
+
+/// Figma "Empty State" (144:74), Type=No search results.
+struct NoSearchResults: View {
+    let query: String
+    @Environment(\.appLanguage) private var language
+
+    var body: some View {
+        VStack(spacing: DSSpace.s8) {
+            DSIcon.search.image(size: 24)
+                .foregroundColor(DSColor.textSecondary)
+                .frame(width: 48, height: 48)
+                .background(Circle().fill(DSColor.backgroundHover))
+                .padding(.bottom, DSSpace.s4)
+            Text(CopyCatalog.shared.format(.fmtNoMatchesForQuery, language, query))
+                .dsText(.heading).foregroundColor(DSColor.textPrimary)
+            DSLabel(.checkTheSpellingTryFewerWords, style: .body).foregroundColor(DSColor.textSecondary)
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, DSSpace.s24)
+        .padding(.horizontal, DSSpace.s16)
     }
 }

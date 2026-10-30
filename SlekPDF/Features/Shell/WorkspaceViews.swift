@@ -1,61 +1,84 @@
 import SwiftUI
 
-/// Figma "Sidebar" (105:115) Side=Pages with "Page Thumbnail" (104:113). Placeholder thumbnails until PDFKit is wired in.
+/// Figma "Sidebar" (105:115) Side=Pages with "Page Thumbnail" (104:113).
 struct PageSidebarView: View {
-    @State private var selectedPage = 1
+    @EnvironmentObject private var session: DocumentSession
+    @Environment(\.appLanguage) private var language
+    private let thumbnailSize = CGSize(width: 64, height: 88)
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpace.s12) {
             HStack {
                 DSLabel(.pages, style: .label).foregroundColor(DSColor.textPrimary)
                 Spacer()
-                DSIcon.left.image(size: 12).foregroundColor(DSColor.textSecondary)
+                DSIconButton(.left, size: 20) { session.isSidebarVisible = false }
             }
-            ScrollView {
-                VStack(spacing: DSSpace.s12) {
-                    ForEach(1...3, id: \.self) { page in
-                        VStack(spacing: DSSpace.s4) {
-                            RoundedRectangle(cornerRadius: DSRadius.xs)
-                                .fill(DSColor.backgroundPage)
-                                .frame(width: 64, height: 88)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: DSRadius.xs)
-                                        .strokeBorder(page == selectedPage ? DSColor.accentDefault : DSColor.borderOnPage,
-                                                      lineWidth: page == selectedPage ? DSStroke.focus : DSStroke.default)
-                                )
-                            Text("\(page)")
-                                .dsText(.caption)
-                                .foregroundColor(page == selectedPage ? DSColor.textAccent : DSColor.textSecondary)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: DSSpace.s12) {
+                        ForEach(0..<session.pageCount, id: \.self) { index in
+                            thumbnail(index).id(index)
                         }
-                        .onTapGesture { selectedPage = page }
                     }
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
+                .onChange(of: session.currentPageIndex) { index in
+                    withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(index, anchor: .center) }
+                }
             }
         }
         .padding(DSSpace.s12)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(DSColor.backgroundWindow)
     }
+
+    private func thumbnail(_ index: Int) -> some View {
+        let isSelected = index == session.currentPageIndex
+        return Button { session.goToPage(index) } label: {
+            VStack(spacing: DSSpace.s4) {
+                ZStack {
+                    DSColor.backgroundPage
+                    if let image = session.thumbnail(for: index, size: thumbnailSize) {
+                        Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
+                    }
+                }
+                .frame(width: thumbnailSize.width, height: thumbnailSize.height)
+                .clipShape(RoundedRectangle(cornerRadius: DSRadius.xs))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DSRadius.xs)
+                        .strokeBorder(isSelected ? DSColor.accentDefault : DSColor.borderOnPage,
+                                      lineWidth: isSelected ? DSStroke.focus : DSStroke.default)
+                )
+                Text(language.number(index + 1))
+                    .dsText(.caption)
+                    .foregroundColor(isSelected ? DSColor.textAccent : DSColor.textSecondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
 }
 
-/// Figma "Document Canvas" (109:197). PDFKit's PDFView replaces the page placeholder in the next step.
-struct DocumentCanvasPlaceholder: View {
+/// Figma "Document Canvas" (109:197): PDF pages with the floating page navigation.
+struct DocumentCanvas: View {
+    @EnvironmentObject private var session: DocumentSession
+
     var body: some View {
-        ZStack(alignment: .top) {
-            DSColor.backgroundCanvas
-            HStack {
-                DSLabel(.document, style: .caption).foregroundColor(DSColor.textSecondary)
-                Spacer()
+        // The page navigation sits in a band above the pages (Figma: pill 12 pt from the top, page from ~80 pt),
+        // so pages never scroll underneath it.
+        VStack(spacing: 0) {
+            ZStack {
+                HStack {
+                    DSLabel(.document, style: .caption).foregroundColor(DSColor.textSecondary)
+                    Spacer()
+                }
+                .padding(.horizontal, DSSpace.s24)
+                PageNavigationPill()
             }
-            .padding(DSSpace.s24)
-            PageNavigationPill().padding(.top, DSSpace.s12)
-            Rectangle()
-                .fill(DSColor.backgroundPage)
-                .frame(width: 360, height: 508)
-                .dsElevation(.raised)
-                .padding(.top, 80)
+            .frame(height: 60)
+            PDFCanvasView(session: session)
         }
+        .background(DSColor.backgroundCanvas)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
     }
@@ -63,31 +86,60 @@ struct DocumentCanvasPlaceholder: View {
 
 /// Figma "Page Navigation" (107:120).
 struct PageNavigationPill: View {
+    @EnvironmentObject private var session: DocumentSession
+    @Environment(\.appLanguage) private var language
+    @State private var pageText = ""
+    @FocusState private var isEditing: Bool
+
     var body: some View {
         HStack(spacing: DSSpace.s8) {
-            DSIcon.left.image(size: 12).foregroundColor(DSColor.textDisabled)
-            Text("1")
+            DSIconButton(.left, size: 24) { session.previousPage() }
+                .disabled(session.currentPageIndex == 0)
+            TextField("", text: $pageText)
+                .textFieldStyle(.plain)
+                .multilineTextAlignment(.center)
                 .dsText(.body)
+                .focused($isEditing)
+                .onSubmit(commitPage)
                 .frame(width: 36, height: 24)
                 .background(RoundedRectangle(cornerRadius: DSRadius.xs).fill(DSColor.backgroundSurface))
-                .overlay(RoundedRectangle(cornerRadius: DSRadius.xs).strokeBorder(DSColor.borderDefault, lineWidth: DSStroke.default))
-            Text("/ 3").dsText(.body).foregroundColor(DSColor.textSecondary)
-            DSIcon.right.image(size: 12).foregroundColor(DSColor.textPrimary)
+                .overlay(RoundedRectangle(cornerRadius: DSRadius.xs).strokeBorder(isEditing ? DSColor.borderFocus : DSColor.borderDefault, lineWidth: DSStroke.default))
+            Text("/ " + language.number(session.pageCount)).dsText(.body).foregroundColor(DSColor.textSecondary)
+            DSIconButton(.right, size: 24) { session.nextPage() }
+                .disabled(session.currentPageIndex >= session.pageCount - 1)
             DSDivider(axis: .vertical).frame(height: 18)
-            DSIcon.zoomOut.image(size: 14)
-            DSLabel(.fitPage, style: .label)
-            DSIcon.zoomIn.image(size: 14)
+            DSIconButton(.zoomOut, size: 24) { session.zoomOut() }
+            Button { session.fitPage() } label: { DSLabel(.fitPage, style: .label) }
+                .buttonStyle(.plain)
+            DSIconButton(.zoomIn, size: 24) { session.zoomIn() }
         }
         .foregroundColor(DSColor.textPrimary)
         .padding(.horizontal, DSSpace.s12)
         .frame(height: 36)
         .background(Capsule().fill(DSColor.backgroundSurface))
         .dsElevation(.popover)
+        .onAppear(perform: syncPageText)
+        .onChange(of: session.currentPageIndex) { _ in syncPageText() }
+        .onChange(of: language) { _ in syncPageText() }
+    }
+
+    private func syncPageText() {
+        pageText = language.number(session.currentPageIndex + 1)
+    }
+
+    /// Accepts Latin or Khmer digits.
+    private func commitPage() {
+        let latin = String(pageText.unicodeScalars.map { scalar in
+            (0x17E0...0x17E9).contains(scalar.value) ? Character(Unicode.Scalar(scalar.value - 0x17E0 + 48)!) : Character(scalar)
+        })
+        if let page = Int(latin.trimmingCharacters(in: .whitespaces)) { session.goToPage(page - 1) }
+        syncPageText()
     }
 }
 
-/// Figma "Inspector Panel" (159:554) for the Read workspace.
+/// Figma "Inspector Panel" (159:554) for the Read workspace. Search is wired to PDFium in slice 4.
 struct ReadInspectorView: View {
+    @EnvironmentObject private var session: DocumentSession
     @State private var query = ""
 
     var body: some View {
@@ -96,7 +148,7 @@ struct ReadInspectorView: View {
                 HStack {
                     DSLabel(.readSearch, style: .heading).foregroundColor(DSColor.textPrimary)
                     Spacer()
-                    DSIconButton(.right, size: 24)
+                    DSIconButton(.right, size: 24) { session.isInspectorVisible = false }
                 }
                 DSSearchField(text: $query)
                 HStack(spacing: DSSpace.s8) {

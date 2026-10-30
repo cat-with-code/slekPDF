@@ -10,7 +10,7 @@ struct SlekPDFApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainWindowView()
+            DocumentWindow()
                 .environmentObject(appState)
                 .environment(\.appLanguage, appState.language)
                 .frame(

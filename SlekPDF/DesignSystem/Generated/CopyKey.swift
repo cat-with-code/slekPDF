@@ -27,4 +27,7 @@ enum CopyKey: String, CaseIterable {
     case scannedPages = "Scanned pages"
     case openKhmerOCR = "Open Khmer OCR"
     case page1Of3SourcePreservedLocalP = "Page 1 of 3 · Source preserved · local p"
+    case noDocumentOpen = "No document open"
+    case noDocumentDragAPDFIntoTheWindow = "No document · drag a PDF into the window"
+    case fmtPageNOfMStatus = "fmt: Page N of M status"
 }

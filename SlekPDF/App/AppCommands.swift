@@ -4,8 +4,14 @@ import SwiftUI
 /// only the language/appearance items exist so far. See docs/PROTOTYPE-GAPS.md (menu bar).
 struct AppCommands: Commands {
     @ObservedObject var appState: AppState
+    @FocusedObject private var session: DocumentSession?
 
     var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button(CopyCatalog.shared.string(.openPDF, appState.language) + "…") { session?.isImporterPresented = true }
+                .keyboardShortcut("o")
+                .disabled(session == nil)
+        }
         CommandGroup(after: .toolbar) {
             Picker("Interface Language", selection: $appState.language) {
                 Text("ខ្មែរ").tag(AppLanguage.km)

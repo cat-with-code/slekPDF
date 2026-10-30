@@ -2,7 +2,8 @@ import SwiftUI
 
 /// Figma "Title Bar" (102:39). The system traffic lights sit over the leading inset.
 struct TitleBarView: View {
-    let fileName: String
+    let fileName: String?
+    @Environment(\.appLanguage) private var language
 
     var body: some View {
         HStack(spacing: DSSpace.s16) {
@@ -11,10 +12,14 @@ struct TitleBarView: View {
                 .font(.custom("Inter-SemiBold", fixedSize: 13))
                 .foregroundColor(DSColor.textPrimary)
             HStack(spacing: DSSpace.s6) {
-                DSIcon.fileTypePdf.image()
-                Text(fileName)
-                    .font(.custom("Inter-Regular", fixedSize: 13))
-                    .foregroundColor(DSColor.textSecondary)
+                if let fileName {
+                    DSIcon.fileTypePdf.image()
+                    Text(fileName)
+                        .font(.custom("Inter-Regular", fixedSize: 13))
+                        .foregroundColor(DSColor.textSecondary)
+                } else {
+                    DSLabel(.noDocumentOpen, style: .body).foregroundColor(DSColor.textSecondary)
+                }
             }
             Spacer()
         }
@@ -27,20 +32,21 @@ struct TitleBarView: View {
 /// Figma "Toolbar" (103:776) Type=Full; Compact adds the sidebar toggle.
 struct ToolbarView: View {
     let sizeClass: WindowSizeClass
-    @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var session: DocumentSession
 
     var body: some View {
+        let hasDocument = session.document != nil
         HStack(spacing: DSSpace.s8) {
             if sizeClass == .compact {
-                DSIconButton(.leftBar) { appState.isCompactSidebarShown.toggle() }
+                DSIconButton(.leftBar) { session.isCompactSidebarShown.toggle() }
             }
-            DSButton(.openPDF, icon: .folderOpen)
-            DSButton(.saveWork, icon: .save)
+            DSButton(.openPDF, icon: .folderOpen) { session.isImporterPresented = true }
+            DSButton(.saveWork, icon: .save).disabled(!hasDocument)
             DSDivider(axis: .vertical).frame(height: 24).padding(.horizontal, DSSpace.s4)
-            DSButton(.undo, icon: .undo, style: .plain)
-            DSButton(.redo, icon: .redo, style: .plain)
+            DSButton(.undo, icon: .undo, style: .plain).disabled(!hasDocument)
+            DSButton(.redo, icon: .redo, style: .plain).disabled(!hasDocument)
             Spacer()
-            DSButton(.print, icon: .printer, style: .plain)
+            DSButton(.print, icon: .printer, style: .plain).disabled(!hasDocument)
             DSButton(.preferences, icon: .setting, style: .plain)
         }
         .padding(.horizontal, DSSpace.s12)
@@ -51,9 +57,10 @@ struct ToolbarView: View {
     }
 }
 
-/// Figma "Workspace Tabs" (98:331): underline tabs.
+/// Figma "Workspace Tabs" (98:331): underline tabs. Disabled (dimmed) until a document is open.
 struct WorkspaceTabBar: View {
     @Binding var selection: Workspace
+    var isEnabled = true
 
     var body: some View {
         HStack(spacing: 0) {
@@ -62,6 +69,8 @@ struct WorkspaceTabBar: View {
             }
             Spacer()
         }
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.45)
         .padding(.horizontal, DSSpace.s8)
         .frame(height: ChromeMetrics.workspaceTabsHeight)
         .background(DSColor.backgroundWindow)
@@ -92,16 +101,26 @@ struct WorkspaceTabBar: View {
 /// Figma "Status Bar" (101:82).
 struct StatusBarView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var session: DocumentSession
+    @Environment(\.appLanguage) private var language
 
     var body: some View {
         HStack(spacing: DSSpace.s12) {
-            DSLabel(.page1Of3SourcePreservedLocalP, style: .caption)
-                .foregroundColor(DSColor.textSecondary)
-                .lineLimit(1)
+            Group {
+                if session.document != nil {
+                    Text(CopyCatalog.shared.format(.fmtPageNOfMStatus, language, session.currentPageIndex + 1, session.pageCount)).dsText(.caption)
+                } else {
+                    DSLabel(.noDocumentDragAPDFIntoTheWindow, style: .caption)
+                }
+            }
+            .foregroundColor(DSColor.textSecondary)
+            .lineLimit(1)
             Spacer()
-            Text("100%")
-                .dsText(.caption)
-                .foregroundColor(DSColor.textSecondary)
+            if session.document != nil {
+                Text(language.number(Int((session.scaleFactor * 100).rounded())) + "%")
+                    .dsText(.caption)
+                    .foregroundColor(DSColor.textSecondary)
+            }
             ThemeSwitch(appearance: $appState.appearance)
             LanguageSwitch(language: $appState.language)
         }

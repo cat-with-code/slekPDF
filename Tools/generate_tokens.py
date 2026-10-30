@@ -84,12 +84,15 @@ def gen_colors(cols, lookup):
              "enum DSPrimitive {"]
     for name, v in cols["Color Promitives"]["vars"].items():
         lines.append(f"    static let {ident(name)} = Color(nsColor: NSColor(rgba: {rgba(v['values']['Mode 1'])}))")
-    lines += ["}", "", "/// Semantic colours (Figma collection \"Color\", modes Light/Dark). Resolve with the app appearance.", "enum DSColor {"]
+    lines += ["}", "", "/// Semantic colours as AppKit colours (for PDFView and other AppKit views). Resolve with the appearance.", "enum DSNSColor {"]
     for name, v in cols["Color"]["vars"].items():
         light = resolve(lookup, cols, v["values"]["Light"], "Light")
         dark = resolve(lookup, cols, v["values"]["Dark"], "Dark")
         lines.append(f"    /// {name} — Light {v['values']['Light']} ({light}) · Dark {v['values']['Dark']} ({dark})")
-        lines.append(f"    static let {ident(name)} = Color(nsColor: NSColor(name: \"{name}\", light: {rgba(light)}, dark: {rgba(dark)}))")
+        lines.append(f"    static let {ident(name)} = NSColor(name: \"{name}\", light: {rgba(light)}, dark: {rgba(dark)})")
+    lines += ["}", "", "/// Semantic colours (Figma collection \"Color\", modes Light/Dark). Resolve with the app appearance.", "enum DSColor {"]
+    for name in cols["Color"]["vars"]:
+        lines.append(f"    static let {ident(name)} = Color(nsColor: DSNSColor.{ident(name)})")
     lines += ["}", "",
               "/// Colours that depend on the interface language (Figma collection \"Typography\", modes Khmer/English).",
               "enum DSLanguageColor {"]

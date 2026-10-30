@@ -51,3 +51,27 @@ extension EnvironmentValues {
         set { self[AppLanguageKey.self] = newValue }
     }
 }
+
+extension AppLanguage {
+    /// Numbers as the prototype shows them: Khmer digits (០–៩) in the Khmer interface.
+    func number(_ value: Int) -> String {
+        let latin = String(value)
+        guard self == .km else { return latin }
+        return String(latin.unicodeScalars.map { scalar in
+            guard let digit = Int(String(scalar)) else { return Character(scalar) }
+            return Character(Unicode.Scalar(0x17E0 + UInt32(digit))!)
+        })
+    }
+}
+
+extension CopyCatalog {
+    /// Fills `{0}`, `{1}`… in a template entry. Integers use the language's digits.
+    func format(_ key: CopyKey, _ language: AppLanguage, _ arguments: Any...) -> String {
+        var text = string(key, language)
+        for (index, argument) in arguments.enumerated() {
+            let value = (argument as? Int).map(language.number) ?? "\(argument)"
+            text = text.replacingOccurrences(of: "{\(index)}", with: value)
+        }
+        return text
+    }
+}

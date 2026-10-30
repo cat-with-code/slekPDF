@@ -40,7 +40,7 @@ enum AppearancePreference: String, CaseIterable {
     }
 }
 
-/// App-wide UI state. ObservableObject (not @Observable, which needs macOS 14) because the deployment target is macOS 13.
+/// App-wide settings shared by all windows (per-window state lives in `DocumentSession`). ObservableObject (not @Observable, which needs macOS 14) because the deployment target is macOS 13.
 final class AppState: ObservableObject {
     @Published var language: AppLanguage {
         didSet { defaults.set(language.rawValue, forKey: Keys.language) }
@@ -52,11 +52,6 @@ final class AppState: ObservableObject {
             applyAppearance()
         }
     }
-
-    @Published var workspace: Workspace = .read
-    @Published var isSidebarVisible = true
-    @Published var isCompactSidebarShown = false
-    @Published var isInspectorVisible = true
 
     private let defaults: UserDefaults
 

@@ -18,12 +18,19 @@ final class ShellSnapshotTests: XCTestCase {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         FontRegistry.registerBundledFonts()
         let size = ChromeMetrics.defaultWindowSize
+        let session = DocumentSession()
+        let fixture = try XCTUnwrap(Bundle(for: ShellSnapshotTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
+        let opened = expectation(description: "open")
+        Task { await session.open(fixture); opened.fulfill() }
+        wait(for: [opened], timeout: 10)
+        XCTAssertEqual(session.pageCount, 3)
         for language in AppLanguage.allCases {
             for (appearanceName, label) in [(NSAppearance.Name.aqua, "light"), (.darkAqua, "dark")] {
                 let state = AppState(defaults: UserDefaults(suiteName: "snapshot-\(UUID())")!)
                 state.language = language
                 let root = MainWindowView()
                     .environmentObject(state)
+                    .environmentObject(session)
                     .environment(\.appLanguage, language)
                     .frame(width: size.width, height: size.height)
                 let host = NSHostingView(rootView: root)
@@ -32,7 +39,8 @@ final class ShellSnapshotTests: XCTestCase {
                 window.appearance = NSAppearance(named: appearanceName)
                 window.contentView = host
                 host.layoutSubtreeIfNeeded()
-                RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+                // PDFView draws pages in tiles asynchronously; give it time before capturing.
+                RunLoop.main.run(until: Date().addingTimeInterval(1.0))
 
                 let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
                 host.cacheDisplay(in: host.bounds, to: rep)

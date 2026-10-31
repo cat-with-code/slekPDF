@@ -159,6 +159,7 @@ struct PageNavigationPill: View {
         .onAppear(perform: syncPageText)
         .onChange(of: session.currentPageIndex) { _ in syncPageText() }
         .onChange(of: language) { _ in syncPageText() }
+        .onChange(of: session.pageFieldFocusRequest) { _ in isEditing = true }
     }
 
     private func syncPageText() {

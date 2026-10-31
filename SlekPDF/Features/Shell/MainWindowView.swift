@@ -9,6 +9,7 @@ struct DocumentWindow: View {
     var body: some View {
         MainWindowView()
             .environmentObject(session)
+            .navigationTitle(session.fileName ?? "Slek PDF")
             .onAppear { session.onOpened = { [weak recents] url in recents?.add(url) } }
             // Release PDFium and the file's sandbox access when the window closes.
             .onDisappear { Task { await session.close() } }

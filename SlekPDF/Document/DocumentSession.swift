@@ -140,6 +140,22 @@ final class DocumentSession: ObservableObject {
     func zoomIn() { isFitPage = false; pdfView?.zoomIn(nil) }
     func zoomOut() { isFitPage = false; pdfView?.zoomOut(nil) }
 
+    /// View ▸ Fit Width: the page width fills the canvas (leaves Fit page).
+    func fitWidth() {
+        guard let view = pdfView, let page = view.currentPage ?? document?.page(at: currentPageIndex) else { return }
+        var size = page.bounds(for: view.displayBox).size
+        if page.rotation % 180 != 0 { size = CGSize(width: size.height, height: size.width) }
+        let width = view.bounds.width - view.pageBreakMargins.left - view.pageBreakMargins.right
+        guard size.width > 0, width > 0 else { return }
+        isFitPage = false
+        view.autoScales = false
+        view.scaleFactor = width / size.width
+    }
+
+    /// Incremented by Document ▸ Go to Page… (⌘L) to focus the page number field.
+    @Published private(set) var pageFieldFocusRequest = 0
+    func focusPageField() { pageFieldFocusRequest += 1 }
+
     /// Scales so the whole current page (not just its width) fits, like the prototype's "Fit page".
     func fitPage() {
         isFitPage = true

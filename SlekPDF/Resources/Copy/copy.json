@@ -247,5 +247,375 @@
   "Hide inspector": {
     "km": "លាក់ផ្ទាំងព័ត៌មាន",
     "en": "Hide inspector"
+  },
+  "menu: Slek PDF": {
+    "km": "Slek PDF",
+    "en": "Slek PDF",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: File": {
+    "km": "ឯកសារ",
+    "en": "File",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Edit": {
+    "km": "កែសម្រួល",
+    "en": "Edit",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: View": {
+    "km": "ទិដ្ឋភាព",
+    "en": "View",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Document": {
+    "km": "ទំព័រ",
+    "en": "Document",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Tools": {
+    "km": "ឧបករណ៍",
+    "en": "Tools",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Window": {
+    "km": "វីនដូ",
+    "en": "Window",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Help": {
+    "km": "ជំនួយ",
+    "en": "Help",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: About Slek PDF": {
+    "km": "អំពី Slek PDF",
+    "en": "About Slek PDF",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Developer": {
+    "km": "អ្នកអភិវឌ្ឍ",
+    "en": "Developer",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Preferences…": {
+    "km": "ចំណូលចិត្ត…",
+    "en": "Preferences…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Quit Slek PDF": {
+    "km": "ចាកចេញពី Slek PDF",
+    "en": "Quit Slek PDF",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Open PDF…": {
+    "km": "បើកឯកសារ PDF…",
+    "en": "Open PDF…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Open Recent": {
+    "km": "បើកថ្មីៗ",
+    "en": "Open Recent",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Save work": {
+    "km": "រក្សាទុកការងារ",
+    "en": "Save work",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Save a copy…": {
+    "km": "រក្សាទុកច្បាប់ចម្លង…",
+    "en": "Save a copy…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Export…": {
+    "km": "នាំចេញ…",
+    "en": "Export…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Merge PDFs…": {
+    "km": "បញ្ចូល PDF…",
+    "en": "Merge PDFs…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Print…": {
+    "km": "បោះពុម្ព…",
+    "en": "Print…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Close": {
+    "km": "បិទ",
+    "en": "Close",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Undo": {
+    "km": "មិនធ្វើវិញ",
+    "en": "Undo",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Redo": {
+    "km": "ធ្វើវិញ",
+    "en": "Redo",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Cut": {
+    "km": "កាត់",
+    "en": "Cut",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Copy": {
+    "km": "ចម្លង",
+    "en": "Copy",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Paste": {
+    "km": "បិទភ្ជាប់",
+    "en": "Paste",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Select All": {
+    "km": "ជ្រើសទាំងអស់",
+    "en": "Select All",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Find…": {
+    "km": "ស្វែងរក…",
+    "en": "Find…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Find Next": {
+    "km": "រកបន្ទាប់",
+    "en": "Find Next",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Find Previous": {
+    "km": "រកមុន",
+    "en": "Find Previous",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Start Dictation…": {
+    "km": "ចាប់ផ្ដើមសរសេរតាមសំឡេង…",
+    "en": "Start Dictation…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Read": {
+    "km": "អាន",
+    "en": "Read",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Organize Pages": {
+    "km": "រៀបចំទំព័រ",
+    "en": "Organize Pages",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Annotate": {
+    "km": "ចំណារពន្យល់",
+    "en": "Annotate",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Khmer OCR": {
+    "km": "OCR ខ្មែរ",
+    "en": "Khmer OCR",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Export": {
+    "km": "នាំចេញ",
+    "en": "Export",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Zoom In": {
+    "km": "ពង្រីក",
+    "en": "Zoom In",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Zoom Out": {
+    "km": "បង្រួម",
+    "en": "Zoom Out",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Fit Page": {
+    "km": "សមទំព័រ",
+    "en": "Fit Page",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Fit Width": {
+    "km": "សមទទឹង",
+    "en": "Fit Width",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Show Page Sidebar": {
+    "km": "បង្ហាញរបារទំព័រ",
+    "en": "Show Page Sidebar",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Show Inspector": {
+    "km": "បង្ហាញផ្ទាំងព័ត៌មាន",
+    "en": "Show Inspector",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Enter Full Screen": {
+    "km": "បើកពេញអេក្រង់",
+    "en": "Enter Full Screen",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Appearance": {
+    "km": "រូបរាង",
+    "en": "Appearance",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Interface Language": {
+    "km": "ភាសាផ្ទៃប្រើប្រាស់",
+    "en": "Interface Language",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Previous Page": {
+    "km": "ទំព័រមុន",
+    "en": "Previous Page",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Next Page": {
+    "km": "ទំព័របន្ទាប់",
+    "en": "Next Page",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Go to Page…": {
+    "km": "ទៅកាន់ទំព័រ…",
+    "en": "Go to Page…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Rotate Left": {
+    "km": "បង្វិលទៅឆ្វេង",
+    "en": "Rotate Left",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Rotate Right": {
+    "km": "បង្វិលទៅស្ដាំ",
+    "en": "Rotate Right",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Delete Selected Pages": {
+    "km": "លុបទំព័រដែលបានជ្រើស",
+    "en": "Delete Selected Pages",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Insert Pages from File…": {
+    "km": "បញ្ចូលទំព័រពីឯកសារ…",
+    "en": "Insert Pages from File…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Split into PDFs…": {
+    "km": "បំបែកជា PDF…",
+    "en": "Split into PDFs…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Select": {
+    "km": "ជ្រើស",
+    "en": "Select",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Add Khmer Text": {
+    "km": "បន្ថែមអត្ថបទខ្មែរ",
+    "en": "Add Khmer Text",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Highlight Text": {
+    "km": "បន្លិចអត្ថបទ",
+    "en": "Highlight Text",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Add Comment": {
+    "km": "បន្ថែមមតិយោបល់",
+    "en": "Add Comment",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Recognize Text…": {
+    "km": "ស្គាល់អក្សរ…",
+    "en": "Recognize Text…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Review OCR": {
+    "km": "ពិនិត្យ OCR",
+    "en": "Review OCR",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Export Searchable PDF…": {
+    "km": "នាំចេញ PDF ស្វែងរកបាន…",
+    "en": "Export Searchable PDF…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Minimize": {
+    "km": "បង្រួមទុក",
+    "en": "Minimize",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Zoom": {
+    "km": "ពង្រីកបង្អួច",
+    "en": "Zoom",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Show Previous Tab": {
+    "km": "បង្ហាញផ្ទាំងមុន",
+    "en": "Show Previous Tab",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Show Next Tab": {
+    "km": "បង្ហាញផ្ទាំងបន្ទាប់",
+    "en": "Show Next Tab",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Bring All to Front": {
+    "km": "នាំទាំងអស់មកខាងមុខ",
+    "en": "Bring All to Front",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Slek PDF Help": {
+    "km": "ជំនួយ Slek PDF",
+    "en": "Slek PDF Help",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Online Documentation": {
+    "km": "ឯកសារណែនាំតាមអ៊ីនធឺណិត",
+    "en": "Online Documentation",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Keyboard Shortcuts": {
+    "km": "ផ្លូវកាត់ក្ដារចុច",
+    "en": "Keyboard Shortcuts",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Privacy & Licenses": {
+    "km": "ឯកជនភាព និងអាជ្ញាប័ណ្ណ",
+    "en": "Privacy & Licenses",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Release Notes": {
+    "km": "កំណត់ចំណាំការចេញផ្សាយ",
+    "en": "Release Notes",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Report a Problem…": {
+    "km": "រាយការណ៍បញ្ហា…",
+    "en": "Report a Problem…",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Light": {
+    "km": "ភ្លឺ",
+    "en": "Light",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Dark": {
+    "km": "ងងឹត",
+    "en": "Dark",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Use System Setting": {
+    "km": "តាមការកំណត់ប្រព័ន្ធ",
+    "en": "Use System Setting",
+    "note": "Figma prototype menu bar (183:21815)"
+  },
+  "menu: Clear Menu": {
+    "km": "សម្អាតម៉ឺនុយ",
+    "en": "Clear Menu",
+    "note": "Figma prototype menu bar (183:21815)"
   }
 }

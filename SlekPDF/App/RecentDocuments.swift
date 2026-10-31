@@ -38,6 +38,13 @@ final class RecentDocuments: ObservableObject {
 
     func url(for entry: Entry) -> URL? { resolvedURLs[entry.bookmark] }
 
+    /// File ▸ Open Recent ▸ Clear Menu.
+    func clear() {
+        entries = []
+        resolvedURLs = [:]
+        save()
+    }
+
     /// Resolves every entry (disk access): call when the start screen appears or after a change.
     /// Stale bookmarks are renewed in place.
     func refresh() {

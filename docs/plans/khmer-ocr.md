@@ -12,6 +12,8 @@ Uncertain Region 129:14 (Default dashed #A25913 on #F3C498 / Active #3A1EF1 on #
   delete), undoable via `setOCR`, counted in `hasUnsavedChanges`.
 - Saved work: a hidden Text annotation at the page origin with `/SlekOCR` (JSON) and `/Contents` (plain text);
   stripped and rewritten on every save like the other Slek annotations; read back on open, PDFKit's copy removed.
+- Engines: KhmerOCR (detector + Khmer recognizer) routed with Tesseract per page and per box — docs/spikes/04-khmerocr.md
+  (mean CER on TestDocuments 17.3 % → 8.7 %).
 - Recognition: PDFium renders the page at 300 ppi with the PageRef's turn → `OCRWorker` (Tesseract best, Sauvola,
   own serial queue, engine kept per language, 60 s per page, cancel flag) → line boxes mapped back with
   `FPDF_DeviceToPage`. Lines below 80 confidence are “Uncertain regions” (a hint, not a correctness score).

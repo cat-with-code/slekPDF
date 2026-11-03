@@ -105,6 +105,8 @@ private struct AboutPanel: View {
             ("Tesseract OCR", "Apache License 2.0"),
             ("Leptonica", "BSD 2-Clause License"),
             ("tessdata khm/eng models", "Apache License 2.0"),
+            ("KhmerOCR models", "MIT License"),
+            ("ONNX Runtime", "MIT License"),
             ("Noto Sans Khmer", "SIL Open Font License 1.1"),
             ("Inter", "SIL Open Font License 1.1"),
             ("IconPark icons", "Apache License 2.0"),
@@ -136,7 +138,8 @@ private struct AboutPanel: View {
 
     /// Shows the bundled licence texts in Finder.
     private static func revealNotices() {
-        let names = ["PDFium-LICENSE", "Tesseract-LICENSE", "Leptonica-LICENSE", "tessdata-LICENSE", "NotoSansKhmer-OFL.txt", "Inter-OFL.txt"]
+        let names = ["PDFium-LICENSE", "Tesseract-LICENSE", "Leptonica-LICENSE", "tessdata-LICENSE", "KhmerOCR-LICENSE", "ONNXRuntime-LICENSE",
+                     "ONNXRuntime-ThirdPartyNotices", "NotoSansKhmer-OFL.txt", "Inter-OFL.txt"]
         let files = names.compactMap { Bundle.main.url(forResource: $0, withExtension: nil) }
         NSWorkspace.shared.activateFileViewerSelecting(files)
     }

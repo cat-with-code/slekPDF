@@ -55,6 +55,8 @@ nonisolated enum OCRPreprocessor {
 /// Local Khmer/English OCR with Tesseract (LSTM engine). Not thread-safe: one engine per worker.
 nonisolated final class TesseractEngine {
     private let handle: OpaquePointer
+    /// Tesseract's own page segmentation (whole pages).
+    private var pageMode = PSM_SINGLE_BLOCK
 
     init(languages: String = "khm+eng", models: URL, thresholding: OCRThresholding = .sauvola) throws {
         guard let api = TessBaseAPICreate() else { throw OCRError.initFailed(-1) }
@@ -67,6 +69,7 @@ nonisolated final class TesseractEngine {
         }
         handle = api
         TessBaseAPISetVariable(api, "thresholding_method", String(thresholding.rawValue))
+        pageMode = TessBaseAPIGetPageSegMode(api)
     }
 
     deinit {
@@ -76,8 +79,10 @@ nonisolated final class TesseractEngine {
 
     /// Recognizes a rendered page. The image is converted to 8-bit grayscale; `ppi` is the render resolution.
     /// Stops early (throws `.cancelledOrTimedOut`) when `isCancelled` returns true or after `deadline` seconds.
-    func recognize(_ image: CGImage, ppi: Int, deadline: TimeInterval? = nil,
+    /// `singleLine`: the image is one text line (re-reading a box KhmerOCR's detector found).
+    func recognize(_ image: CGImage, ppi: Int, deadline: TimeInterval? = nil, singleLine: Bool = false,
                    isCancelled: @escaping @Sendable () -> Bool = { false }) throws -> OCRResult {
+        TessBaseAPISetPageSegMode(handle, singleLine ? PSM_SINGLE_LINE : pageMode)
         let width = image.width, height = image.height
         var pixels = [UInt8](repeating: 255, count: width * height)
         let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in

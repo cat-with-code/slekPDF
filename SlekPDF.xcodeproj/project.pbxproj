@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A0000000000000000000A081 /* libpdfium.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A0000000000000000000A080 /* libpdfium.dylib */; };
 		A0000000000000000000A082 /* libpdfium.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = A0000000000000000000A080 /* libpdfium.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		A0000000000000000000A086 /* libonnxruntime.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = A0000000000000000000A085 /* libonnxruntime.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,6 +30,7 @@
 			dstSubfolderSpec = 10;
 			files = (
 				A0000000000000000000A082 /* libpdfium.dylib in Embed Libraries */,
+				A0000000000000000000A086 /* libonnxruntime.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -39,6 +41,7 @@
 		A0000000000000000000A011 /* SlekPDF.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SlekPDF.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0000000000000000000A021 /* SlekPDFTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SlekPDFTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0000000000000000000A080 /* libpdfium.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libpdfium.dylib; path = Vendor/pdfium/lib/libpdfium.dylib; sourceTree = "<group>"; };
+		A0000000000000000000A085 /* libonnxruntime.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libonnxruntime.dylib; path = Vendor/onnxruntime/lib/libonnxruntime.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -102,6 +105,7 @@
 			isa = PBXGroup;
 			children = (
 				A0000000000000000000A080 /* libpdfium.dylib */,
+				A0000000000000000000A085 /* libonnxruntime.dylib */,
 			);
 			name = Vendor;
 			sourceTree = "<group>";
@@ -262,7 +266,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_INCLUDE_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/include $(PROJECT_DIR)/Vendor/tesseract/include";
+				SWIFT_INCLUDE_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/include $(PROJECT_DIR)/Vendor/tesseract/include $(PROJECT_DIR)/Vendor/onnxruntime/include";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
 			};
@@ -286,7 +290,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_INCLUDE_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/include $(PROJECT_DIR)/Vendor/tesseract/include";
+				SWIFT_INCLUDE_PATHS = "$(PROJECT_DIR)/Vendor/pdfium/include $(PROJECT_DIR)/Vendor/tesseract/include $(PROJECT_DIR)/Vendor/onnxruntime/include";
 				SWIFT_VERSION = 6.0;
 			};
 			name = Release;

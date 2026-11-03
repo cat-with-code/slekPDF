@@ -114,7 +114,12 @@ struct OCRCanvas: View {
 struct OCRSourcePage: View {
     /// Export shows the page alone.
     var showsRegions = true
+    /// Export: tables on this page (page space), outlined.
+    var tableRegions: [CGRect] = []
+    /// Export Select table region: called with the dragged rectangle in page space.
+    var onRegionSelected: ((CGRect) -> Void)?
     @EnvironmentObject private var session: DocumentSession
+    @State private var drag: CGRect?
     @Environment(\.appLanguage) private var language
 
     var body: some View {
@@ -129,6 +134,20 @@ struct OCRSourcePage: View {
                     Image(nsImage: page.thumbnail(of: CGSize(width: size.width * 2, height: size.height * 2), for: .mediaBox))
                         .resizable()
                         .frame(width: size.width, height: size.height)
+                    ForEach(Array(tableRegions.enumerated()), id: \.offset) { _, region in
+                        let frame = Self.rect(region, rotation: page.rotation, box: box, size: size)
+                        RoundedRectangle(cornerRadius: 2)
+                            .strokeBorder(DSPrimitive.blue500, style: StrokeStyle(lineWidth: 1.5, dash: [5, 3]))
+                            .frame(width: frame.width, height: frame.height)
+                            .offset(x: frame.minX, y: frame.minY)
+                            .allowsHitTesting(false)
+                    }
+                    if let drag {
+                        Rectangle().fill(DSPrimitive.blue100.opacity(0.4)).overlay(Rectangle().strokeBorder(DSPrimitive.blue500, lineWidth: 1.5))
+                            .frame(width: drag.width, height: drag.height)
+                            .offset(x: drag.minX, y: drag.minY)
+                            .allowsHitTesting(false)
+                    }
                     ForEach(regions, id: \.item) { region in
                         let frame = Self.rect(region.line.bounds, rotation: page.rotation, box: box, size: size)
                         UncertainRegion(number: region.number, state: region.state)
@@ -141,6 +160,18 @@ struct OCRSourcePage: View {
                 .frame(width: size.width, height: size.height)
                 .background(DSColor.backgroundPage)
                 .dsElevation(.raised)
+                .gesture(DragGesture(minimumDistance: 4, coordinateSpace: .local)
+                    .onChanged { value in
+                        guard onRegionSelected != nil else { return }
+                        drag = CGRect(x: min(value.startLocation.x, value.location.x), y: min(value.startLocation.y, value.location.y),
+                                      width: abs(value.location.x - value.startLocation.x), height: abs(value.location.y - value.startLocation.y))
+                    }
+                    .onEnded { _ in
+                        guard let selected = drag, let onRegionSelected else { return }
+                        drag = nil
+                        onRegionSelected(Self.pageRect(selected, rotation: page.rotation, box: box, size: size))
+                    },
+                    including: onRegionSelected == nil ? .subviews : .all)
             }
         }
     }
@@ -163,6 +194,22 @@ struct OCRSourcePage: View {
             let state: UncertainRegion.State = item == current ? .active : line.reviewed ? .reviewed : .default
             return Region(item: item, line: line, number: index + 1, state: state)
         }
+    }
+
+    /// Displayed (turned) image rectangle → page space (inverse of `rect`).
+    static func pageRect(_ rect: CGRect, rotation: Int, box: CGRect, size: CGSize) -> CGRect {
+        func point(_ p: CGPoint) -> CGPoint {
+            let tx = p.x / size.width, ty = p.y / size.height
+            let (a, b): (CGFloat, CGFloat) = switch (rotation % 360 + 360) % 360 {
+            case 90: (ty, 1 - tx)
+            case 180: (1 - tx, 1 - ty)
+            case 270: (1 - ty, tx)
+            default: (tx, ty)
+            }
+            return CGPoint(x: box.minX + a * box.width, y: box.minY + (1 - b) * box.height)
+        }
+        let p1 = point(CGPoint(x: rect.minX, y: rect.minY)), p2 = point(CGPoint(x: rect.maxX, y: rect.maxY))
+        return CGRect(x: min(p1.x, p2.x), y: min(p1.y, p2.y), width: abs(p1.x - p2.x), height: abs(p1.y - p2.y))
     }
 
     /// Page-space rectangle → top-left points in the displayed (turned) page image of `size`.

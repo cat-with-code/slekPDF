@@ -108,6 +108,11 @@ final class DocumentSession: ObservableObject {
     // MARK: Export (Figma 05–09, 14, 18, 36, 37)
 
     @Published var exportSettings = ExportSettings()
+    /// Tables for Excel / Word (detected, or marked with Select table region), editable in the Excel preview.
+    @Published var exportTables: [ExportTable] = []
+    @Published var exportTablesDetected = false
+    /// Select table region: the next drag on the source page marks a table.
+    @Published var exportTableSelecting = false
     /// The export being written (37 Exporting… toast).
     @Published var exportJob: ExportJob?
     /// Destination waiting for 36 (already exists) or 14 (could not save).
@@ -127,7 +132,8 @@ final class DocumentSession: ObservableObject {
     var skipDeleteConfirmation = false
 
     enum OrganizeDialog: Equatable {
-        case deletePages, saveWork, merge, split, closeConfirm, recognizing, recognizeAgain, exportExists, exportFailed
+        case deletePages, saveWork, merge, split, closeConfirm, recognizing, recognizeAgain, exportExists, exportFailed,
+             noTables, excelFailed
     }
 
     /// Every open session, for the quit check (Save changes before closing?).

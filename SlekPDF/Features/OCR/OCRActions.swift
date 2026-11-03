@@ -111,7 +111,7 @@ extension DocumentSession {
                                                                  quarterTurns: ref.quarterTurns, ppi: CGFloat(ppi))
                 let lines = zip(result.lines, rects).map { OCRLine(bounds: $1, text: $0.text, confidence: $0.confidence) }
                 guard !flag.isCancelled, self.pages.contains(where: { $0.id == ref.id }) else { continue }
-                self.setOCR(OCRPage(lines: lines, languages: languages, date: Date()), for: ref.id)
+                self.setOCR(OCRPage(lines: lines, languages: languages, date: Date(), quarterTurns: ref.quarterTurns), for: ref.id)
                 if !lines.isEmpty { recognized += 1 }
             }
             self?.finishRecognition(cancelled: flag.isCancelled, recognizedPages: recognized, language)

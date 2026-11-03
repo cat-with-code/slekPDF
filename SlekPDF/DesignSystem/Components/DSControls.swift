@@ -65,8 +65,21 @@ struct DSSearchField: View {
 
 /// Figma "Checkbox" (95:49): 16 pt box, radius 4; On = Accent fill with a white check.
 struct DSCheckbox: View {
-    let label: CopyKey
+    let label: CopyKey?
+    /// A label already in the interface language (e.g. “Table 1 · page 1”).
+    var text: String?
     @Binding var isOn: Bool
+
+    init(label: CopyKey, isOn: Binding<Bool>) {
+        self.label = label
+        _isOn = isOn
+    }
+
+    init(text: String, isOn: Binding<Bool>) {
+        label = nil
+        self.text = text
+        _isOn = isOn
+    }
 
     var body: some View {
         Button { isOn.toggle() } label: {
@@ -80,7 +93,11 @@ struct DSCheckbox: View {
                     }
                 }
                 .frame(width: 16, height: 16)
-                DSLabel(label, style: .body).foregroundColor(DSColor.textPrimary)
+                if let label {
+                    DSLabel(label, style: .body).foregroundColor(DSColor.textPrimary)
+                } else {
+                    Text(text ?? "").dsText(.body).foregroundColor(DSColor.textPrimary)
+                }
             }
             .contentShape(Rectangle())
         }

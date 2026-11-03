@@ -110,4 +110,98 @@ final class ExportTests: XCTestCase {
         XCTAssertEqual(session.pendingExport?.url, missing)
         await session.close()
     }
+
+    // MARK: - Tables (step 2)
+
+    private func seg(_ text: String, x: CGFloat, y: CGFloat) -> KhmerTextRebuilder.Segment {
+        KhmerTextRebuilder.Segment(text: text, box: CGRect(x: x, y: y, width: 40, height: 12))
+    }
+
+    func testColumnsLinedUpBecomeATable() {
+        let lines: [[KhmerTextRebuilder.Segment]] = [
+            [seg("Title of the report", x: 72, y: 760)],
+            [seg("ID", x: 72, y: 700), seg("Name", x: 160, y: 700), seg("Grade", x: 260, y: 700)],
+            [seg("0012", x: 72, y: 680), seg("សុខា", x: 160, y: 680), seg("A", x: 260, y: 680)],
+            [seg("0045", x: 72, y: 660), seg("Dara", x: 161, y: 660), seg("B+", x: 259, y: 660)],
+            [seg("0107", x: 72, y: 640), seg("ចាន់ថា", x: 160, y: 640), seg("A-", x: 260, y: 640)],
+            [seg("A closing paragraph", x: 72, y: 560)],
+        ]
+        let tables = TableDetector.detect(lines)
+        XCTAssertEqual(tables.count, 1)
+        XCTAssertEqual(tables.first?.rows, [["ID", "Name", "Grade"], ["0012", "សុខា", "A"], ["0045", "Dara", "B+"], ["0107", "ចាន់ថា", "A-"]])
+        let region = TableDetector.table(in: CGRect(x: 60, y: 650, width: 300, height: 70), lines)
+        XCTAssertEqual(region?.rows.count, 3, "Select table region keeps only the lines inside")
+    }
+
+    func testCellsStayTextUnlessPlainNumbers() {
+        XCTAssertEqual(ExportTable.cell("0012"), .text("0012"))
+        XCTAssertEqual(ExportTable.cell("៣២"), .text("៣២"))
+        XCTAssertEqual(ExportTable.cell("=SUM(A1:A3)"), .text("=SUM(A1:A3)"))
+        XCTAssertEqual(ExportTable.cell("3/12/26"), .text("3/12/26"))
+        XCTAssertEqual(ExportTable.cell("12"), .number(12, format: .general))
+        XCTAssertEqual(ExportTable.cell("1,250"), .number(1250, format: .thousands))
+        XCTAssertEqual(ExportTable.cell(" "), .empty)
+    }
+
+    /// A one-page PDF with a paragraph and a three-column table (real text, Khmer and Latin).
+    private func tablePDF() throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("table-\(UUID()).pdf")
+        var media = CGRect(x: 0, y: 0, width: 595, height: 842)
+        let context = try XCTUnwrap(CGContext(url as CFURL, mediaBox: &media, nil))
+        context.beginPDFPage(nil)
+        func draw(_ text: String, _ x: CGFloat, _ y: CGFloat) {
+            let font = CTFontCreateWithName((ExportBuilder.isKhmer(text.unicodeScalars.first!) ? "NotoSansKhmer-Regular" : "Inter-Regular") as CFString, 12, nil)
+            context.textPosition = CGPoint(x: x, y: y)
+            CTLineDraw(CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [.font: font])), context)
+        }
+        draw("របាយការណ៍ប្រចាំខែ", 72, 760)
+        for (row, cells) in [["ID", "Name", "Grade"], ["0012", "សុខា", "A"], ["0045", "Dara", "B+"], ["0107", "ចាន់ថា", "A-"]].enumerated() {
+            for (column, text) in cells.enumerated() { draw(text, 72 + CGFloat(column) * 120, 700 - CGFloat(row) * 22) }
+        }
+        context.endPDFPage()
+        context.closePDF()
+        return url
+    }
+
+    func testWordAndExcelExportBothFilesWithTheDetectedTable() async throws {
+        FontRegistry.registerBundledFonts()
+        let session = DocumentSession()
+        await session.open(try tablePDF())
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("export-\(UUID())")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        await session.detectExportTables()
+        XCTAssertEqual(session.exportTables.count, 1)
+        XCTAssertEqual(session.exportTables.first?.rows.first, ["ID", "Name", "Grade"])
+        XCTAssertEqual(session.exportTables.first?.rows[1], ["0012", "សុខា", "A"])
+        session.exportTables[0].rows[1][1] = "សុខា ចាន់"  // edited in the Excel preview
+
+        session.exportSettings.format = .wordExcel
+        let word = folder.appendingPathComponent("Report.docx"), excel = folder.appendingPathComponent("Report.xlsx")
+        await session.runExport([0], to: word, excelURL: excel, access: SaveDestination.Access(url: folder) {}, .en).value
+        XCTAssertNil(session.organizeDialog)
+        let workbook = try Data(contentsOf: excel)
+        XCTAssertEqual(workbook.prefix(2), Data("PK".utf8))
+        let read = try NSAttributedString(url: word, options: [.documentType: NSAttributedString.DocumentType.officeOpenXML], documentAttributes: nil)
+        XCTAssertTrue(read.string.contains("សុខា ចាន់"), "the edited cell is in Word: \(read.string)")
+        XCTAssertTrue(read.string.contains("របាយការណ៍ប្រចាំខែ"))
+        await session.close()
+    }
+
+    func testExcelWithoutTablesAsksAndAFailedWorkbookKeepsTheWordFile() async throws {
+        let (session, folder) = try await open()
+        session.exportSettings.format = .excel
+        session.exportTablesDetected = true
+        session.exportTables = []
+        session.requestExport(.en, AppState(defaults: UserDefaults(suiteName: "export-\(UUID())")!))
+        XCTAssertEqual(session.organizeDialog, .noTables)
+        session.organizeDialog = nil
+
+        session.exportSettings.format = .wordExcel
+        let word = folder.appendingPathComponent("Doc.docx"), excel = folder.appendingPathComponent("missing/Doc.xlsx")
+        await session.runExport([0], to: word, excelURL: excel, access: SaveDestination.Access(url: folder) {}, .en).value
+        XCTAssertEqual(session.organizeDialog, .excelFailed)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: word.path), "the Word file is kept")
+        XCTAssertEqual(session.pendingExport?.url, excel)
+        await session.close()
+    }
 }

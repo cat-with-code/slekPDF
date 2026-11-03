@@ -265,6 +265,8 @@ struct OrganizeDialogView: View {
         case .recognizeAgain: RecognizeAgainDialog()  // 39
         case .exportExists: ExportExistsDialog()  // 36
         case .exportFailed: ExportFailedDialog()  // 14
+        case .noTables: NoTablesDialog()  // 17
+        case .excelFailed: ExcelFailedDialog()  // 38
         }
     }
 

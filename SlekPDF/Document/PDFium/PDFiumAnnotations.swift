@@ -212,6 +212,8 @@ nonisolated struct OCRPage: Codable, Equatable, Sendable {
     /// Tesseract languages used ("khm+eng").
     var languages: String
     var date: Date
+    /// The page's turn (PageRef quarter turns) when it was recognized; Export warns if it changed (Figma 40).
+    var quarterTurns: Int?
 
     var text: String { lines.map(\.displayText).joined(separator: "\n") }
     /// Corrections or reviews the person made (re-recognizing would replace them).

@@ -64,6 +64,37 @@ nonisolated enum KhmerTextRebuilder {
         }
     }
 
+    /// One horizontal piece of a line between wide gaps (a table cell candidate).
+    struct Segment: Equatable, Sendable {
+        let text: String
+        let box: CGRect
+    }
+
+    /// Each line split where the gap between characters is wider than about one em (columns, not word spaces).
+    static func segments(_ chars: [PDFiumChar]) -> [[Segment]] {
+        splitIntoLines(chars).compactMap { line in
+            let real = line.filter { !$0.isGenerated && !$0.box.isEmpty }.sorted { $0.box.minX < $1.box.minX }
+            guard !real.isEmpty else { return nil }
+            var groups: [Set<Int>] = [[real[0].index]]
+            var right = real[0].box.maxX
+            for char in real.dropFirst() {
+                if char.box.minX - right > max(CGFloat(char.fontSize), 6) { groups.append([]) }
+                groups[groups.count - 1].insert(char.index)
+                right = max(right, char.box.maxX)
+            }
+            let segments = groups.compactMap { members -> Segment? in
+                let part = line.filter { members.contains($0.index) }
+                var text = ""
+                text.unicodeScalars.append(contentsOf: rebuildLine(part).map(\.scalar))
+                text = text.trimmingCharacters(in: .whitespaces)
+                let boxes = part.filter { !$0.box.isEmpty }.map(\.box)
+                guard !text.isEmpty, let first = boxes.first else { return nil }
+                return Segment(text: text, box: boxes.dropFirst().reduce(first) { $0.union($1) })
+            }
+            return segments.isEmpty ? nil : segments
+        }
+    }
+
     // MARK: - Lines
 
     private static func splitIntoLines(_ chars: [PDFiumChar]) -> [[PDFiumChar]] {

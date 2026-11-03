@@ -3,11 +3,13 @@ import CoreText
 
 /// Export formats (Figma 05–09 format menu). Excel and Word + Excel arrive with tables (Export step 2).
 enum ExportFormat: Hashable, CaseIterable {
-    case word, searchablePDF, plainText
+    case word, excel, wordExcel, searchablePDF, plainText
 
+    /// Extension of the main output (Word + Excel also writes an .xlsx).
     var fileExtension: String {
         switch self {
-        case .word: "docx"
+        case .word, .wordExcel: "docx"
+        case .excel: "xlsx"
         case .searchablePDF: "pdf"
         case .plainText: "txt"
         }
@@ -16,10 +18,15 @@ enum ExportFormat: Hashable, CaseIterable {
     var title: CopyKey {
         switch self {
         case .word: .word
+        case .excel: .excel
+        case .wordExcel: .wordExcel
         case .searchablePDF: .searchablePDF
         case .plainText: .plainTextTxt
         }
     }
+
+    var writesWord: Bool { self == .word || self == .wordExcel }
+    var writesExcel: Bool { self == .excel || self == .wordExcel }
 }
 
 /// Figma Export Options (132:409).
@@ -30,6 +37,8 @@ struct ExportSettings: Equatable {
     var includeAddedText = false
     /// The output file name; reset to the default when the format changes.
     var fileName = ""
+    /// Word + Excel: the workbook's name.
+    var excelFileName = ""
     /// Folder chosen with Choose folder… (else the Preferences export folder, else asked on Export).
     var folder: URL?
 }
@@ -62,6 +71,8 @@ nonisolated struct ExportLine: Sendable {
     var standalone = false
     var bold = false
     var italic = false
+    /// A table placed here instead of its lines (Word).
+    var table: Table?
 }
 
 /// Turns page lines into paragraphs and headings (no guessing beyond layout: spacing and size).
@@ -87,6 +98,11 @@ nonisolated enum ExportBuilder {
             current = nil
         }
         for line in lines {
+            if let table = line.table {
+                flush()
+                blocks.append(.table(table))
+                continue
+            }
             let level = headingLevel(line)
             if let group = current, let last = group.lines.last, !line.standalone, !last.standalone, group.heading == level {
                 let height = max(last.box.height, line.box.height, 1)
@@ -237,9 +253,12 @@ extension DocumentSession {
         return format == .searchablePDF ? "\(base) (searchable).pdf" : "\(base).\(format.fileExtension)"
     }
 
+    var defaultExcelFileName: String { "\((fileName as NSString?)?.deletingPathExtension ?? "Document").xlsx" }
+
     /// Content of `indices` for export: reviewed OCR where a page was recognized, else the PDF's own text; added
     /// text boxes when asked. `progress` is called after each page.
-    func exportPages(_ indices: [Int], includeAddedText: Bool, progress: (Int) -> Void = { _ in }) async -> [ExportPage] {
+    func exportPages(_ indices: [Int], includeAddedText: Bool, tables: [ExportTable] = [], language: AppLanguage = .en,
+                     progress: (Int) -> Void = { _ in }) async -> [ExportPage] {
         guard let id = pdfiumID else { return [] }
         var result: [ExportPage] = []
         for (done, index) in indices.enumerated() where pages.indices.contains(index) {
@@ -254,6 +273,14 @@ extension DocumentSession {
                 lines = await PDFiumService.shared.textLines(id, page: ref.source).map {
                     ExportLine(text: $0.text, box: $0.box, fontSize: $0.fontSize)
                 }
+            }
+            // Tables replace their lines, at the place of their first line.
+            for (number, table) in tables.enumerated() where table.pageID == ref.id {
+                let at = lines.firstIndex { table.region.insetBy(dx: -2, dy: -2).contains(CGPoint(x: $0.box.midX, y: $0.box.midY)) }
+                lines.removeAll { table.region.insetBy(dx: -2, dy: -2).contains(CGPoint(x: $0.box.midX, y: $0.box.midY)) }
+                let name = CopyCatalog.shared.format(.fmtTableNPageM2, language, number + 1, index + 1)
+                lines.insert(ExportLine(text: "", box: table.region, fontSize: 0, standalone: true, table: table.converted(name: name, page: index + 1)),
+                             at: min(at ?? lines.count, lines.count))
             }
             let boxes = includeAddedText ? (annotations[ref.id] ?? []).filter { if case .textBox = $0.content { true } else { false } } : []
             for box in boxes {

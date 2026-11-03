@@ -1999,5 +1999,78 @@
   "Reviewed OCR corrections are included; c": {
     "km": "ការកែ OCR ដែលបានពិនិត្យត្រូវបានបញ្ចូល មតិយោបល់នៅជាទិន្នន័យពិនិត្យ។",
     "en": "Reviewed OCR corrections are included; comments stay as review metadata."
+  },
+  "Select table region": {
+    "km": "ជ្រើសតំបន់តារាង",
+    "en": "Select table region"
+  },
+  "Export both files": {
+    "km": "នាំចេញឯកសារទាំងពីរ",
+    "en": "Export both files"
+  },
+  "No tables were detected": {
+    "km": "រកមិនឃើញតារាង",
+    "en": "No tables were detected"
+  },
+  "We couldn’t detect any tables on the sel": {
+    "km": "យើងរកមិនឃើញតារាងនៅលើទំព័រដែលបានជ្រើសទេ ដូច្នេះមិនបានបង្កើតសៀវភៅបញ្ជីទេ។ សូមជ្រើសតំបន់តារាងដោយខ្លួនឯង ឬនាំចេញអត្ថបទជា Word។",
+    "en": "We couldn’t detect any tables on the selected pages, so no workbook was created. Select a table region yourself, or export the text to Word."
+  },
+  "Export to Word instead": {
+    "km": "នាំចេញជា Word ជំនួសវិញ",
+    "en": "Export to Word instead"
+  },
+  "Word file saved Excel file wasn’t": {
+    "km": "បានរក្សាទុកឯកសារ Word ប៉ុន្តែមិនបានរក្សាទុកឯកសារ Excel ទេ។",
+    "en": "Word file saved. Excel file wasn’t."
+  },
+  "Show Word file": {
+    "km": "បង្ហាញឯកសារ Word",
+    "en": "Show Word file"
+  },
+  "Retry Excel only": {
+    "km": "ព្យាយាម Excel ម្ដងទៀត",
+    "en": "Retry Excel only"
+  },
+  "Pages changed after recognition": {
+    "km": "ទំព័របានផ្លាស់ប្ដូរបន្ទាប់ពីការស្គាល់អក្សរ",
+    "en": "Pages changed after recognition"
+  },
+  "fmt: Table N · page M": {
+    "km": "តារាង {0} · ទំព័រ {1}",
+    "en": "Table {0} · page {1}",
+    "note": "Template derived from Figma Copy/Table 1 · page 1"
+  },
+  "fmt: Table N — page M": {
+    "km": "តារាង {0} — ទំព័រ {1}",
+    "en": "Table {0} — page {1}",
+    "note": "Template derived from Figma Copy/Table 1 — page 1"
+  },
+  "fmt: Suggested: format": {
+    "km": "ណែនាំ៖ {0}",
+    "en": "Suggested: {0}",
+    "note": "Template derived from Figma Copy/Suggested: Word + Excel"
+  },
+  "fmt: Document contains text and N tables": {
+    "km": "ឯកសារនេះមានអត្ថបទ និងតារាង {0}។",
+    "en": "This document contains text and {0} tables.",
+    "en_one": "This document contains text and 1 table.",
+    "note": "Template derived from Figma Copy/This document contains text and 2 tables"
+  },
+  "fmt: Word saved in folder, Excel not written": {
+    "km": "{0} នៅក្នុង “{1}”។ មិនអាចសរសេរ {2} បានទេ។ សូមព្យាយាមម្ដងទៀតតែឯកសារ Excel ប៉ុណ្ណោះ — ការពិនិត្យរបស់អ្នកនៅរក្សាទុក។",
+    "en": "{0} is in “{1}”. {2} couldn’t be written. Retry only the Excel file — your review work is kept.",
+    "note": "Generalized from Figma Copy/Document docx is in “Documents” Report x (the cause is not always a full disk); draft Khmer — needs review"
+  },
+  "fmt: Pages N were rotated after OCR": {
+    "km": "ទំព័រ {0} ត្រូវបានបង្វិលបន្ទាប់ពី OCR។ សូមពិនិត្យវាម្ដងទៀត ដើម្បីឱ្យអត្ថបទដែលនាំចេញត្រូវនឹងទំព័រ។",
+    "en": "Pages {0} were rotated after OCR. Review them again so the exported text matches the pages.",
+    "en_one": "Page {0} was rotated after OCR. Review it again so the exported text matches the page.",
+    "note": "Template derived from Figma Copy/Pages 2–3 were rotated after OCR Review "
+  },
+  "Drag over a table on the source page": {
+    "km": "អូសលើតារាងនៅលើទំព័រដើម។",
+    "en": "Drag over a table on the source page.",
+    "note": "Export state — not a Figma copy variable; draft Khmer, needs review"
   }
 }

@@ -106,6 +106,12 @@ final class PDFiumService {
         return KhmerTextRebuilder.lines(chars)
     }
 
+    /// Lines split into cell candidates (Export tables).
+    func textSegments(_ id: DocumentID, page index: Int) -> [[KhmerTextRebuilder.Segment]] {
+        guard let chars = page(id, index)?.chars else { return [] }
+        return KhmerTextRebuilder.segments(chars)
+    }
+
     /// A searchable delivery copy: the edited pages as they are (nothing redrawn, Slek's editable annotations
     /// removed), each with its text `layers` (one-page PDFs drawn by `ExportTextLayer`) placed on top.
     func writeSearchablePDF(_ pages: [(source: PageSource, layer: Data?)], to url: URL) throws {

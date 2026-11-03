@@ -95,15 +95,25 @@ final class PDFiumService {
 
     /// Whether a page already has a usable text layer ("Skip pages with usable text"): enough letters, not just a
     /// page number or a stray scanner stamp.
+    /// A layer that is mostly another script (e.g. Khmer read as Thai by other OCR software) is not usable: the page
+    /// is recognized again, and Copy uses Slek's text.
     func hasUsableText(_ id: DocumentID, page: Int) -> Bool {
         guard let text = try? documents[id]?.text(ofPage: page) else { return false }
-        return text.unicodeScalars.filter { $0.properties.isAlphabetic }.count >= 20
+        return Self.isUsableText(text)
+    }
+
+    nonisolated static func isUsableText(_ text: String) -> Bool {
+        let letters = text.unicodeScalars.filter { $0.properties.isAlphabetic }
+        let khmerOrLatin = letters.filter { (0x1780...0x17FF).contains($0.value) || ($0.isASCII) }.count
+        return khmerOrLatin >= 20 && Double(khmerOrLatin) >= Double(letters.count) * 0.8
     }
 
     /// Readable text lines of a page with their positions (Export).
     func textLines(_ id: DocumentID, page index: Int) -> [KhmerTextRebuilder.Line] {
         guard let chars = page(id, index)?.chars else { return [] }
-        return KhmerTextRebuilder.lines(chars)
+        return KhmerTextRebuilder.lines(chars).map {
+            KhmerTextRebuilder.Line(text: KhmerNormalizer.normalize($0.text), box: $0.box, fontSize: $0.fontSize)
+        }
     }
 
     /// Lines split into cell candidates (Export tables).
@@ -152,7 +162,7 @@ final class PDFiumService {
             let inside = chars.filter { char in
                 area.contains(char.isGenerated ? char.origin : CGPoint(x: char.box.midX, y: char.box.midY))
             }
-            let text = KhmerTextRebuilder.rebuild(inside).text.trimmingCharacters(in: .whitespaces)
+            let text = KhmerNormalizer.normalize(KhmerTextRebuilder.rebuild(inside).text).trimmingCharacters(in: .whitespaces)
             return text.isEmpty ? nil : text
         }.joined(separator: "\n")
     }

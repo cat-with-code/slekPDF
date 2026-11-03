@@ -32,8 +32,8 @@ nonisolated final class OCRWorker: @unchecked Sendable {
         try await withCheckedThrowingContinuation { continuation in
             queue.async {
                 do {
-                    continuation.resume(returning: try self.recognizePage(image, ppi: ppi, languages: languages, deadline: deadline,
-                                                                          isCancelled: isCancelled))
+                    let result = try self.recognizePage(image, ppi: ppi, languages: languages, deadline: deadline, isCancelled: isCancelled)
+                    continuation.resume(returning: Self.normalized(result))
                 } catch {
                     continuation.resume(throwing: error)
                 }
@@ -121,6 +121,12 @@ nonisolated final class OCRWorker: @unchecked Sendable {
         }
         let mean = result.isEmpty ? 0 : result.map(\.confidence).reduce(0, +) / Double(result.count)
         return OCRResult(text: result.map(\.text).joined(separator: "\n"), meanConfidence: Int(mean), lines: result)
+    }
+
+    /// Every line in standard Khmer Unicode order (KhmerNormalizer), so it copies and pastes correctly.
+    static func normalized(_ result: OCRResult) -> OCRResult {
+        let lines = result.lines.map { OCRResult.Line(text: KhmerNormalizer.normalize($0.text), pixelRect: $0.pixelRect, confidence: $0.confidence) }
+        return OCRResult(text: KhmerNormalizer.normalize(result.text), meanConfidence: result.meanConfidence, lines: lines)
     }
 
     private static func clean(_ text: String) -> String {

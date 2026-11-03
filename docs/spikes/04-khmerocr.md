@@ -50,3 +50,17 @@ Time: 1.2–6.5 s per document on Apple Silicon (most of it Tesseract re-reading
   09 noisy photocopy (23 %, mostly the English footer and digits).
 - Latin digits/punctuation inside Khmer lines depend on the Tesseract fallback.
 - The synthetic set uses two Khmer fonts; real scans (Khmer OS, Moul, phone photos) still need measuring.
+
+## Khmer normalisation (khmernormalizer, 3 Nov 2026)
+
+Problem reported: text copied from recognized images broke apart, looked like Thai, or became unreadable after pasting.
+Causes and fixes:
+- Out-of-order Khmer (vowel before a subscript, ្រ before another subscript, េ + ា / េ + ី, doubled marks) renders with
+  dotted circles elsewhere. `KhmerNormalizer` (Swift port of the Khmer parts of github.com/seanghay/khmernormalizer, MIT,
+  whose core is SIL International's khnormal, MIT) now normalises OCR output (both engines), Copy and Export text.
+  Matches the reference implementation on the test vectors (KhmerNormalizerTests). Not ported: Latin accent stripping,
+  quote/emoji/URL rewriting, spelling corrections, “។ល។” → ៘.
+- Thai text comes from a text layer another program put in the PDF (Khmer misread as Thai). Copy on a page Slek
+  recognized now uses Slek's OCR text, and “Skip pages with usable text” no longer counts a layer that is mostly another
+  script (less than 80 % Khmer/Latin letters), so such pages are recognized again.
+- On the TestDocuments set normalising does not change the CER (8.69 %); the routed output is already in standard order.

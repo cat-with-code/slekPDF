@@ -560,8 +560,14 @@ final class DocumentSession: ObservableObject {
             guard let page = line.pages.first else { continue }
             let index = document.index(for: page)
             let ref = pages.indices.contains(index) ? pages[index] : nil
-            let text = await PDFiumService.shared.copyText(ref.flatMap(documentID(for:)) ?? id,
-                                                           lines: [(ref?.source ?? index, line.bounds(for: page))])
+            let rect = line.bounds(for: page)
+            // A page Slek recognized: its reviewed OCR text, not the PDF's own layer (often another app's OCR).
+            if let ref, let ocr = ocrResults[ref.id], !ocr.lines.isEmpty {
+                let hits = ocr.lines.filter { $0.bounds.intersects(rect.insetBy(dx: -1, dy: -1)) }.map(\.displayText)
+                if !hits.isEmpty { parts.append(KhmerNormalizer.normalize(hits.joined(separator: "\n"))) }
+                continue
+            }
+            let text = await PDFiumService.shared.copyText(ref.flatMap(documentID(for:)) ?? id, lines: [(ref?.source ?? index, rect)])
             if !text.isEmpty { parts.append(text) }
         }
         return parts.joined(separator: "\n")

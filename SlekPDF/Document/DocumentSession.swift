@@ -102,6 +102,9 @@ final class DocumentSession: ObservableObject {
     @Published var ocrSettings = OCRSettings()
     /// The recognition in progress (also when it runs in the background).
     @Published var ocrJob: OCRJob?
+    /// OCR Review Panel (129:111): which lines are listed, and the one being reviewed.
+    @Published var ocrReviewFilter: OCRReviewFilter = .uncertain
+    @Published var ocrReviewItem: OCRItemRef?
     /// Pages waiting for “Recognize again” (39).
     var pendingOCRPages: [Int] = []
     var ocrCancel: CancelFlag?
@@ -257,6 +260,7 @@ final class DocumentSession: ObservableObject {
         ocrJob = nil
         ocrResults = [:]
         savedOCR = [:]
+        ocrReviewItem = nil
         textEditing = nil  // first: changing the tool would commit it
         annotateTool = .select
         selectedAnnotationID = nil

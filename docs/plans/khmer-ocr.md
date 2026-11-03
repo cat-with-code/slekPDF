@@ -27,6 +27,12 @@ Uncertain Region 129:14 (Default dashed #A25913 on #F3C498 / Active #3A1EF1 on #
    - Disabled primary button is faded accent, Figma shows grey (DSButton behaviour, all screens).
    - Recognized text is not yet used by Search / Copy / Export (Export step), and no status-bar spinner yet.
    - Draft Khmer: All text, Reviewed, All N items reviewed, time-left variants, deskew note, finish/stop/no-text toasts.
-2. Review: side-by-side canvas (Source page with numbered Uncertain Regions | Recognized text with the OCR Review
+2. ✅ Review (OCRWorkspaceTests review cases; snapshots 04-ocr-review, 04-ocr-all-reviewed): side-by-side canvas (Source page with numbered Uncertain Regions | Recognized text with the OCR Review
    Panel): Review text filter (Uncertain regions / All text), Item n of N with Previous / Next, confidence badge,
    Correct selected text, Skip / Mark reviewed, All reviewed state with Review export options.
+   Items run across the document in page order (Next moves to the item's page); Mark reviewed (↩, Keyboard
+   Shortcuts) keeps the text as a correction only when it changed, then goes to the next unreviewed item; Skip wraps;
+   clicking a region selects it; all reviewed = every region green. Open points:
+   - Region fills are 45 % translucent (Figma shows them solid over placeholder bars) so the real text stays readable.
+   - The canvas shows one page fitted to the column; the page pill's zoom buttons do nothing here yet.
+   - Draft Khmer: “No uncertain regions on the recognized pages.”

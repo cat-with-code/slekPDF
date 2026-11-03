@@ -1799,5 +1799,10 @@
     "en": "Recognized text on {0} pages",
     "en_one": "Recognized text on 1 page",
     "note": "Khmer OCR finish toast — not a Figma copy variable; draft Khmer, needs review"
+  },
+  "No uncertain regions on recognized pages": {
+    "km": "មិនមានតំបន់មិនប្រាកដនៅលើទំព័រដែលបានស្គាល់ទេ។",
+    "en": "No uncertain regions on the recognized pages.",
+    "note": "OCR Review Panel empty state — not a Figma copy variable; draft Khmer, needs review"
   }
 }

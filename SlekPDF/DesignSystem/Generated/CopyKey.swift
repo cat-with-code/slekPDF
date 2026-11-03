@@ -414,4 +414,5 @@ enum CopyKey: String, CaseIterable {
     case recognitionStoppedFinishedPagesAreKept = "Recognition stopped. Finished pages are kept"
     case recognizeTextToReviewItHere = "Recognize text to review it here"
     case fmtRecognizedTextOnNPages = "fmt: Recognized text on N pages"
+    case noUncertainRegionsOnRecognizedPages = "No uncertain regions on recognized pages"
 }

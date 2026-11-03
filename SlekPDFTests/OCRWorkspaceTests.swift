@@ -169,4 +169,75 @@ final class OCRWorkspaceTests: XCTestCase {
         XCTAssertEqual(try resaved.slekOCR(page: 0), ocr)
         XCTAssertNil(try resaved.slekOCR(page: 1))
     }
+
+    // MARK: - Review (step 2)
+
+    private func line(_ text: String, _ confidence: Double, y: CGFloat) -> OCRLine {
+        OCRLine(bounds: CGRect(x: 72, y: y, width: 300, height: 20), text: text, confidence: confidence)
+    }
+
+    private func reviewSession() async throws -> (DocumentSession, [OCRLine], [OCRLine]) {
+        let session = try await open()
+        let first = [line("ក", 40, y: 700)]
+        let second = [line("ខ", 50, y: 700), line("គ", 95, y: 650), line("ឃ", 60, y: 600)]
+        session.setOCR(OCRPage(lines: first, languages: "khm", date: Date()), for: session.pages[0].id)
+        session.setOCR(OCRPage(lines: second, languages: "khm", date: Date()), for: session.pages[1].id)
+        return (session, first, second)
+    }
+
+    func testReviewItemsFollowTheFilterAndReadingOrder() async throws {
+        let (session, first, second) = try await reviewSession()
+        XCTAssertEqual(session.ocrReviewItems.map(\.lineID), [first[0].id, second[0].id, second[2].id], "uncertain only")
+        session.ocrReviewFilter = .all
+        XCTAssertEqual(session.ocrReviewItems.count, 4)
+        session.ocrReviewFilter = .uncertain
+        session.movePages([session.pages[1].id], to: 0)
+        XCTAssertEqual(session.ocrReviewItems.map(\.lineID), [second[0].id, second[2].id, first[0].id], "follows the page order")
+        await session.close()
+    }
+
+    func testMarkReviewedKeepsCorrectionsMovesOnAndUndoes() async throws {
+        let (session, first, second) = try await reviewSession()
+        let undo = UndoManager()
+        undo.groupsByEvent = false
+        session.undoManager = undo
+        let start = try XCTUnwrap(session.currentOCRItem)
+        XCTAssertEqual(start.lineID, first[0].id)
+
+        undo.beginUndoGrouping(); session.markOCRItemReviewed(start, text: " ក្រុង "); undo.endUndoGrouping()
+        session.undoManager = nil  // only the first step is recorded
+        XCTAssertEqual(session.ocrLine(start)?.correction, "ក្រុង")
+        XCTAssertEqual(session.ocrLine(start)?.reviewed, true)
+        XCTAssertEqual(session.currentOCRItem?.lineID, second[0].id, "moves to the next unreviewed item")
+        XCTAssertEqual(session.currentPageIndex, 1, "and shows its page")
+
+        let next = try XCTUnwrap(session.currentOCRItem)
+        session.markOCRItemReviewed(next, text: "ខ")  // unchanged text: no correction
+        XCTAssertNil(session.ocrLine(next)?.correction)
+        XCTAssertEqual(session.ocrLine(next)?.reviewed, true)
+
+        let last = try XCTUnwrap(session.currentOCRItem)
+        XCTAssertEqual(last.lineID, second[2].id)
+        session.skipOCRItem(last)
+        XCTAssertEqual(session.currentOCRItem, last, "only unreviewed item left: Skip stays")
+        XCTAssertFalse(session.allOCRItemsReviewed)
+        session.markOCRItemReviewed(last, text: "ឃ")
+        XCTAssertTrue(session.allOCRItemsReviewed)
+        XCTAssertEqual(session.ocrResults[session.pages[0].id]?.text, "ក្រុង", "the correction is the page's text")
+
+        undo.undo()  // the first Mark reviewed (grouped)
+        XCTAssertNil(session.ocrLine(start)?.correction)
+        XCTAssertEqual(session.ocrLine(start)?.reviewed, false)
+        await session.close()
+    }
+
+    func testRegionRectanglesOnTurnedPages() {
+        let box = CGRect(x: 0, y: 0, width: 600, height: 800)
+        let bounds = CGRect(x: 0, y: 700, width: 300, height: 100)  // top-left quarter-width strip
+        let upright = OCRSourcePage.rect(bounds, rotation: 0, box: box, size: CGSize(width: 600, height: 800))
+        XCTAssertEqual(upright, CGRect(x: 0, y: 0, width: 300, height: 100).insetBy(dx: -2, dy: -2))
+        // Turned 90° clockwise, the page's top edge becomes the right edge.
+        let turned = OCRSourcePage.rect(bounds, rotation: 90, box: box, size: CGSize(width: 800, height: 600))
+        XCTAssertEqual(turned, CGRect(x: 700, y: 0, width: 100, height: 300).insetBy(dx: -2, dy: -2))
+    }
 }

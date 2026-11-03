@@ -65,10 +65,10 @@ struct MainWindowView: View {
                             CollapsedSidebarRail().transition(.opacity)
                             DSDivider(axis: .vertical)
                         }
-                        if session.workspace == .organizePages {
-                            OrganizeCanvas()  // Prototype 02
-                        } else {
-                            DocumentCanvas()
+                        switch session.workspace {
+                        case .organizePages: OrganizeCanvas()  // Prototype 02
+                        case .khmerOCR: OCRCanvas()  // Prototype 04
+                        default: DocumentCanvas()
                         }
                         DSDivider(axis: .vertical)
                         if session.isInspectorVisible {

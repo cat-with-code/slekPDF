@@ -155,7 +155,7 @@ final class ComponentGallerySnapshotTests: XCTestCase {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         FontRegistry.registerBundledFonts()
         let url = try XCTUnwrap(Bundle(for: ComponentGallerySnapshotTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
-        for name in ["04-ocr-settings", "12-recognizing", "39-recognize-again", "41-invalid-range"] {
+        for name in ["04-ocr-review", "04-ocr-all-reviewed", "04-ocr-settings", "12-recognizing", "39-recognize-again", "41-invalid-range"] {
             for language in AppLanguage.allCases {
                 let session = DocumentSession()
                 await session.open(url)
@@ -166,6 +166,21 @@ final class ComponentGallerySnapshotTests: XCTestCase {
                 case "12-recognizing":
                     session.ocrJob = OCRJob(pages: [0, 1, 2], finished: 1, currentNumber: 2)
                     session.organizeDialog = .recognizing
+                case "04-ocr-review", "04-ocr-all-reviewed":
+                    let box = try XCTUnwrap(session.document?.page(at: 0)?.bounds(for: .mediaBox))
+                    let lines = [("សាលារៀនបឋមសិក្សា ភូមិថ្មី", 52.0), ("ឯកសារនេះត្រូវបានពិនិត្យ", 70.0), ("Khmer / English", 95.0), ("ថ្ងៃទី ៣ ខែវិច្ឆិកា", 61.0)]
+                    session.setOCR(OCRPage(lines: lines.enumerated().map { index, item in
+                        OCRLine(bounds: CGRect(x: box.minX + 60, y: box.maxY - 90 - CGFloat(index) * 40, width: 320, height: 22),
+                                text: item.0, confidence: item.1)
+                    }, languages: "khm+eng", date: Date()), for: session.pages[0].id)
+                    if name == "04-ocr-all-reviewed" {
+                        while let item = session.currentOCRItem, !session.allOCRItemsReviewed {
+                            session.markOCRItemReviewed(item, text: session.ocrLine(item)?.text ?? "")
+                        }
+                    } else if let first = session.currentOCRItem {
+                        session.markOCRItemReviewed(first, text: "សាលារៀនបឋមសិក្សា ភូមិថ្មី")
+                        session.selectOCRItem(first)
+                    }
                 case "39-recognize-again":
                     session.setOCR(OCRPage(lines: [OCRLine(bounds: .zero, text: "ក", confidence: 50, reviewed: true)], languages: "khm", date: Date()),
                                    for: session.pages[1].id)

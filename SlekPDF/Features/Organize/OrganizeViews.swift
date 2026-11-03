@@ -263,6 +263,8 @@ struct OrganizeDialogView: View {
         case .closeConfirm: CloseConfirmDialog()
         case .recognizing: RecognizingDialog()  // 12
         case .recognizeAgain: RecognizeAgainDialog()  // 39
+        case .exportExists: ExportExistsDialog()  // 36
+        case .exportFailed: ExportFailedDialog()  // 14
         }
     }
 

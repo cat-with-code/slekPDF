@@ -7,6 +7,7 @@ module PDFium {
     header "fpdf_annot.h"
     header "fpdf_doc.h"
     header "fpdf_searchex.h"
+    header "fpdf_transformpage.h"
     link "pdfium"
     export *
 }

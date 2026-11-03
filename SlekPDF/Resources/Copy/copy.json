@@ -1804,5 +1804,200 @@
     "km": "មិនមានតំបន់មិនប្រាកដនៅលើទំព័រដែលបានស្គាល់ទេ។",
     "en": "No uncertain regions on the recognized pages.",
     "note": "OCR Review Panel empty state — not a Figma copy variable; draft Khmer, needs review"
+  },
+  "Source & output preview": {
+    "km": "មើលប្រភព និងលទ្ធផល",
+    "en": "Source & output preview"
+  },
+  "Output preview": {
+    "km": "មើលលទ្ធផល",
+    "en": "Output preview"
+  },
+  "Word preview": {
+    "km": "មើល Word",
+    "en": "Word preview"
+  },
+  "Excel preview": {
+    "km": "មើល Excel",
+    "en": "Excel preview"
+  },
+  "Editable": {
+    "km": "អាចកែបាន",
+    "en": "Editable"
+  },
+  "Show": {
+    "km": "បង្ហាញ",
+    "en": "Show"
+  },
+  "File format": {
+    "km": "ទម្រង់ឯកសារ",
+    "en": "File format"
+  },
+  "Word": {
+    "km": "Word",
+    "en": "Word"
+  },
+  "Excel": {
+    "km": "Excel",
+    "en": "Excel"
+  },
+  "Word + Excel": {
+    "km": "Word + Excel",
+    "en": "Word + Excel"
+  },
+  "Pages to include": {
+    "km": "ទំព័រដែលត្រូវបញ្ចូល",
+    "en": "Pages to include"
+  },
+  "Include added text": {
+    "km": "រួមបញ្ចូលអត្ថបទដែលបានបន្ថែម",
+    "en": "Include added text"
+  },
+  "Word output name": {
+    "km": "ឈ្មោះឯកសារ Word",
+    "en": "Word output name"
+  },
+  "Excel output name": {
+    "km": "ឈ្មោះឯកសារ Excel",
+    "en": "Excel output name"
+  },
+  "PDF output name": {
+    "km": "ឈ្មោះឯកសារ PDF",
+    "en": "PDF output name"
+  },
+  "Text output name": {
+    "km": "ឈ្មោះឯកសារអត្ថបទ",
+    "en": "Text output name"
+  },
+  "Destination: not selected": {
+    "km": "ទីតាំង៖ មិនទាន់ជ្រើស",
+    "en": "Destination: not selected"
+  },
+  "Export Word file": {
+    "km": "នាំចេញឯកសារ Word",
+    "en": "Export Word file"
+  },
+  "Export Excel file": {
+    "km": "នាំចេញឯកសារ Excel",
+    "en": "Export Excel file"
+  },
+  "Export searchable PDF": {
+    "km": "នាំចេញ PDF ស្វែងរកបាន",
+    "en": "Export searchable PDF"
+  },
+  "Export text (UTF-8)": {
+    "km": "នាំចេញអត្ថបទ (UTF-8)",
+    "en": "Export text (UTF-8)"
+  },
+  "Export creates a new file; the source PD": {
+    "km": "ការនាំចេញបង្កើតឯកសារថ្មី ឯកសារ PDF ដើមមិនផ្លាស់ប្ដូរទេ។",
+    "en": "Export creates a new file; the source PDF is not changed."
+  },
+  "Searchable PDF preview": {
+    "km": "មើល PDF ស្វែងរកបាន",
+    "en": "Searchable PDF preview"
+  },
+  "Searchable PDF": {
+    "km": "PDF ស្វែងរកបាន",
+    "en": "Searchable PDF"
+  },
+  "Keep original page images": {
+    "km": "រក្សារូបភាពទំព័រដើម",
+    "en": "Keep original page images"
+  },
+  "Text preview (UTF-8)": {
+    "km": "មើលអត្ថបទ (UTF-8)",
+    "en": "Text preview (UTF-8)"
+  },
+  "Page breaks are marked; tables become ta": {
+    "km": "ការបំបែកទំព័រត្រូវបានសម្គាល់ តារាងក្លាយជាបន្ទាត់បំបែកដោយ Tab។",
+    "en": "Page breaks are marked; tables become tab-separated lines."
+  },
+  "Plain text ( txt)": {
+    "km": "អត្ថបទធម្មតា (.txt)",
+    "en": "Plain text (.txt)"
+  },
+  "Could not save the export": {
+    "km": "មិនអាចរក្សាទុកការនាំចេញបានទេ",
+    "en": "Could not save the export"
+  },
+  "Choose another folder…": {
+    "km": "ជ្រើសថតផ្សេង…",
+    "en": "Choose another folder…"
+  },
+  "Keep both": {
+    "km": "រក្សាទាំងពីរ",
+    "en": "Keep both"
+  },
+  "fmt: Review issues · N": {
+    "km": "បញ្ហាដែលត្រូវពិនិត្យ · {0}",
+    "en": "Review issues · {0}",
+    "note": "Template derived from Figma Copy/Review issues · 2"
+  },
+  "fmt: Destination: folder": {
+    "km": "ទីតាំង៖ {0}",
+    "en": "Destination: {0}",
+    "note": "Template derived from Figma Copy/Destination: not selected"
+  },
+  "fmt: Exporting file… page N of M": {
+    "km": "កំពុងនាំចេញ {0}… ទំព័រ {1} នៃ {2}",
+    "en": "Exporting {0}… page {1} of {2}",
+    "note": "Template derived from Figma Copy/Exporting Document docx… page 2 of 3"
+  },
+  "fmt: Export finished · file": {
+    "km": "ការនាំចេញបានបញ្ចប់ · {0}",
+    "en": "Export finished · {0}",
+    "note": "Template derived from Figma Copy/Export finished · Document docx"
+  },
+  "fmt: File already exists": {
+    "km": "“{0}” មានរួចហើយ",
+    "en": "“{0}” already exists",
+    "note": "Template derived from Figma Copy/“Report xlsx” already exists"
+  },
+  "fmt: A file with this name is already in folder": {
+    "km": "មានឯកសារឈ្មោះនេះរួចហើយនៅក្នុង “{0}”។ ជំនួសវា ឬរក្សាទាំងពីរ ដោយរក្សាទុកឯកសារថ្មីក្រោមឈ្មោះផ្សេង។",
+    "en": "A file with this name is already in “{0}”. Replace it, or keep both by saving the new file with another name.",
+    "note": "Template derived from Figma Copy/A file with this name is already in “Doc"
+  },
+  "fmt: File could not be created in folder": {
+    "km": "មិនអាចបង្កើត {1} ក្នុងថត “{0}” បានទេ។ ការងារពិនិត្យរបស់អ្នកត្រូវបានរក្សាទុក។",
+    "en": "{1} could not be created in the folder “{0}”. Your review work is kept.",
+    "note": "Generalized from Figma Copy/The folder “Shared” is read-only, so Doc (the cause is not always read-only); draft Khmer — needs review"
+  },
+  "fmt: Pages N have no text": {
+    "km": "ទំព័រ {0} មិនមានអត្ថបទទេ។ សូមស្គាល់អក្សរក្នុង OCR ខ្មែរ ជាមុនសិន។",
+    "en": "Pages {0} have no text. Recognize them in Khmer OCR first.",
+    "en_one": "Page {0} has no text. Recognize it in Khmer OCR first.",
+    "note": "Export review issue — not a Figma copy variable; draft Khmer, needs review"
+  },
+  "fmt: N uncertain lines not reviewed": {
+    "km": "បន្ទាត់មិនប្រាកដ {0} មិនទាន់បានពិនិត្យទេ។",
+    "en": "{0} uncertain lines were not reviewed.",
+    "en_one": "1 uncertain line was not reviewed.",
+    "note": "Export review issue — not a Figma copy variable; draft Khmer, needs review"
+  },
+  "Pages without text": {
+    "km": "ទំព័រគ្មានអត្ថបទ",
+    "en": "Pages without text",
+    "note": "Export state — not a Figma copy variable; draft Khmer, needs review"
+  },
+  "Uncertain OCR text": {
+    "km": "អត្ថបទ OCR មិនប្រាកដ",
+    "en": "Uncertain OCR text",
+    "note": "Export state — not a Figma copy variable; draft Khmer, needs review"
+  },
+  "Nothing to export on these pages": {
+    "km": "គ្មានអ្វីត្រូវនាំចេញនៅលើទំព័រទាំងនេះទេ។",
+    "en": "Nothing to export on these pages.",
+    "note": "Export state — not a Figma copy variable; draft Khmer, needs review"
+  },
+  "Only the page images are kept; there is no text to search yet": {
+    "km": "មានតែរូបភាពទំព័រប៉ុណ្ណោះ មិនទាន់មានអត្ថបទសម្រាប់ស្វែងរកទេ។",
+    "en": "Only the page images are kept; there is no text to search yet.",
+    "note": "Export state — not a Figma copy variable; draft Khmer, needs review"
+  },
+  "Reviewed OCR corrections are included; c": {
+    "km": "ការកែ OCR ដែលបានពិនិត្យត្រូវបានបញ្ចូល មតិយោបល់នៅជាទិន្នន័យពិនិត្យ។",
+    "en": "Reviewed OCR corrections are included; comments stay as review metadata."
   }
 }

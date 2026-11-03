@@ -100,6 +100,30 @@ final class PDFiumService {
         return text.unicodeScalars.filter { $0.properties.isAlphabetic }.count >= 20
     }
 
+    /// Readable text lines of a page with their positions (Export).
+    func textLines(_ id: DocumentID, page index: Int) -> [KhmerTextRebuilder.Line] {
+        guard let chars = page(id, index)?.chars else { return [] }
+        return KhmerTextRebuilder.lines(chars)
+    }
+
+    /// A searchable delivery copy: the edited pages as they are (nothing redrawn, Slek's editable annotations
+    /// removed), each with its text `layers` (one-page PDFs drawn by `ExportTextLayer`) placed on top.
+    func writeSearchablePDF(_ pages: [(source: PageSource, layer: Data?)], to url: URL) throws {
+        let output = PDFiumDocument()
+        for (number, item) in pages.enumerated() {
+            guard case let .open(id, index, turns, _, _) = item.source, let source = documents[id] else { throw PDFiumError.file }
+            try output.appendPage(from: source, index: index, quarterTurns: turns)
+            try output.removeSlekAnnotations(page: number)
+            if let layer = item.layer {
+                let file = FileManager.default.temporaryDirectory.appendingPathComponent("layer-\(UUID()).pdf")
+                try layer.write(to: file)
+                defer { try? FileManager.default.removeItem(at: file) }
+                try output.overlay(page: number, with: PDFiumDocument(url: file))
+            }
+        }
+        try output.save(to: url, incremental: false)
+    }
+
     /// Page count of a PDF file that is not open (Merge PDFs list).
     func pageCount(of url: URL) -> Int? { try? PDFiumDocument(url: url).pageCount }
 

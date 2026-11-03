@@ -105,6 +105,16 @@ final class DocumentSession: ObservableObject {
     /// OCR Review Panel (129:111): which lines are listed, and the one being reviewed.
     @Published var ocrReviewFilter: OCRReviewFilter = .uncertain
     @Published var ocrReviewItem: OCRItemRef?
+    // MARK: Export (Figma 05–09, 14, 18, 36, 37)
+
+    @Published var exportSettings = ExportSettings()
+    /// The export being written (37 Exporting… toast).
+    @Published var exportJob: ExportJob?
+    /// Destination waiting for 36 (already exists) or 14 (could not save).
+    var pendingExport: PendingExport?
+    /// Bumped whenever pages, annotations or OCR change (the export preview rebuilds).
+    @Published private(set) var contentRevision = 0
+
     /// Pages waiting for “Recognize again” (39).
     var pendingOCRPages: [Int] = []
     var ocrCancel: CancelFlag?
@@ -116,7 +126,9 @@ final class DocumentSession: ObservableObject {
     /// "Don’t ask again this session" in 20 Delete pages?
     var skipDeleteConfirmation = false
 
-    enum OrganizeDialog: Equatable { case deletePages, saveWork, merge, split, closeConfirm, recognizing, recognizeAgain }
+    enum OrganizeDialog: Equatable {
+        case deletePages, saveWork, merge, split, closeConfirm, recognizing, recognizeAgain, exportExists, exportFailed
+    }
 
     /// Every open session, for the quit check (Save changes before closing?).
     static let all = NSHashTable<DocumentSession>.weakObjects()
@@ -488,6 +500,7 @@ final class DocumentSession: ObservableObject {
             MainActor.assumeIsolated { session.setPages(oldPages, selecting: oldSelection) }
         }
         pages = newPages
+        contentRevision += 1
         selectedPageIDs = selection ?? selectedPageIDs.filter { id in newPages.contains { $0.id == id } }
         mirrorPages()
         if isSearchActive { scheduleSearch() }
@@ -570,6 +583,7 @@ final class DocumentSession: ObservableObject {
             MainActor.assumeIsolated { session.setOCR(old, for: pageID) }
         }
         ocrResults[pageID] = ocr
+        contentRevision += 1
     }
 
     // MARK: - Annotate (docs/plans/annotate.md)
@@ -585,6 +599,7 @@ final class DocumentSession: ObservableObject {
             }
         }
         annotations[pageID] = list.isEmpty ? nil : list
+        contentRevision += 1
         if let selected = selectedAnnotationID, !list.contains(where: { $0.id == selected }),
            !annotations.values.contains(where: { $0.contains { $0.id == selected } }) {
             selectedAnnotationID = nil

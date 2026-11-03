@@ -112,6 +112,8 @@ struct OCRCanvas: View {
 
 /// The current page as an image with its review items marked (Figma Uncertain Region 129:14).
 struct OCRSourcePage: View {
+    /// Export shows the page alone.
+    var showsRegions = true
     @EnvironmentObject private var session: DocumentSession
     @Environment(\.appLanguage) private var language
 
@@ -152,7 +154,7 @@ struct OCRSourcePage: View {
 
     /// Items on the current page, numbered as in “Item n of N”.
     private var regions: [Region] {
-        guard session.pages.indices.contains(session.currentPageIndex) else { return [] }
+        guard showsRegions, session.pages.indices.contains(session.currentPageIndex) else { return [] }
         let pageID = session.pages[session.currentPageIndex].id
         // Once everything is reviewed, no item is “being corrected”: all show as Reviewed.
         let current = session.allOCRItemsReviewed ? nil : session.currentOCRItem

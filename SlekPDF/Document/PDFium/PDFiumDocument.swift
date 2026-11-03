@@ -144,6 +144,11 @@ nonisolated final class PDFiumDocument {
         guard let page = FPDF_LoadPage(handle, Int32(index)) else { throw PDFiumError.page }
         defer { FPDF_ClosePage(page) }
         guard let form = FPDF_NewFormObjectFromXObject(xObject) else { throw PDFiumError.page }
+        // The layer is drawn from (0, 0); move it to this page's media box origin.
+        var left: Float = 0, bottom: Float = 0, right: Float = 0, top: Float = 0
+        if FPDFPage_GetMediaBox(page, &left, &bottom, &right, &top) != 0, left != 0 || bottom != 0 {
+            FPDFPageObj_Transform(form, 1, 0, 0, 1, Double(left), Double(bottom))
+        }
         FPDFPage_InsertObject(page, form)
         guard FPDFPage_GenerateContent(page) != 0 else { throw PDFiumError.saveFailed }
     }

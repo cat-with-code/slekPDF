@@ -155,7 +155,8 @@ final class ComponentGallerySnapshotTests: XCTestCase {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         FontRegistry.registerBundledFonts()
         let url = try XCTUnwrap(Bundle(for: ComponentGallerySnapshotTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
-        for name in ["04-ocr-review", "04-ocr-all-reviewed", "04-ocr-settings", "12-recognizing", "39-recognize-again", "41-invalid-range"] {
+        for name in ["05-export-word", "08-export-pdf", "09-export-text",
+                     "04-ocr-review", "04-ocr-all-reviewed", "04-ocr-settings", "12-recognizing", "39-recognize-again", "41-invalid-range"] {
             for language in AppLanguage.allCases {
                 let session = DocumentSession()
                 await session.open(url)
@@ -163,6 +164,10 @@ final class ComponentGallerySnapshotTests: XCTestCase {
                 session.ocrSettings.scope = .custom
                 session.ocrSettings.customRange = name == "41-invalid-range" ? "1–9" : "1–3"
                 switch name {
+                case "05-export-word", "08-export-pdf", "09-export-text":
+                    session.workspace = .export
+                    session.exportSettings.format = name == "05-export-word" ? .word : name == "08-export-pdf" ? .searchablePDF : .plainText
+                    session.exportSettings.fileName = session.defaultExportFileName(for: session.exportSettings.format)
                 case "12-recognizing":
                     session.ocrJob = OCRJob(pages: [0, 1, 2], finished: 1, currentNumber: 2)
                     session.organizeDialog = .recognizing

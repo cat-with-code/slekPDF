@@ -68,6 +68,7 @@ struct MainWindowView: View {
                         switch session.workspace {
                         case .organizePages: OrganizeCanvas()  // Prototype 02
                         case .khmerOCR: OCRCanvas()  // Prototype 04
+                        case .export: ExportCanvas()  // Prototypes 05–09
                         default: DocumentCanvas()
                         }
                         DSDivider(axis: .vertical)
@@ -77,6 +78,7 @@ struct MainWindowView: View {
                                 case .organizePages: OrganizeInspector()
                                 case .annotate: AnnotateInspector()  // Prototype 03
                                 case .khmerOCR: OCRInspector()  // Prototype 04
+                                case .export: ExportInspector()  // Export Options 132:409
                                 default: ReadInspectorView()
                                 }
                             }

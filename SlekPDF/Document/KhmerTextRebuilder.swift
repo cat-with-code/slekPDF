@@ -41,6 +41,29 @@ nonisolated enum KhmerTextRebuilder {
         return Result(text: text, sources: sources)
     }
 
+    /// One rebuilt text line with where it sits on the page (Export: paragraphs and headings).
+    struct Line: Equatable, Sendable {
+        let text: String
+        /// Union of the line's character boxes (page space).
+        let box: CGRect
+        /// Median font size of the line's characters.
+        let fontSize: CGFloat
+    }
+
+    /// The page's text as rebuilt lines, in the order they appear in the file.
+    static func lines(_ chars: [PDFiumChar]) -> [Line] {
+        splitIntoLines(chars).compactMap { line in
+            var text = ""
+            text.unicodeScalars.append(contentsOf: rebuildLine(line).map(\.scalar))
+            text = text.trimmingCharacters(in: .whitespaces)
+            let boxes = line.filter { !$0.isGenerated && !$0.box.isEmpty }.map(\.box)
+            guard !text.isEmpty, let first = boxes.first else { return nil }
+            let sizes = line.filter { !$0.isGenerated }.map(\.fontSize).sorted()
+            return Line(text: text, box: boxes.dropFirst().reduce(first) { $0.union($1) },
+                        fontSize: CGFloat(sizes.isEmpty ? 0 : sizes[sizes.count / 2]))
+        }
+    }
+
     // MARK: - Lines
 
     private static func splitIntoLines(_ chars: [PDFiumChar]) -> [[PDFiumChar]] {

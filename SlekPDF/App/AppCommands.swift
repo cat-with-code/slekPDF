@@ -37,6 +37,17 @@ private extension Optional where Wrapped == DocumentSession {
 
     func show(_ panel: AppPanel) { self?.panel = panel }
 
+    /// Tools ▸ Export… / Export Searchable PDF: the Export workspace, optionally with a format chosen.
+    func openExport(_ format: ExportFormat?) {
+        guard let session = self else { return }
+        session.workspace = .export
+        session.setInspectorVisible(true)
+        if let format, session.exportSettings.format != format {
+            session.exportSettings.format = format
+            session.exportSettings.fileName = session.defaultExportFileName(for: format)
+        }
+    }
+
     /// Tools ▸ Recognize Text… / Review OCR: the Khmer OCR workspace with its inspector.
     func openOCR() {
         guard let session = self else { return }
@@ -110,7 +121,7 @@ private struct FileMenuCommands: Commands {
             // 42/43 Save work; Save a copy and 05 Export are not built yet.
             Button(language(.menuSaveWork)) { session?.requestSaveWork(language) }.shortcut(.saveWork).disabled(!session.hasDocument)
             Button(language(.menuSaveACopy)) {}.shortcut(.saveACopy).disabled(true)
-            Button(language(.menuExport)) {}.shortcut(.export).disabled(true)
+            Button(language(.menuExport)) { session.openExport(nil) }.shortcut(.export).disabled(!session.hasDocument)
         }
         CommandGroup(replacing: .printItem) {
             Button(language(.menuMergePDFs)) { session?.organizeDialog = .merge }.shortcut(.mergePDFs).disabled(!session.hasDocument)  // 19
@@ -250,8 +261,9 @@ private struct DocumentAndToolsCommands: Commands {
             Button(language(.menuRecognizeText)) { session.openOCR() }.shortcut(.recognizeText).disabled(!session.hasDocument)
             Button(language(.menuReviewOCR)) { session.openOCR() }.shortcut(.reviewOCR).disabled(!session.hasDocument)
             Divider()
-            Button(language(.menuExport)) {}.shortcut(.export).disabled(true)
-            Button(language(.menuExportSearchablePDF)) {}.shortcut(.exportSearchablePDF).disabled(true)
+            Button(language(.menuExport)) { session.openExport(nil) }.shortcut(.export).disabled(!session.hasDocument)
+            Button(language(.menuExportSearchablePDF)) { session.openExport(.searchablePDF) }
+                .shortcut(.exportSearchablePDF).disabled(!session.hasDocument)
         }
     }
 }

@@ -4,7 +4,7 @@ import Foundation
 import Tesseract
 
 /// Bundled Tesseract model sets (Resources/tessdata-*.bundle; khm + eng).
-enum OCRModelSet: String, CaseIterable, Sendable {
+nonisolated enum OCRModelSet: String, CaseIterable, Sendable {
     /// tessdata_fast 4.1.0 — 5.5 MB
     case fast = "tessdata-fast"
     /// tessdata_best 4.1.0 — 23.5 MB
@@ -15,10 +15,19 @@ enum OCRModelSet: String, CaseIterable, Sendable {
     }
 }
 
-struct OCRResult: Sendable {
+nonisolated struct OCRResult: Sendable {
     let text: String
     /// Tesseract's mean word confidence, 0–100. A review aid, not a correctness score.
     let meanConfidence: Int
+    /// Text lines in reading order, with their boxes in image pixels (origin top-left).
+    var lines: [Line] = []
+
+    struct Line: Sendable, Equatable {
+        let text: String
+        let pixelRect: CGRect
+        /// 0–100, as `meanConfidence`.
+        let confidence: Double
+    }
 }
 
 nonisolated enum OCRError: Error {
@@ -26,7 +35,7 @@ nonisolated enum OCRError: Error {
 }
 
 /// How Tesseract turns the page into black and white before recognition.
-enum OCRThresholding: Int, Sendable {
+nonisolated enum OCRThresholding: Int, Sendable {
     /// Tesseract's default global Otsu threshold.
     case otsu = 0
     /// Local (Sauvola) threshold — copes with grey or uneven paper.
@@ -98,7 +107,26 @@ nonisolated final class TesseractEngine {
 
         guard let cText = TessBaseAPIGetUTF8Text(handle) else { throw OCRError.recognitionFailed }
         defer { TessDeleteText(cText) }
-        return OCRResult(text: String(cString: cText), meanConfidence: Int(TessBaseAPIMeanTextConf(handle)))
+        return OCRResult(text: String(cString: cText), meanConfidence: Int(TessBaseAPIMeanTextConf(handle)), lines: lines())
+    }
+
+    /// The recognized text lines (after `recognize`), skipping empty ones.
+    private func lines() -> [OCRResult.Line] {
+        guard let iterator = TessBaseAPIGetIterator(handle) else { return [] }
+        defer { TessResultIteratorDelete(iterator) }
+        let page = TessResultIteratorGetPageIterator(iterator)
+        var result: [OCRResult.Line] = []
+        repeat {
+            guard let cLine = TessResultIteratorGetUTF8Text(iterator, RIL_TEXTLINE) else { continue }
+            let text = String(cString: cLine).trimmingCharacters(in: .whitespacesAndNewlines)
+            TessDeleteText(cLine)
+            var left: Int32 = 0, top: Int32 = 0, right: Int32 = 0, bottom: Int32 = 0
+            guard !text.isEmpty, TessPageIteratorBoundingBox(page, RIL_TEXTLINE, &left, &top, &right, &bottom) != 0 else { continue }
+            result.append(OCRResult.Line(text: text,
+                                         pixelRect: CGRect(x: Int(left), y: Int(top), width: Int(right - left), height: Int(bottom - top)),
+                                         confidence: Double(TessResultIteratorConfidence(iterator, RIL_TEXTLINE))))
+        } while TessResultIteratorNext(iterator, RIL_TEXTLINE) != 0
+        return result
     }
 }
 

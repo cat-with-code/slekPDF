@@ -1597,5 +1597,207 @@
     "km": "Y",
     "en": "Y",
     "note": "Figma Text Properties Position fields show X / Y in both languages"
+  },
+  "Source & text review": {
+    "km": "ពិនិត្យប្រភព និងអត្ថបទ",
+    "en": "Source & text review"
+  },
+  "Source page": {
+    "km": "ទំព័រដើម",
+    "en": "Source page"
+  },
+  "Recognized text": {
+    "km": "អត្ថបទដែលបានស្គាល់",
+    "en": "Recognized text"
+  },
+  "Review text": {
+    "km": "ពិនិត្យអត្ថបទ",
+    "en": "Review text"
+  },
+  "Uncertain regions": {
+    "km": "តំបន់មិនប្រាកដ",
+    "en": "Uncertain regions"
+  },
+  "Previous": {
+    "km": "មុន",
+    "en": "Previous"
+  },
+  "Next": {
+    "km": "បន្ទាប់",
+    "en": "Next"
+  },
+  "Low confidence · check spelling": {
+    "km": "ភាពជឿជាក់ទាប · ពិនិត្យអក្ខរាវិរុទ្ធ",
+    "en": "Low confidence · check spelling"
+  },
+  "Correct selected text": {
+    "km": "កែអត្ថបទដែលបានជ្រើស",
+    "en": "Correct selected text"
+  },
+  "Corrections update extracted text; the s": {
+    "km": "ការកែប្រែធ្វើបច្ចុប្បន្នភាពអត្ថបទដែលបានទាញយក រូបភាពដើមនៅដដែល។",
+    "en": "Corrections update extracted text; the source image stays unchanged."
+  },
+  "Skip": {
+    "km": "រំលង",
+    "en": "Skip"
+  },
+  "Recognition settings": {
+    "km": "ការកំណត់ការស្គាល់អក្សរ",
+    "en": "Recognition settings"
+  },
+  "Language": {
+    "km": "ភាសា",
+    "en": "Language"
+  },
+  "Page scope": {
+    "km": "វិសាលភាពទំព័រ",
+    "en": "Page scope"
+  },
+  "Custom range": {
+    "km": "ជួរផ្ទាល់ខ្លួន",
+    "en": "Custom range"
+  },
+  "Correct orientation deskew": {
+    "km": "កែទិសដៅ / តម្រង់ទំព័រ",
+    "en": "Correct orientation / deskew"
+  },
+  "Skip pages with usable text": {
+    "km": "រំលងទំព័រដែលមានអត្ថបទប្រើបាន",
+    "en": "Skip pages with usable text"
+  },
+  "Runs on this Mac · nothing is uploaded E": {
+    "km": "ដំណើរការនៅលើ Mac នេះ · មិនផ្ទុកឡើងទេ។ ស្រទាប់អត្ថបទដែលមានស្រាប់មិនត្រូវបានចម្លងស្ទួនទេ។",
+    "en": "Runs on this Mac · nothing is uploaded. Existing text layers are not duplicated."
+  },
+  "Review export options": {
+    "km": "ពិនិត្យជម្រើសនាំចេញ",
+    "en": "Review export options"
+  },
+  "TXT, searchable PDF, Word or Excel": {
+    "km": "TXT, PDF ស្វែងរកបាន, Word ឬ Excel។",
+    "en": "TXT, searchable PDF, Word or Excel."
+  },
+  "Recognizing text…": {
+    "km": "កំពុងស្គាល់អក្សរ…",
+    "en": "Recognizing text…"
+  },
+  "Run in background": {
+    "km": "ដំណើរការនៅខាងក្រោយ",
+    "en": "Run in background"
+  },
+  "Recognize these pages again?": {
+    "km": "ស្គាល់អក្សរទំព័រទាំងនេះម្ដងទៀតឬ?",
+    "en": "Recognize these pages again?"
+  },
+  "Save work first": {
+    "km": "រក្សាទុកការងារជាមុន",
+    "en": "Save work first"
+  },
+  "Recognize again": {
+    "km": "ស្គាល់ម្ដងទៀត",
+    "en": "Recognize again"
+  },
+  "All pages": {
+    "km": "ទំព័រទាំងអស់",
+    "en": "All pages"
+  },
+  "Current page": {
+    "km": "ទំព័របច្ចុប្បន្ន",
+    "en": "Current page"
+  },
+  "Text layer aligned": {
+    "km": "ស្រទាប់អត្ថបទតម្រឹមត្រូវ",
+    "en": "Text layer aligned"
+  },
+  "Select, search and copy now work on reco": {
+    "km": "ការជ្រើស ស្វែងរក និងចម្លង ដំណើរការលើទំព័រដែលបានស្គាល់។ រូបភាពទំព័រនៅដដែល។",
+    "en": "Select, search and copy now work on recognized pages. The page image is kept unchanged."
+  },
+  "fmt: Item N of M": {
+    "km": "ធាតុ {0} នៃ {1}",
+    "en": "Item {0} of {1}",
+    "note": "Template derived from Figma Copy/Item 1 of 3"
+  },
+  "fmt: Recognizing page N of M": {
+    "km": "កំពុងស្គាល់អក្សរទំព័រ {0} នៃ {1}",
+    "en": "Recognizing page {0} of {1}",
+    "note": "Template derived from Figma Copy/Recognizing page 2 of 5"
+  },
+  "fmt: N minutes left": {
+    "km": "{1}% · នៅសល់ប្រហែល {0} នាទី",
+    "en": "{1}% · about {0} minutes left",
+    "en_one": "{1}% · about 1 minute left",
+    "note": "Template derived from Figma Copy/40% · about 1 minute left ({0} = minutes, {1} = percent)"
+  },
+  "fmt: Language · pages · keep reading": {
+    "km": "{0} · ទំព័រ {1}។ អ្នកអាចបន្តអានខណៈពេលកំពុងដំណើរការ។",
+    "en": "{0} · pages {1}. You can keep reading while this runs.",
+    "en_one": "{0} · page {1}. You can keep reading while this runs.",
+    "note": "Template derived from Figma Copy/Khmer + English · pages 1–5 You can keep"
+  },
+  "fmt: N pages have reviewed corrections": {
+    "km": "ទំព័រ {0} មានការកែតម្រូវដែលអ្នកបានពិនិត្យរួចហើយ។ ការស្គាល់អក្សរម្ដងទៀតនឹងជំនួសវា។ សូមរក្សាទុកការងារជាមុន ប្រសិនបើអ្នកចង់រក្សាច្បាប់ចម្លង។",
+    "en": "{0} pages have corrections you already reviewed. Recognizing again replaces them. Save work first if you want to keep a copy.",
+    "en_one": "1 page has corrections you already reviewed. Recognizing again replaces them. Save work first if you want to keep a copy.",
+    "note": "Template derived from Figma Copy/2 pages have corrections you already rev"
+  },
+  "fmt: Document has N pages, use pages like": {
+    "km": "ឯកសារនេះមាន {0} ទំព័រ។ សូមប្រើទំព័រដូចជា 1–3, 5។",
+    "en": "This document has {0} pages. Use pages like 1–3, 5.",
+    "en_one": "This document has 1 page. Use page 1.",
+    "note": "Template derived from Figma Copy/This document has 3 pages Use pages like"
+  },
+  "fmt: All N items reviewed": {
+    "km": "បានពិនិត្យធាតុទាំង {0} រួចហើយ",
+    "en": "All {0} items reviewed",
+    "en_one": "1 item reviewed",
+    "note": "OCR Review Panel 129:111 (All reviewed) — not a Figma copy variable; draft Khmer, needs review"
+  },
+  "Reviewed": {
+    "km": "បានពិនិត្យ",
+    "en": "Reviewed",
+    "note": "Not a Figma copy variable (Khmer OCR states); draft Khmer — needs review"
+  },
+  "All text": {
+    "km": "អត្ថបទទាំងអស់",
+    "en": "All text",
+    "note": "Not a Figma copy variable (Khmer OCR states); draft Khmer — needs review"
+  },
+  "Less than a minute left": {
+    "km": "នៅសល់តិចជាងមួយនាទី",
+    "en": "less than a minute left",
+    "note": "Not a Figma copy variable (Khmer OCR states); draft Khmer — needs review"
+  },
+  "fmt: N% · less than a minute left": {
+    "km": "{0}% · នៅសល់តិចជាងមួយនាទី",
+    "en": "{0}% · less than a minute left",
+    "note": "Not a Figma copy variable (Khmer OCR states); draft Khmer — needs review"
+  },
+  "Deskew needs an orientation model that is not included yet": {
+    "km": "ការតម្រង់ទំព័រត្រូវការម៉ូដែលទិសដៅ ដែលមិនទាន់មានក្នុងកំណែនេះ។",
+    "en": "Deskew needs an orientation model that is not included yet.",
+    "note": "Not a Figma copy variable (Khmer OCR states); draft Khmer — needs review"
+  },
+  "No text was found on these pages": {
+    "km": "រកមិនឃើញអត្ថបទនៅលើទំព័រទាំងនេះទេ។",
+    "en": "No text was found on these pages.",
+    "note": "Not a Figma copy variable (Khmer OCR states); draft Khmer — needs review"
+  },
+  "Recognition stopped. Finished pages are kept": {
+    "km": "បានបញ្ឈប់ការស្គាល់អក្សរ។ ទំព័រដែលរួចរាល់ត្រូវបានរក្សាទុក។",
+    "en": "Recognition stopped. Finished pages are kept.",
+    "note": "Not a Figma copy variable (Khmer OCR states); draft Khmer — needs review"
+  },
+  "Recognize text to review it here": {
+    "km": "ស្គាល់អក្សរ ដើម្បីពិនិត្យវានៅទីនេះ។",
+    "en": "Recognize text to review it here.",
+    "note": "Not a Figma copy variable (Khmer OCR states); draft Khmer — needs review"
+  },
+  "fmt: Recognized text on N pages": {
+    "km": "បានស្គាល់អក្សរលើ {0} ទំព័រ",
+    "en": "Recognized text on {0} pages",
+    "en_one": "Recognized text on 1 page",
+    "note": "Khmer OCR finish toast — not a Figma copy variable; draft Khmer, needs review"
   }
 }

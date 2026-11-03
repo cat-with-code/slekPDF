@@ -146,6 +146,47 @@ final class ComponentGallerySnapshotTests: XCTestCase {
         }
     }
 
+    /// Prototype 04 settings, 12 Recognizing text…, 39 Recognize these pages again?, 41 invalid page range.
+    func testRenderOCR() async throws {
+        guard ProcessInfo.processInfo.environment["SNAPSHOT_DIR"] != nil else {
+            throw XCTSkip("Set SNAPSHOT_DIR to write snapshots")
+        }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("shell-snapshots")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        FontRegistry.registerBundledFonts()
+        let url = try XCTUnwrap(Bundle(for: ComponentGallerySnapshotTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
+        for name in ["04-ocr-settings", "12-recognizing", "39-recognize-again", "41-invalid-range"] {
+            for language in AppLanguage.allCases {
+                let session = DocumentSession()
+                await session.open(url)
+                session.workspace = .khmerOCR
+                session.ocrSettings.scope = .custom
+                session.ocrSettings.customRange = name == "41-invalid-range" ? "1–9" : "1–3"
+                switch name {
+                case "12-recognizing":
+                    session.ocrJob = OCRJob(pages: [0, 1, 2], finished: 1, currentNumber: 2)
+                    session.organizeDialog = .recognizing
+                case "39-recognize-again":
+                    session.setOCR(OCRPage(lines: [OCRLine(bounds: .zero, text: "ក", confidence: 50, reviewed: true)], languages: "khm", date: Date()),
+                                   for: session.pages[1].id)
+                    session.requestRecognition(language)
+                default: break
+                }
+                let state = AppState(defaults: UserDefaults(suiteName: "ocr-\(UUID())")!)
+                state.language = language
+                let view = MainWindowView()
+                    .environmentObject(state).environmentObject(session)
+                    .environmentObject(RecentDocuments(defaults: UserDefaults(suiteName: "ocr-recents-\(UUID())")!))
+                    .environmentObject(session.toasts)
+                    .environment(\.appLanguage, language)
+                try render(view, size: ChromeMetrics.defaultWindowSize, appearance: .aqua,
+                           to: dir.appendingPathComponent("\(name)-\(language.rawValue)-light.png"))
+                session.ocrJob = nil
+                await session.close()
+            }
+        }
+    }
+
     private func render(_ view: some View, size: CGSize, appearance: NSAppearance.Name, to url: URL) throws {
         let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height))
         host.frame = CGRect(origin: .zero, size: size)

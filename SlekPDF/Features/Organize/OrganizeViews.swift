@@ -261,6 +261,8 @@ struct OrganizeDialogView: View {
         case .merge: MergeSheet()
         case .split: SplitSheet()
         case .closeConfirm: CloseConfirmDialog()
+        case .recognizing: RecognizingDialog()  // 12
+        case .recognizeAgain: RecognizeAgainDialog()  // 39
         }
     }
 

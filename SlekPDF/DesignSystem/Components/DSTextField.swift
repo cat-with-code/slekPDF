@@ -11,6 +11,8 @@ struct DSTextField: View {
     /// Helper text already in the interface language (e.g. "Saved in “Documents”").
     var helperText: String?
     var error: CopyKey?
+    /// Error text already in the interface language (e.g. with the page count, Figma 41).
+    var errorText: String?
     /// Focus the field when it appears (dialogs); off for fields in panels.
     var autofocus = true
     var onSubmit: () -> Void = {}
@@ -40,15 +42,17 @@ struct DSTextField: View {
             .background(RoundedRectangle(cornerRadius: DSRadius.sm).fill(DSColor.backgroundSurface))
             .overlay(
                 RoundedRectangle(cornerRadius: DSRadius.sm)
-                    .strokeBorder(error != nil ? DSColor.statusDanger : DSColor.borderDefault, lineWidth: error != nil ? 1.5 : DSStroke.default)
+                    .strokeBorder(hasError ? DSColor.statusDanger : DSColor.borderDefault, lineWidth: hasError ? 1.5 : DSStroke.default)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: DSRadius.shell)
                     .strokeBorder(DSColor.borderFocus, lineWidth: DSStroke.focus)
                     .padding(-4)
-                    .opacity(isFocused && error == nil ? 1 : 0)
+                    .opacity(isFocused && !hasError ? 1 : 0)
             )
-            if let message = error ?? helper {
+            if let errorText {
+                Text(errorText).dsText(.caption).foregroundColor(DSColor.statusDanger)
+            } else if let message = error ?? helper {
                 DSLabel(message, style: .caption).foregroundColor(error != nil ? DSColor.statusDanger : DSColor.textTertiary)
             } else if let helperText {
                 Text(helperText).dsText(.caption).foregroundColor(DSColor.textTertiary)
@@ -56,4 +60,6 @@ struct DSTextField: View {
         }
         .onAppear { if autofocus { isFocused = true } }
     }
+
+    private var hasError: Bool { error != nil || errorText != nil }
 }

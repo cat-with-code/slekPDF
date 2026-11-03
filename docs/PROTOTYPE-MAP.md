@@ -50,7 +50,7 @@ Snapshots of each in Khmer/English × light/dark: `Tools/render_snapshots.sh` �
 | 02 · D-02 | Organize pages | Organize workspace | Page Organizer 110:350, Organize Panel 110:351, Drop Indicator |
 | 19–23 | Merge PDFs, Delete pages?, Split, New PDF saved, Pages deleted | Dialogs/toasts over Organize | Merge PDFs Sheet 145:98, File List Item, Dialog 135:230 Delete pages, Toast 143:68 |
 | 03 · D-03 | Annotate | Annotate workspace | Annotate Tools 125:135, Added Text Box 125:23, Highlight 125:26, Comment Pin/Card 122:*, Text Properties Panel 123:292 |
-| 04 · D-04 | Khmer OCR review | OCR workspace, side-by-side canvas | OCR Review Panel 129:111, Uncertain Region 129:14, Recognition Settings 129:231 |
+| 04 · D-04 | Khmer OCR review | OCR workspace, side-by-side canvas — plan and status: docs/plans/khmer-ocr.md | OCR Review Panel 129:111, Uncertain Region 129:14, Recognition Settings 129:231 |
 | 12, 39, 41 | Recognizing…, Recognize again?, invalid page range | Progress dialog / confirm / field error | Dialog Progress, Progress Bar 100:74, Text Field Error |
 | 05–09 (+a) | Export Word / Excel / Word+Excel / Searchable PDF / Plain text, format menu | Export workspace | Export Options 132:409, Format Suggestion 132:36, Export Preview 133:399, Table Editor 131:*, Review Issue 133:44 |
 | 17, 18, 36, 37, 38, 40, 14 | No tables, Export finished, File exists, Exporting…, partial success, pages changed, could not save | Dialogs/toasts/banners | Dialog, Toast, Banner 141:101 |

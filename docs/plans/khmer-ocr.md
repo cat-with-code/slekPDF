@@ -1,0 +1,32 @@
+# Khmer OCR workspace (Prototype 04, 12, 39, 41) — plan
+
+Figma (Prototype page): KM · 04 Khmer OCR review (164:6281), KM · 12 Recognizing text… (164:6391),
+KM · 39 Recognize these pages again? (408:48719), KM · 41 OCR · invalid page range (410:50805).
+Components: Recognition Settings 129:231 (Ready / Running), OCR Review Panel 129:111 (Reviewing / All reviewed),
+Uncertain Region 129:14 (Default dashed #A25913 on #F3C498 / Active #3A1EF1 on #C0B7FB / Reviewed #087D17 on #9FF9A7).
+
+## Model and storage
+
+- `OCRLine` (bounds in the source page's own PDF space, recognized text, confidence 0–100, correction, reviewed) and
+  `OCRPage` live in `PDFiumAnnotations.swift`; `DocumentSession.ocrResults[PageRef.ID]` (follows reorder / rotate /
+  delete), undoable via `setOCR`, counted in `hasUnsavedChanges`.
+- Saved work: a hidden Text annotation at the page origin with `/SlekOCR` (JSON) and `/Contents` (plain text);
+  stripped and rewritten on every save like the other Slek annotations; read back on open, PDFKit's copy removed.
+- Recognition: PDFium renders the page at 300 ppi with the PageRef's turn → `OCRWorker` (Tesseract best, Sauvola,
+  own serial queue, engine kept per language, 60 s per page, cancel flag) → line boxes mapped back with
+  `FPDF_DeviceToPage`. Lines below 80 confidence are “Uncertain regions” (a hint, not a correctness score).
+
+## Build order (commit each)
+
+1. ✅ Recognition (OCRWorkspaceTests; snapshots 04-ocr-settings, 12-recognizing, 39-recognize-again, 41-invalid-range):
+   Recognition settings inspector (language, page scope, custom range + 41 error, skip pages with usable text,
+   Recognize text / Running progress with Cancel, Review export options → Export), 12 dialog (Run in background /
+   Cancel; finished pages are kept), 39 when reviewed corrections would be replaced, Tools ▸ Recognize Text… /
+   Review OCR open the workspace. Open points:
+   - “Correct orientation / deskew” is shown disabled: needs Tesseract's `osd` model (not bundled).
+   - Disabled primary button is faded accent, Figma shows grey (DSButton behaviour, all screens).
+   - Recognized text is not yet used by Search / Copy / Export (Export step), and no status-bar spinner yet.
+   - Draft Khmer: All text, Reviewed, All N items reviewed, time-left variants, deskew note, finish/stop/no-text toasts.
+2. Review: side-by-side canvas (Source page with numbered Uncertain Regions | Recognized text with the OCR Review
+   Panel): Review text filter (Uncertain regions / All text), Item n of N with Previous / Next, confidence badge,
+   Correct selected text, Skip / Mark reviewed, All reviewed state with Review export options.

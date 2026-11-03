@@ -37,6 +37,13 @@ private extension Optional where Wrapped == DocumentSession {
 
     func show(_ panel: AppPanel) { self?.panel = panel }
 
+    /// Tools ▸ Recognize Text… / Review OCR: the Khmer OCR workspace with its inspector.
+    func openOCR() {
+        guard let session = self else { return }
+        session.workspace = .khmerOCR
+        session.setInspectorVisible(true)
+    }
+
     /// Tools menu: switches to Annotate with `tool` active; the canvas takes focus for V/H/C/Esc.
     func chooseTool(_ tool: AnnotateTool) {
         guard let session = self else { return }
@@ -239,8 +246,9 @@ private struct DocumentAndToolsCommands: Commands {
             Button(language(.menuHighlightText)) { session.chooseTool(.highlight) }.disabled(!session.hasDocument)
             Button(language(.menuAddComment)) { session.chooseTool(.comment) }.disabled(!session.hasDocument)
             Divider()
-            Button(language(.menuRecognizeText)) {}.shortcut(.recognizeText).disabled(true)
-            Button(language(.menuReviewOCR)) {}.shortcut(.reviewOCR).disabled(true)
+            // Recognize Text… opens the OCR settings (04); Review OCR goes to the review.
+            Button(language(.menuRecognizeText)) { session.openOCR() }.shortcut(.recognizeText).disabled(!session.hasDocument)
+            Button(language(.menuReviewOCR)) { session.openOCR() }.shortcut(.reviewOCR).disabled(!session.hasDocument)
             Divider()
             Button(language(.menuExport)) {}.shortcut(.export).disabled(true)
             Button(language(.menuExportSearchablePDF)) {}.shortcut(.exportSearchablePDF).disabled(true)

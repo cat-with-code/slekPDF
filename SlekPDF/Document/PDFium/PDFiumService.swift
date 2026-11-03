@@ -36,7 +36,7 @@ final class PDFiumService {
     /// A page for a new PDF: from an open document (with extra rotation) or from another PDF file.
     enum PageSource: Sendable {
         /// A page of an open document with Slek's annotations as they are now (replacing any saved in the file).
-        case open(DocumentID, page: Int, quarterTurns: Int, annotations: [PageAnnotation] = [])
+        case open(DocumentID, page: Int, quarterTurns: Int, annotations: [PageAnnotation] = [], ocr: OCRPage? = nil)
         case file(URL, page: Int)
     }
 
@@ -47,12 +47,13 @@ final class PDFiumService {
         var files: [URL: PDFiumDocument] = [:]
         for page in pages {
             switch page {
-            case let .open(id, index, turns, annotations):
+            case let .open(id, index, turns, annotations, ocr):
                 guard let source = documents[id] else { throw PDFiumError.file }
                 try output.appendPage(from: source, index: index, quarterTurns: turns)
                 let added = output.pageCount - 1
                 try output.removeSlekAnnotations(page: added)
                 for annotation in annotations { try output.add(annotation, page: added) }
+                if let ocr { try output.addOCR(ocr, page: added) }
             case let .file(fileURL, index):
                 let source = try files[fileURL] ?? PDFiumDocument(url: fileURL)
                 files[fileURL] = source
@@ -70,6 +71,33 @@ final class PDFiumService {
             if let found = try? document.slekAnnotations(page: index), !found.isEmpty { result[index] = found }
         }
         return result
+    }
+
+    /// OCR results saved in an open document, by source page (reopened saved work).
+    func ocrPages(_ id: DocumentID) -> [Int: OCRPage] {
+        guard let document = documents[id] else { return [:] }
+        var result: [Int: OCRPage] = [:]
+        for index in 0..<document.pageCount {
+            if let ocr = try? document.slekOCR(page: index) { result[index] = ocr }
+        }
+        return result
+    }
+
+    /// Page image for OCR (see `PDFiumDocument.renderForOCR`).
+    func renderForOCR(_ id: DocumentID, page: Int, quarterTurns: Int, ppi: CGFloat) -> CGImage? {
+        documents[id]?.renderForOCR(page: page, quarterTurns: quarterTurns, ppi: ppi)
+    }
+
+    /// OCR line boxes (image pixels) back in page space.
+    func pageRects(_ id: DocumentID, _ rects: [CGRect], page: Int, quarterTurns: Int, ppi: CGFloat) -> [CGRect] {
+        documents[id]?.pageRects(rects, page: page, quarterTurns: quarterTurns, ppi: ppi) ?? []
+    }
+
+    /// Whether a page already has a usable text layer ("Skip pages with usable text"): enough letters, not just a
+    /// page number or a stray scanner stamp.
+    func hasUsableText(_ id: DocumentID, page: Int) -> Bool {
+        guard let text = try? documents[id]?.text(ofPage: page) else { return false }
+        return text.unicodeScalars.filter { $0.properties.isAlphabetic }.count >= 20
     }
 
     /// Page count of a PDF file that is not open (Merge PDFs list).

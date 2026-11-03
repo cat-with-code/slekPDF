@@ -8,12 +8,15 @@ struct DSDialog<Content: View>: View {
     let title: String
     let message: String
     let cancel: CopyKey
-    let confirm: CopyKey
+    /// nil = no confirm button (Figma 12 Recognizing text…: Run in background · Cancel).
+    let confirm: CopyKey?
     var confirmDisabled = false
     /// Destructive for irreversible actions (Figma Button: Destructive, e.g. "Delete pages").
     var confirmStyle: DSButton.Style = .primary
     /// A plain third choice on the left (e.g. "Don’t save").
     var secondary: (title: CopyKey, action: () -> Void)?
+    /// The plain left button is the dialog's Cancel (Esc), e.g. Figma 39: Cancel · Save work first · Recognize again.
+    var secondaryCancels = false
     let onCancel: () -> Void
     let onConfirm: () -> Void
     @ViewBuilder var content: Content
@@ -30,12 +33,17 @@ struct DSDialog<Content: View>: View {
                 }
             }
             HStack(spacing: DSSpace.s8) {
-                if let secondary { DSButton(secondary.title, style: .plain, action: secondary.action) }
+                if let secondary {
+                    DSButton(secondary.title, style: .plain, action: secondary.action)
+                        .keyboardShortcut(secondaryCancels ? .cancelAction : nil)
+                }
                 Spacer()
-                DSButton(cancel, action: onCancel).keyboardShortcut(.cancelAction)
-                DSButton(confirm, style: confirmStyle, action: onConfirm)
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(confirmDisabled)
+                DSButton(cancel, action: onCancel).keyboardShortcut(secondaryCancels ? nil : .cancelAction)
+                if let confirm {
+                    DSButton(confirm, style: confirmStyle, action: onConfirm)
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(confirmDisabled)
+                }
             }
         }
         .padding(DSSpace.s24)
@@ -49,10 +57,11 @@ struct DSDialog<Content: View>: View {
 }
 
 extension DSDialog where Content == EmptyView {
-    init(icon: DSIcon, iconColor: Color = DSColor.textSecondary, title: String, message: String, cancel: CopyKey, confirm: CopyKey,
-         confirmStyle: DSButton.Style = .primary, secondary: (title: CopyKey, action: () -> Void)? = nil,
+    init(icon: DSIcon, iconColor: Color = DSColor.textSecondary, title: String, message: String, cancel: CopyKey, confirm: CopyKey?,
+         confirmStyle: DSButton.Style = .primary, secondary: (title: CopyKey, action: () -> Void)? = nil, secondaryCancels: Bool = false,
          onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void) {
         self.init(icon: icon, iconColor: iconColor, title: title, message: message, cancel: cancel, confirm: confirm,
-                  confirmStyle: confirmStyle, secondary: secondary, onCancel: onCancel, onConfirm: onConfirm) { EmptyView() }
+                  confirmStyle: confirmStyle, secondary: secondary, secondaryCancels: secondaryCancels,
+                  onCancel: onCancel, onConfirm: onConfirm) { EmptyView() }
     }
 }

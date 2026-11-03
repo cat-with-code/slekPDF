@@ -90,8 +90,21 @@ final class DocumentSession: ObservableObject {
     private var savedAnnotations: [PageRef.ID: [PageAnnotation]] = [:]
 
     var hasUnsavedChanges: Bool {
-        pages != savedPages || annotations != savedAnnotations || !(textEditing?.text.isEmpty ?? true)
+        pages != savedPages || annotations != savedAnnotations || ocrResults != savedOCR || !(textEditing?.text.isEmpty ?? true)
     }
+
+    // MARK: Khmer OCR (Figma 04 / 12 / 39 / 41)
+
+    /// Recognized text per page (the PageRef, like annotations).
+    @Published private(set) var ocrResults: [PageRef.ID: OCRPage] = [:]
+    private var savedOCR: [PageRef.ID: OCRPage] = [:]
+    /// Recognition settings (Figma Recognition Settings 129:231).
+    @Published var ocrSettings = OCRSettings()
+    /// The recognition in progress (also when it runs in the background).
+    @Published var ocrJob: OCRJob?
+    /// Pages waiting for “Recognize again” (39).
+    var pendingOCRPages: [Int] = []
+    var ocrCancel: CancelFlag?
     var selectedPageIndices: [Int] { pages.indices.filter { selectedPageIDs.contains(pages[$0].id) } }
     /// The open organize dialog (20 Delete pages?, 42 Save work).
     @Published var organizeDialog: OrganizeDialog?
@@ -100,7 +113,7 @@ final class DocumentSession: ObservableObject {
     /// "Don’t ask again this session" in 20 Delete pages?
     var skipDeleteConfirmation = false
 
-    enum OrganizeDialog: Equatable { case deletePages, saveWork, merge, split, closeConfirm }
+    enum OrganizeDialog: Equatable { case deletePages, saveWork, merge, split, closeConfirm, recognizing, recognizeAgain }
 
     /// Every open session, for the quit check (Save changes before closing?).
     static let all = NSHashTable<DocumentSession>.weakObjects()
@@ -118,7 +131,8 @@ final class DocumentSession: ObservableObject {
     func editedPageSources(_ indices: [Int]? = nil) -> [PDFiumService.PageSource] {
         guard let id = pdfiumID else { return [] }
         return (indices ?? Array(pages.indices)).map {
-            .open(id, page: pages[$0].source, quarterTurns: pages[$0].quarterTurns, annotations: annotations[pages[$0].id] ?? [])
+            .open(id, page: pages[$0].source, quarterTurns: pages[$0].quarterTurns, annotations: annotations[pages[$0].id] ?? [],
+                  ocr: ocrResults[pages[$0].id])
         }
     }
 
@@ -181,6 +195,7 @@ final class DocumentSession: ObservableObject {
         }
         // Reopened saved work: Slek's annotations come back into the model and are drawn by Slek, not by PDFKit.
         let stored = await PDFiumService.shared.annotations(opened.id)
+        let storedOCR = await PDFiumService.shared.ocrPages(opened.id)
         await close()
         originalPages = (0..<pdf.pageCount).compactMap { pdf.page(at: $0) }
         originalRotations = originalPages.map(\.rotation)
@@ -198,6 +213,18 @@ final class DocumentSession: ObservableObject {
             pages.indices.contains(source) ? (pages[source].id, list) : nil
         })
         savedAnnotations = annotations
+        for source in storedOCR.keys where originalPages.indices.contains(source) {
+            // PDFKit's copy of the hidden OCR note (at the page origin).
+            let page = originalPages[source]
+            for note in page.annotations where note.type == "Text" && abs(note.bounds.minX) < 0.5 && abs(note.bounds.maxY) < 0.5 {
+                if let popup = note.popup { page.removeAnnotation(popup) }
+                page.removeAnnotation(note)
+            }
+        }
+        ocrResults = Dictionary(uniqueKeysWithValues: storedOCR.compactMap { source, ocr in
+            pages.indices.contains(source) ? (pages[source].id, ocr) : nil
+        })
+        savedOCR = ocrResults
         mirrorAnnotations()
         selectedPageIDs = pages.first.map { [$0.id] } ?? []
         document = pdf
@@ -226,6 +253,10 @@ final class DocumentSession: ObservableObject {
         savedPages = []
         annotations = [:]
         savedAnnotations = [:]
+        ocrCancel?.cancel()
+        ocrJob = nil
+        ocrResults = [:]
+        savedOCR = [:]
         textEditing = nil  // first: changing the tool would commit it
         annotateTool = .select
         selectedAnnotationID = nil
@@ -524,6 +555,17 @@ final class DocumentSession: ObservableObject {
         try await PDFiumService.shared.writePDF(editedPageSources(), to: url)
         savedPages = pages
         savedAnnotations = annotations
+        savedOCR = ocrResults
+    }
+
+    /// Replaces page `pageID`'s OCR result (recognition, a correction, Mark reviewed) and registers the undo.
+    func setOCR(_ ocr: OCRPage?, for pageID: PageRef.ID) {
+        let old = ocrResults[pageID]
+        guard old != ocr else { return }
+        undoManager?.registerUndo(withTarget: self) { session in
+            MainActor.assumeIsolated { session.setOCR(old, for: pageID) }
+        }
+        ocrResults[pageID] = ocr
     }
 
     // MARK: - Annotate (docs/plans/annotate.md)

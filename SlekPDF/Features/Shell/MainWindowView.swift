@@ -76,6 +76,7 @@ struct MainWindowView: View {
                                 switch session.workspace {
                                 case .organizePages: OrganizeInspector()
                                 case .annotate: AnnotateInspector()  // Prototype 03
+                                case .khmerOCR: OCRInspector()  // Prototype 04
                                 default: ReadInspectorView()
                                 }
                             }

@@ -187,10 +187,41 @@ nonisolated struct CommentInfo: Codable, Equatable, Sendable {
     }
 }
 
+/// Khmer OCR (Figma 04): one recognized text line on a page. Bounds are in the source page's own (unrotated) PDF space.
+nonisolated struct OCRLine: Codable, Equatable, Sendable, Identifiable {
+    var id = UUID()
+    var bounds: CGRect
+    /// What Tesseract read.
+    var text: String
+    /// Tesseract's line confidence, 0–100: a review hint, not a correctness score.
+    var confidence: Double
+    /// The reviewer's correction, if any.
+    var correction: String?
+    var reviewed = false
+
+    /// Lines below this confidence are listed as Uncertain regions.
+    static let uncertainBelow: Double = 80
+
+    var displayText: String { correction ?? text }
+    var isUncertain: Bool { confidence < Self.uncertainBelow }
+}
+
+/// The recognized text of one page.
+nonisolated struct OCRPage: Codable, Equatable, Sendable {
+    var lines: [OCRLine]
+    /// Tesseract languages used ("khm+eng").
+    var languages: String
+    var date: Date
+
+    var text: String { lines.map(\.displayText).joined(separator: "\n") }
+    /// Corrections or reviews the person made (re-recognizing would replace them).
+    var hasReviewWork: Bool { lines.contains { $0.reviewed || $0.correction != nil } }
+}
+
 /// Private keys marking annotations Slek owns; other annotations in a PDF are left exactly as they are.
 nonisolated private enum SlekKey {
-    static let textBox = "SlekTextBox", highlight = "SlekHighlight", comment = "SlekComment"
-    static let all = [textBox, highlight, comment]
+    static let textBox = "SlekTextBox", highlight = "SlekHighlight", comment = "SlekComment", ocr = "SlekOCR"
+    static let all = [textBox, highlight, comment, ocr]
 }
 
 nonisolated extension PDFiumDocument {
@@ -263,6 +294,80 @@ nonisolated extension PDFiumDocument {
         return result
     }
 
+    /// Stores a page's OCR result in saved work: a hidden note at the page origin whose `/SlekOCR` holds the lines and
+    /// whose `/Contents` is the plain text.
+    func addOCR(_ ocr: OCRPage, page index: Int) throws {
+        guard let page = FPDF_LoadPage(handle, Int32(index)) else { throw PDFiumError.page }
+        defer { FPDF_ClosePage(page) }
+        guard let annot = FPDFPage_CreateAnnot(page, FPDF_ANNOT_TEXT) else { throw PDFiumError.saveFailed }
+        defer { FPDFPage_CloseAnnot(annot) }
+        var frame = FS_RECTF(left: 0, top: 0, right: 0, bottom: 0)
+        let json = String(decoding: try JSONEncoder().encode(ocr), as: UTF8.self)
+        let ok = FPDFAnnot_SetRect(annot, &frame) != 0
+            && FPDFAnnot_SetFlags(annot, Int32(FPDF_ANNOT_FLAG_HIDDEN)) != 0
+            && Self.wide(ocr.text) { FPDFAnnot_SetStringValue(annot, "Contents", $0) } != 0
+            && Self.wide(json) { FPDFAnnot_SetStringValue(annot, SlekKey.ocr, $0) } != 0
+        guard ok else { throw PDFiumError.saveFailed }
+    }
+
+    /// The OCR result stored on page `index`, if any.
+    func slekOCR(page index: Int) throws -> OCRPage? {
+        guard let page = FPDF_LoadPage(handle, Int32(index)) else { throw PDFiumError.page }
+        defer { FPDF_ClosePage(page) }
+        for i in 0..<FPDFPage_GetAnnotCount(page) {
+            guard let annot = FPDFPage_GetAnnot(page, i) else { continue }
+            defer { FPDFPage_CloseAnnot(annot) }
+            if let json = Self.string(annot, SlekKey.ocr) { return try? JSONDecoder().decode(OCRPage.self, from: Data(json.utf8)) }
+        }
+        return nil
+    }
+
+    /// Renders page `index` for OCR: `quarterTurns` × 90° clockwise on top of the page's own rotation, white background.
+    /// Returns the image and its pixel size (for `pageRect`).
+    func renderForOCR(page index: Int, quarterTurns: Int, ppi: CGFloat) -> CGImage? {
+        guard let page = FPDF_LoadPage(handle, Int32(index)) else { return nil }
+        defer { FPDF_ClosePage(page) }
+        let size = Self.deviceSize(page, quarterTurns: quarterTurns, ppi: ppi)
+        return Self.renderBitmap(page, size: size, rotate: Int32(quarterTurns % 4))
+    }
+
+    /// Maps rectangles in a `renderForOCR` image (pixels, origin top-left) back to the page's PDF space.
+    func pageRects(_ rects: [CGRect], page index: Int, quarterTurns: Int, ppi: CGFloat) -> [CGRect] {
+        guard let page = FPDF_LoadPage(handle, Int32(index)) else { return [] }
+        defer { FPDF_ClosePage(page) }
+        let size = Self.deviceSize(page, quarterTurns: quarterTurns, ppi: ppi)
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            var px: Double = 0, py: Double = 0
+            _ = FPDF_DeviceToPage(page, 0, 0, Int32(size.width), Int32(size.height), Int32(quarterTurns % 4), Int32(x), Int32(y), &px, &py)
+            return CGPoint(x: px, y: py)
+        }
+        return rects.map { rect in
+            let a = point(rect.minX, rect.minY), b = point(rect.maxX, rect.maxY)
+            return CGRect(x: min(a.x, b.x), y: min(a.y, b.y), width: abs(a.x - b.x), height: abs(a.y - b.y))
+        }
+    }
+
+    private static func deviceSize(_ page: FPDF_PAGE, quarterTurns: Int, ppi: CGFloat) -> (width: Int, height: Int) {
+        let scale = ppi / 72
+        let width = Int(CGFloat(FPDF_GetPageWidthF(page)) * scale), height = Int(CGFloat(FPDF_GetPageHeightF(page)) * scale)
+        return quarterTurns % 2 == 0 ? (width, height) : (height, width)
+    }
+
+    private static func renderBitmap(_ page: FPDF_PAGE, size: (width: Int, height: Int), rotate: Int32) -> CGImage? {
+        let width = Int32(size.width), height = Int32(size.height)
+        guard let bitmap = FPDFBitmap_Create(width, height, 0) else { return nil }
+        defer { FPDFBitmap_Destroy(bitmap) }
+        _ = FPDFBitmap_FillRect(bitmap, 0, 0, width, height, 0xFFFF_FFFF)
+        FPDF_RenderPageBitmap(bitmap, page, 0, 0, width, height, rotate, FPDF_ANNOT)
+        guard let buffer = FPDFBitmap_GetBuffer(bitmap) else { return nil }
+        let stride = Int(FPDFBitmap_GetStride(bitmap))
+        guard let provider = CGDataProvider(data: Data(bytes: buffer, count: stride * Int(height)) as CFData) else { return nil }
+        return CGImage(width: Int(width), height: Int(height), bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: stride,
+                       space: CGColorSpaceCreateDeviceRGB(),
+                       bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+    }
+
     /// Removes Slek's annotations from page `index` (before writing the model's current ones).
     func removeSlekAnnotations(page index: Int) throws {
         guard let page = FPDF_LoadPage(handle, Int32(index)) else { throw PDFiumError.page }
@@ -279,18 +384,7 @@ nonisolated extension PDFiumDocument {
     func render(page index: Int, scale: CGFloat) -> CGImage? {
         guard let page = FPDF_LoadPage(handle, Int32(index)) else { return nil }
         defer { FPDF_ClosePage(page) }
-        let width = Int32(CGFloat(FPDF_GetPageWidthF(page)) * scale), height = Int32(CGFloat(FPDF_GetPageHeightF(page)) * scale)
-        guard let bitmap = FPDFBitmap_Create(width, height, 0) else { return nil }
-        defer { FPDFBitmap_Destroy(bitmap) }
-        _ = FPDFBitmap_FillRect(bitmap, 0, 0, width, height, 0xFFFF_FFFF)
-        FPDF_RenderPageBitmap(bitmap, page, 0, 0, width, height, 0, FPDF_ANNOT)
-        guard let buffer = FPDFBitmap_GetBuffer(bitmap) else { return nil }
-        let stride = Int(FPDFBitmap_GetStride(bitmap))
-        guard let provider = CGDataProvider(data: Data(bytes: buffer, count: stride * Int(height)) as CFData) else { return nil }
-        return CGImage(width: Int(width), height: Int(height), bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: stride,
-                       space: CGColorSpaceCreateDeviceRGB(),
-                       bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue),
-                       provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+        return Self.renderBitmap(page, size: Self.deviceSize(page, quarterTurns: 0, ppi: scale * 72), rotate: 0)
     }
 
     private static func wide<T>(_ string: String, _ body: (UnsafePointer<UInt16>) -> T) -> T {

@@ -175,6 +175,36 @@ final class TextBoxTests: XCTestCase {
         XCTAssertEqual(style.alignment, .center)
     }
 
+    /// A click (no drag) on an added box opens it for typing; before, a click only selected it and typing went nowhere.
+    func testClickingAnAddedBoxStartsTyping() async throws {
+        let (session, _) = try await open()
+        session.beginTextBox(onPageAt: 0, at: CGPoint(x: 72, y: 500))
+        session.typeInTextBox(khmer)
+        session.commitTextEditing()
+        let box = try XCTUnwrap(textBoxes(session).first)
+        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 800, height: 1000), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let view = KhmerPDFView(frame: CGRect(x: 0, y: 0, width: 800, height: 1000))
+        window.contentView = view
+        view.document = session.document
+        view.session = session
+        view.layoutDocumentView()
+        let page = try XCTUnwrap(session.document?.page(at: 0))
+        let center = view.convert(view.convert(CGPoint(x: box.bounds.midX, y: box.bounds.midY), from: page), to: nil)
+        func mouse(_ type: NSEvent.EventType) -> NSEvent {
+            NSEvent.mouseEvent(with: type, location: center, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                               context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+        }
+        NSApp.postEvent(mouse(.leftMouseUp), atStart: false)
+        view.mouseDown(with: mouse(.leftMouseDown))
+        XCTAssertEqual(session.textEditing?.id, box.id)
+        XCTAssertEqual(session.textEditing?.text, khmer)
+        XCTAssertEqual(textBoxes(session).first?.bounds, box.bounds, "a click does not move the box")
+        session.commitTextEditing()
+        window.orderOut(nil)  // not close(): the test host quits when its last window closes
+        await session.close()
+    }
+
     func testOnPageEditorFollowsTheDraftAndTypingReachesTheSession() async throws {
         let (session, _) = try await open()
         let view = KhmerPDFView(frame: CGRect(x: 0, y: 0, width: 800, height: 1000))

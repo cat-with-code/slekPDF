@@ -212,18 +212,27 @@ final class KhmerPDFView: PDFView {
             if event.clickCount >= 2 { return session.beginEditingTextBox(annotation.model.id) }
             let handle = annotation.handle(at: hit.point)
             session.selectAnnotation(annotation.model.id, reveal: false)
-            dragTextBox(annotation.model, handle: handle, on: hit.page, from: hit.point)
+            // A click (no drag) on the box starts typing in it; dragging moves it, handles resize.
+            if !dragTextBox(annotation.model, handle: handle, on: hit.page, from: hit.point), handle == nil {
+                session.beginEditingTextBox(annotation.model.id)
+            }
         }
     }
 
     /// Drag to move; handles resize (the left/right edge sets the width; the height follows the text).
-    /// One undo for the whole drag.
-    private func dragTextBox(_ original: PageAnnotation, handle: SlekPDFAnnotation.Handle?, on page: PDFPage, from start: CGPoint) {
-        guard let session = annotating, let window else { return }
+    /// One undo for the whole drag. Returns whether the mouse moved (a plain click returns false).
+    @discardableResult
+    private func dragTextBox(_ original: PageAnnotation, handle: SlekPDFAnnotation.Handle?, on page: PDFPage, from start: CGPoint) -> Bool {
+        guard let session = annotating, let window else { return false }
         let limits = page.bounds(for: .mediaBox)
+        var moved = false
         while let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
             let point = convert(convert(next.locationInWindow, from: nil), to: page)
             let dx = point.x - start.x, dy = point.y - start.y
+            if next.type == .leftMouseUp, !moved { return false }
+            // Small hand movement during a click is not a drag (3 pt on the page).
+            guard moved || hypot(dx, dy) >= 3 else { continue }
+            moved = true
             var bounds = original.bounds
             switch handle {
             case .left?, .topLeft?, .bottomLeft?:
@@ -239,6 +248,7 @@ final class KhmerPDFView: PDFView {
             if next.type == .leftMouseUp { break }
         }
         session.finishTextBoxDrag(from: original)
+        return true
     }
 
     // MARK: Text box editor

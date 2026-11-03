@@ -26,13 +26,19 @@ Inspector = Annotate Panel 157:188:
 
 ## On-screen drawing
 
-Our own AppKit/SwiftUI overlay over the PDFView, mapped with `PDFView.convert` (like the search highlights).
-Not PDFKit annotation drawing. Text editing uses a native text view (Khmer IME composition).
+Each model annotation is mirrored onto its PDFKit page as a `SlekPDFAnnotation` (Features/Annotate/AnnotationDisplay.swift).
+This is a PDFAnnotation subclass whose `draw` is Slek's own: the same CoreText glyph outlines as the saved appearance,
+plus highlight fills (multiply) and comment pins. So PDFKit handles position, zoom, rotation and printing,
+but never lays out Khmer itself. PDFKit's own copies of saved Slek annotations are taken off the page on open
+(matched by type + top-left corner, because PDFKit doesn't expose private keys). Popups PDFKit attaches to notes are removed.
+Selection, dragging and text editing (steps 2–3) are Slek's own views over the PDFView.
+Text editing uses a native text view (Khmer IME composition).
 The single-key tools (V/T/H/C/Esc) are handled by the canvas and are inactive while a text field has focus.
 
 ## Build order (commit each)
 
-1. Annotation model, save, reload, undo, unsaved-changes check, and the print filter updated.
+1. ✅ Annotation model, save, reload, undo, unsaved-changes check, and the print filter updated
+   (AnnotationModelTests; PageSource.open carries annotations, so Save work / Merge / Split include them).
    Test: a text box with "ឯកសារនេះត្រូវបានពិនិត្យរួចហើយ" goes through save → reopen. All properties must restore,
    PDFium must extract the exact Unicode, and an independent renderer must draw it correctly.
    If the independent render fails, stop and report.

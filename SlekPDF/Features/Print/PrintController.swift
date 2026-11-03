@@ -20,6 +20,8 @@ final class PrintOptions: ObservableObject {
     /// Whether an annotation already in the PDF prints with these options.
     func prints(_ annotation: PDFAnnotation) -> Bool {
         guard content == .documentAndAnnotations else { return false }
+        // Comment pins are on-screen markers; comments print only as the summary page (once built).
+        if let slek = annotation as? SlekPDFAnnotation, slek.isComment { return false }
         switch annotation.type {
         case "FreeText": return addedText
         case "Highlight": return highlights

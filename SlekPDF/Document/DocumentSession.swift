@@ -63,7 +63,11 @@ final class DocumentSession: ObservableObject {
     /// The window's undo manager (MainWindowView), so Edit ▸ Undo / ⌘Z and the toolbar undo page edits.
     weak var undoManager: UndoManager?
 
-    var hasUnsavedChanges: Bool { pages != savedPages }
+    /// Annotate: Slek's annotations per page (the PageRef, so they follow reorder, rotation and delete/undo).
+    @Published private(set) var annotations: [PageRef.ID: [PageAnnotation]] = [:]
+    private var savedAnnotations: [PageRef.ID: [PageAnnotation]] = [:]
+
+    var hasUnsavedChanges: Bool { pages != savedPages || annotations != savedAnnotations }
     var selectedPageIndices: [Int] { pages.indices.filter { selectedPageIDs.contains(pages[$0].id) } }
     /// The open organize dialog (20 Delete pages?, 42 Save work).
     @Published var organizeDialog: OrganizeDialog?
@@ -89,7 +93,9 @@ final class DocumentSession: ObservableObject {
     /// The edited document's pages for PDFium (current order and rotation).
     func editedPageSources(_ indices: [Int]? = nil) -> [PDFiumService.PageSource] {
         guard let id = pdfiumID else { return [] }
-        return (indices ?? Array(pages.indices)).map { .open(id, page: pages[$0].source, quarterTurns: pages[$0].quarterTurns) }
+        return (indices ?? Array(pages.indices)).map {
+            .open(id, page: pages[$0].source, quarterTurns: pages[$0].quarterTurns, annotations: annotations[pages[$0].id] ?? [])
+        }
     }
 
     /// True while an in-window dialog (password, can't open) or panel is shown; blocks toolbar, menus and drops.
@@ -149,11 +155,26 @@ final class DocumentSession: ObservableObject {
             await PDFiumService.shared.close(opened.id)
             return fail()
         }
+        // Reopened saved work: Slek's annotations come back into the model and are drawn by Slek, not by PDFKit.
+        let stored = await PDFiumService.shared.annotations(opened.id)
         await close()
         originalPages = (0..<pdf.pageCount).compactMap { pdf.page(at: $0) }
         originalRotations = originalPages.map(\.rotation)
+        for (source, list) in stored where originalPages.indices.contains(source) {
+            let page = originalPages[source]
+            let copies = page.annotations.filter { annotation in list.contains { Self.isStoredCopy(annotation, of: $0) } }
+            for annotation in copies {
+                if let popup = annotation.popup { page.removeAnnotation(popup) }
+                page.removeAnnotation(annotation)
+            }
+        }
         pages = originalPages.indices.map { PageRef(source: $0) }
         savedPages = pages
+        annotations = Dictionary(uniqueKeysWithValues: stored.compactMap { source, list in
+            pages.indices.contains(source) ? (pages[source].id, list) : nil
+        })
+        savedAnnotations = annotations
+        mirrorAnnotations()
         selectedPageIDs = pages.first.map { [$0.id] } ?? []
         document = pdf
         self.url = url
@@ -179,6 +200,8 @@ final class DocumentSession: ObservableObject {
         thumbnailCache = [:]
         pages = []
         savedPages = []
+        annotations = [:]
+        savedAnnotations = [:]
         selectedPageIDs = []
         originalPages = []
         originalRotations = []
@@ -415,6 +438,7 @@ final class DocumentSession: ObservableObject {
             page.rotation = (originalRotations[ref.source] + ref.quarterTurns * 90) % 360
             document.insert(page, at: index)
         }
+        mirrorAnnotations()
         thumbnailCache = [:]
         currentPageIndex = min(currentPageIndex, max(0, pages.count - 1))
         pdfView?.layoutDocumentView()
@@ -470,6 +494,67 @@ final class DocumentSession: ObservableObject {
         _ = id
         try await PDFiumService.shared.writePDF(editedPageSources(), to: url)
         savedPages = pages
+        savedAnnotations = annotations
+    }
+
+    // MARK: - Annotate (docs/plans/annotate.md)
+
+    /// Replaces page `pageID`'s annotations, mirrors them into the view and registers the undo.
+    func setAnnotations(_ list: [PageAnnotation], on pageID: PageRef.ID) {
+        let old = annotations[pageID] ?? []
+        guard old != list else { return }
+        undoManager?.registerUndo(withTarget: self) { session in
+            MainActor.assumeIsolated { session.setAnnotations(old, on: pageID) }
+        }
+        annotations[pageID] = list.isEmpty ? nil : list
+        mirrorAnnotations()
+    }
+
+    func addAnnotation(_ annotation: PageAnnotation, toPageAt index: Int) {
+        guard pages.indices.contains(index) else { return }
+        let id = pages[index].id
+        setAnnotations((annotations[id] ?? []) + [annotation], on: id)
+    }
+
+    func updateAnnotation(_ annotation: PageAnnotation) {
+        guard let pageID = annotations.first(where: { $0.value.contains { $0.id == annotation.id } })?.key else { return }
+        setAnnotations(annotations[pageID]!.map { $0.id == annotation.id ? annotation : $0 }, on: pageID)
+    }
+
+    func removeAnnotation(id: PageAnnotation.ID) {
+        guard let pageID = annotations.first(where: { $0.value.contains { $0.id == id } })?.key else { return }
+        setAnnotations(annotations[pageID]!.filter { $0.id != id }, on: pageID)
+    }
+
+    /// Rebuilds the drawn annotations on every page from the model.
+    private func mirrorAnnotations() {
+        for page in originalPages {
+            for annotation in page.annotations where annotation is SlekPDFAnnotation { page.removeAnnotation(annotation) }
+        }
+        for ref in pages {
+            let page = originalPages[ref.source]
+            for annotation in annotations[ref.id] ?? [] {
+                let drawn = SlekPDFAnnotation(annotation)
+                page.addAnnotation(drawn)
+                // PDFKit gives notes a popup; Slek shows comments in its own panel (Annotate step 2).
+                if let popup = drawn.popup {
+                    page.removeAnnotation(popup)
+                    drawn.popup = nil
+                }
+            }
+        }
+    }
+
+    /// PDFKit's copy of an annotation Slek wrote into saved work. PDFKit does not expose the private keys, so the
+    /// copy is matched by type and top-left corner (PDFKit resizes note icons but keeps that corner).
+    private static func isStoredCopy(_ annotation: PDFAnnotation, of stored: PageAnnotation) -> Bool {
+        let type = switch stored.content {
+        case .textBox: "FreeText"
+        case .highlight: "Highlight"
+        case .comment: "Text"
+        }
+        return annotation.type == type && abs(annotation.bounds.minX - stored.bounds.minX) < 0.5
+            && abs(annotation.bounds.maxY - stored.bounds.maxY) < 0.5
     }
 
     func thumbnail(for index: Int, size: CGSize) -> NSImage? {

@@ -35,7 +35,8 @@ final class PDFiumService {
 
     /// A page for a new PDF: from an open document (with extra rotation) or from another PDF file.
     enum PageSource: Sendable {
-        case open(DocumentID, page: Int, quarterTurns: Int)
+        /// A page of an open document with Slek's annotations as they are now (replacing any saved in the file).
+        case open(DocumentID, page: Int, quarterTurns: Int, annotations: [PageAnnotation] = [])
         case file(URL, page: Int)
     }
 
@@ -46,9 +47,12 @@ final class PDFiumService {
         var files: [URL: PDFiumDocument] = [:]
         for page in pages {
             switch page {
-            case let .open(id, index, turns):
+            case let .open(id, index, turns, annotations):
                 guard let source = documents[id] else { throw PDFiumError.file }
                 try output.appendPage(from: source, index: index, quarterTurns: turns)
+                let added = output.pageCount - 1
+                try output.removeSlekAnnotations(page: added)
+                for annotation in annotations { try output.add(annotation, page: added) }
             case let .file(fileURL, index):
                 let source = try files[fileURL] ?? PDFiumDocument(url: fileURL)
                 files[fileURL] = source
@@ -56,6 +60,16 @@ final class PDFiumService {
             }
         }
         try output.save(to: url, incremental: false)
+    }
+
+    /// Slek's annotations saved in an open document, by source page (reopened saved work).
+    func annotations(_ id: DocumentID) -> [Int: [PageAnnotation]] {
+        guard let document = documents[id] else { return [:] }
+        var result: [Int: [PageAnnotation]] = [:]
+        for index in 0..<document.pageCount {
+            if let found = try? document.slekAnnotations(page: index), !found.isEmpty { result[index] = found }
+        }
+        return result
     }
 
     /// Page count of a PDF file that is not open (Merge PDFs list).

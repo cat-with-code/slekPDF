@@ -22,8 +22,9 @@ nonisolated struct TextBoxStyle: Codable, Equatable, Sendable {
 }
 
 nonisolated enum KhmerGlyphOutlines {
-    /// A PDF content stream that fills the shaped glyph outlines of `text` laid out in `rect` (page space).
-    static func appearanceStream(text: String, in rect: CGRect, style: TextBoxStyle) -> String {
+    /// The shaped text (CoreText, Noto Sans Khmer) laid out in `rect` as filled outlines, one path per glyph and
+    /// underline. The saved appearance and on-screen drawing both use this, so they cannot differ.
+    static func outlines(text: String, in rect: CGRect, style: TextBoxStyle) -> [CGPath] {
         let font = CTFontCreateWithName(style.fontName as CFString, style.fontSize, nil)
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineHeightMultiple = style.lineSpacing
@@ -32,15 +33,15 @@ nonisolated enum KhmerGlyphOutlines {
         case .center: .center
         case .right: .right
         }
-        let attributes: [NSAttributedString.Key: Any] = [.font: font, .paragraphStyle: paragraph]
-        let framesetter = CTFramesetterCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes))
+        let framesetter = CTFramesetterCreateWithAttributedString(
+            NSAttributedString(string: text, attributes: [.font: font, .paragraphStyle: paragraph]))
         let frame = CTFramesetterCreateFrame(framesetter, CFRange(), CGPath(rect: CGRect(origin: .zero, size: rect.size), transform: nil), nil)
         let lines = CTFrameGetLines(frame) as! [CTLine]
         var origins = [CGPoint](repeating: .zero, count: lines.count)
         CTFrameGetLineOrigins(frame, CFRange(), &origins)
         let shear = style.italic ? CGAffineTransform(a: 1, b: 0, c: 0.2, d: 1, tx: 0, ty: 0) : .identity
 
-        var ops = [String(format: "%.4f %.4f %.4f rg", style.color[0], style.color[1], style.color[2])]
+        var paths: [CGPath] = []
         for (line, origin) in zip(lines, origins) {
             for run in CTLineGetGlyphRuns(line) as! [CTRun] {
                 let count = CTRunGetGlyphCount(run)
@@ -52,17 +53,22 @@ nonisolated enum KhmerGlyphOutlines {
                 for (glyph, position) in zip(glyphs, positions) {
                     var transform = shear.concatenating(CGAffineTransform(translationX: rect.minX + origin.x + position.x,
                                                                           y: rect.minY + origin.y + position.y))
-                    guard let path = CTFontCreatePathForGlyph(runFont, glyph, &transform), !path.isEmpty else { continue }
-                    ops.append(pdfOperators(path) + " f")
+                    if let path = CTFontCreatePathForGlyph(runFont, glyph, &transform), !path.isEmpty { paths.append(path) }
                 }
             }
             if style.underline {
                 let width = CTLineGetTypographicBounds(line, nil, nil, nil)
-                let x = rect.minX + origin.x, y = rect.minY + origin.y - style.fontSize * 0.15
-                ops.append(String(format: "%.2f %.2f %.2f %.2f re f", x, y, width, max(0.6, style.fontSize * 0.06)))
+                paths.append(CGPath(rect: CGRect(x: rect.minX + origin.x, y: rect.minY + origin.y - style.fontSize * 0.15,
+                                                 width: width, height: max(0.6, style.fontSize * 0.06)), transform: nil))
             }
         }
-        return ops.joined(separator: "\n")
+        return paths
+    }
+
+    /// A PDF content stream that fills `outlines(text:in:style:)` in the style's colour.
+    static func appearanceStream(text: String, in rect: CGRect, style: TextBoxStyle) -> String {
+        let colour = String(format: "%.4f %.4f %.4f rg", style.color[0], style.color[1], style.color[2])
+        return ([colour] + outlines(text: text, in: rect, style: style).map { pdfOperators($0) + " f" }).joined(separator: "\n")
     }
 
     private static func pdfOperators(_ path: CGPath) -> String {
@@ -92,47 +98,132 @@ nonisolated enum KhmerGlyphOutlines {
     }
 }
 
-/// A text box read back from saved work.
-nonisolated struct StoredTextBox: Equatable, Sendable {
-    let rect: CGRect
-    let text: String
-    let style: TextBoxStyle?
+/// Something added on a page in Annotate (docs/plans/annotate.md). Coordinates are the source page's own (unrotated)
+/// PDF space, so the annotation follows its page through reorder and rotation.
+nonisolated struct PageAnnotation: Identifiable, Equatable, Sendable {
+    var id = UUID()
+    var bounds: CGRect
+    var content: Content
+
+    enum Content: Equatable, Sendable {
+        case textBox(text: String, style: TextBoxStyle)
+        case highlight(HighlightInfo)
+        case comment(CommentInfo)
+    }
+
+    /// The same annotation ignoring identity (a reopened file gets new ids).
+    func sameContent(as other: PageAnnotation) -> Bool { bounds == other.bounds && content == other.content }
+}
+
+nonisolated struct HighlightInfo: Codable, Equatable, Sendable {
+    /// One rectangle per highlighted line.
+    var lines: [CGRect]
+    /// The highlighted text, in logical order.
+    var text: String
+}
+
+nonisolated struct CommentInfo: Codable, Equatable, Sendable {
+    var text: String
+    var author: String
+    var date: Date
+    /// The page text the comment is about, if any.
+    var quote: String?
+    var resolved = false
+    var replies: [Reply] = []
+
+    struct Reply: Codable, Equatable, Sendable {
+        var author: String
+        var text: String
+        var date: Date
+    }
+}
+
+/// Private keys marking annotations Slek owns; other annotations in a PDF are left exactly as they are.
+nonisolated private enum SlekKey {
+    static let textBox = "SlekTextBox", highlight = "SlekHighlight", comment = "SlekComment"
+    static let all = [textBox, highlight, comment]
 }
 
 nonisolated extension PDFiumDocument {
-    /// Adds a text box annotation to page `index` (see `TextBoxStyle`).
-    func addTextBox(page index: Int, rect: CGRect, text: String, style: TextBoxStyle) throws {
+    /// Writes `annotation` onto page `index`.
+    func add(_ annotation: PageAnnotation, page index: Int) throws {
         guard let page = FPDF_LoadPage(handle, Int32(index)) else { throw PDFiumError.page }
         defer { FPDF_ClosePage(page) }
-        guard let annot = FPDFPage_CreateAnnot(page, FPDF_ANNOT_FREETEXT) else { throw PDFiumError.saveFailed }
+        let rect = annotation.bounds
+        let subtype: Int32 = switch annotation.content {
+        case .textBox: FPDF_ANNOT_FREETEXT
+        case .highlight: FPDF_ANNOT_HIGHLIGHT
+        case .comment: FPDF_ANNOT_TEXT
+        }
+        guard let annot = FPDFPage_CreateAnnot(page, subtype) else { throw PDFiumError.saveFailed }
         defer { FPDFPage_CloseAnnot(annot) }
         var frame = FS_RECTF(left: Float(rect.minX), top: Float(rect.maxY), right: Float(rect.maxX), bottom: Float(rect.minY))
-        let styleJSON = String(decoding: try JSONEncoder().encode(style), as: UTF8.self)
-        let appearance = KhmerGlyphOutlines.appearanceStream(text: text, in: rect, style: style)
-        let ok = FPDFAnnot_SetRect(annot, &frame) != 0
-            && Self.wide(text) { FPDFAnnot_SetStringValue(annot, "Contents", $0) } != 0
-            && Self.wide(styleJSON) { FPDFAnnot_SetStringValue(annot, "SlekTextBox", $0) } != 0
-            && Self.wide(appearance) { FPDFAnnot_SetAP(annot, FPDF_ANNOT_APPEARANCEMODE_NORMAL, $0) } != 0
+        var ok = FPDFAnnot_SetRect(annot, &frame) != 0
+        func set(_ key: String, _ value: String) { ok = ok && Self.wide(value) { FPDFAnnot_SetStringValue(annot, key, $0) } != 0 }
+        func json(_ value: some Encodable) throws -> String { String(decoding: try JSONEncoder().encode(value), as: UTF8.self) }
+
+        switch annotation.content {
+        case let .textBox(text, style):
+            set("Contents", text)
+            set(SlekKey.textBox, try json(style))
+            let appearance = KhmerGlyphOutlines.appearanceStream(text: text, in: rect, style: style)
+            ok = ok && Self.wide(appearance) { FPDFAnnot_SetAP(annot, FPDF_ANNOT_APPEARANCEMODE_NORMAL, $0) } != 0
+        case let .highlight(info):
+            for line in info.lines {
+                var quad = FS_QUADPOINTSF(x1: Float(line.minX), y1: Float(line.maxY), x2: Float(line.maxX), y2: Float(line.maxY),
+                                          x3: Float(line.minX), y3: Float(line.minY), x4: Float(line.maxX), y4: Float(line.minY))
+                ok = ok && FPDFAnnot_AppendAttachmentPoints(annot, &quad) != 0
+            }
+            // Annotation/Highlight (#E3F66B).
+            ok = ok && FPDFAnnot_SetColor(annot, FPDFANNOT_COLORTYPE_Color, 0xE3, 0xF6, 0x6B, 255) != 0
+            set("Contents", info.text)
+            set(SlekKey.highlight, try json(info))
+        case let .comment(info):
+            // Annotation/Comment (#EEB074).
+            ok = ok && FPDFAnnot_SetColor(annot, FPDFANNOT_COLORTYPE_Color, 0xEE, 0xB0, 0x74, 255) != 0
+            set("Contents", info.text)
+            set("T", info.author)
+            set(SlekKey.comment, try json(info))
+        }
         guard ok else { throw PDFiumError.saveFailed }
     }
 
-    /// Text boxes (FreeText annotations) on page `index`, with Slek's style when present.
-    func textBoxes(page index: Int) throws -> [StoredTextBox] {
+    /// Slek's annotations on page `index` (other annotations are not part of the model).
+    func slekAnnotations(page index: Int) throws -> [PageAnnotation] {
         guard let page = FPDF_LoadPage(handle, Int32(index)) else { throw PDFiumError.page }
         defer { FPDF_ClosePage(page) }
-        var boxes: [StoredTextBox] = []
+        var result: [PageAnnotation] = []
         for i in 0..<FPDFPage_GetAnnotCount(page) {
             guard let annot = FPDFPage_GetAnnot(page, i) else { continue }
             defer { FPDFPage_CloseAnnot(annot) }
-            guard FPDFAnnot_GetSubtype(annot) == FPDF_ANNOT_FREETEXT else { continue }
             var frame = FS_RECTF()
             _ = FPDFAnnot_GetRect(annot, &frame)
-            let style = Self.string(annot, "SlekTextBox").flatMap { try? JSONDecoder().decode(TextBoxStyle.self, from: Data($0.utf8)) }
-            boxes.append(StoredTextBox(rect: CGRect(x: CGFloat(frame.left), y: CGFloat(frame.bottom),
-                                                    width: CGFloat(frame.right - frame.left), height: CGFloat(frame.top - frame.bottom)),
-                                       text: Self.string(annot, "Contents") ?? "", style: style))
+            let bounds = CGRect(x: CGFloat(frame.left), y: CGFloat(frame.bottom),
+                                width: CGFloat(frame.right - frame.left), height: CGFloat(frame.top - frame.bottom))
+            func decode<T: Decodable>(_ type: T.Type, _ key: String) -> T? {
+                Self.string(annot, key).flatMap { try? JSONDecoder().decode(T.self, from: Data($0.utf8)) }
+            }
+            if let style = decode(TextBoxStyle.self, SlekKey.textBox) {
+                result.append(PageAnnotation(bounds: bounds, content: .textBox(text: Self.string(annot, "Contents") ?? "", style: style)))
+            } else if let info = decode(HighlightInfo.self, SlekKey.highlight) {
+                result.append(PageAnnotation(bounds: bounds, content: .highlight(info)))
+            } else if let info = decode(CommentInfo.self, SlekKey.comment) {
+                result.append(PageAnnotation(bounds: bounds, content: .comment(info)))
+            }
         }
-        return boxes
+        return result
+    }
+
+    /// Removes Slek's annotations from page `index` (before writing the model's current ones).
+    func removeSlekAnnotations(page index: Int) throws {
+        guard let page = FPDF_LoadPage(handle, Int32(index)) else { throw PDFiumError.page }
+        defer { FPDF_ClosePage(page) }
+        for i in (0..<FPDFPage_GetAnnotCount(page)).reversed() {
+            guard let annot = FPDFPage_GetAnnot(page, i) else { continue }
+            let owned = SlekKey.all.contains { FPDFAnnot_HasKey(annot, $0) != 0 }
+            FPDFPage_CloseAnnot(annot)
+            if owned { _ = FPDFPage_RemoveAnnot(page, i) }
+        }
     }
 
     /// Renders page `index` with annotation appearances at `scale` (BGRA, white background).

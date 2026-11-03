@@ -26,17 +26,18 @@ final class AnnotationKhmerSpikeTests: XCTestCase {
         let context = try XCTUnwrap(CGContext(blankURL as CFURL, mediaBox: &media, nil))
         context.beginPDFPage(nil); context.endPDFPage(); context.closePDF()
         let document = try PDFiumDocument(url: blankURL)
-        try document.addTextBox(page: 0, rect: rect, text: text, style: style)
+        try document.add(PageAnnotation(bounds: rect, content: .textBox(text: text, style: style)), page: 0)
         let savedURL = outDir.appendingPathComponent("text-box.pdf")
         try document.save(to: savedURL)
 
         // (a) + (b): back in Slek, exactly.
         let reopened = try PDFiumDocument(url: savedURL)
-        let boxes = try reopened.textBoxes(page: 0)
+        let boxes = try reopened.slekAnnotations(page: 0)
         XCTAssertEqual(boxes.count, 1)
-        XCTAssertEqual(boxes.first?.text.unicodeScalars.map(\.value), text.unicodeScalars.map(\.value), "Unicode changed")
-        XCTAssertEqual(boxes.first?.style, style)
-        XCTAssertEqual(boxes.first.map { $0.rect.insetBy(dx: -0.01, dy: -0.01).contains(rect) }, true, "\(String(describing: boxes.first?.rect))")
+        guard case let .textBox(storedText, storedStyle) = boxes.first?.content else { return XCTFail("no text box") }
+        XCTAssertEqual(storedText.unicodeScalars.map(\.value), text.unicodeScalars.map(\.value), "Unicode changed")
+        XCTAssertEqual(storedStyle, style)
+        XCTAssertEqual(boxes.first.map { $0.bounds.insetBy(dx: -0.01, dy: -0.01).contains(rect) }, true, "\(String(describing: boxes.first?.bounds))")
         let kitAnnotation = try XCTUnwrap(PDFDocument(url: savedURL)?.page(at: 0)?.annotations.first)
         XCTAssertEqual(kitAnnotation.type, "FreeText")
         XCTAssertEqual(kitAnnotation.contents, text, "PDFKit reads different text")

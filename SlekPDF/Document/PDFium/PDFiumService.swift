@@ -128,7 +128,8 @@ final class PDFiumService {
     /// Legacy Khmer fonts draw Khmer glyphs at Latin code points ("pøaksBaØa" for ផ្លាកសញ្ញា).
     nonisolated static func isLegacyKhmerFont(_ name: String) -> Bool {
         let name = name.lowercased()
-        return ["limon", "lmn", "abc", "khek", "baidok", "khmm"].contains { name.hasPrefix($0) }
+        // ABC Khmer fonts are "ABC-TEXT-05", "ABC-KHMER…"; not Latin families such as "ABCDiatype".
+        return ["limon", "lmn", "abc-", "abc_", "abc ", "abctext", "abckhmer", "khek", "baidok", "khmm"].contains { name.hasPrefix($0) }
     }
 
     nonisolated struct KhmerSignals: CustomStringConvertible {

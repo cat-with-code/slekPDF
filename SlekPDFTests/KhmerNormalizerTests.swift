@@ -59,6 +59,7 @@ final class KhmerNormalizerTests: XCTestCase {
                                                   fonts: ["LimonS1": 14, "ArialMT": 170]), .unreadable)
         XCTAssertTrue(PDFiumService.isLegacyKhmerFont("ABC-TEXT-05"))
         XCTAssertTrue(PDFiumService.isLegacyKhmerFont("LmnTTFantBig"))
+        XCTAssertFalse(PDFiumService.isLegacyKhmerFont("ABCDiatype-Regular"), "a Latin design font, not ABC Khmer")
         XCTAssertFalse(PDFiumService.isLegacyKhmerFont("KhmerOS"))
         XCTAssertFalse(PDFiumService.isLegacyKhmerFont("ArialMT"))
         // A Unicode font with a broken glyph map: "ង្" in place of េ (លេខ → ង្លខ), marks with no consonant.

@@ -78,10 +78,11 @@ on a real 116-page government PDF (not in the repo) and a one-page digital CV:
 Fixes: `PDFiumService.textLayer` classifies each page as none / usable / unreadable. Unreadable = any legacy-font run
 (≥ 5 characters), or ≥ 1 % orphan Khmer marks / subscripts with no consonant (well-made Khmer PDFs: 0; broken: 1.4–4 %),
 or ≥ 3 % “ង្”. Unreadable pages are recognized even with Skip on; Export lists them under “Pages without text”; Copy
-gives OCR text or asks to recognize the page. On that PDF 115 of 116 pages are now recognized (the other has only
-sign codes in Arial); every TestDocuments and fixture page stays usable. OCR also drops mark-only lines (a round
+gives OCR text or asks to recognize the page. On that PDF 115 of 116 pages are now recognized (measured: 4 min 46 s
+on Apple Silicon; the other page has only sign codes in Arial); the CV stays usable (Calibri/Arial); every TestDocuments and fixture page stays usable. OCR also drops mark-only lines (a round
 seal's text, ruled lines) and attaches a box that starts with a Khmer vowel/sign to the box before it. TestDocuments
 mean CER 8.69 → 8.59 % (14 bilingual scanned scores 16 → 14.7 %).
 
 Not done: converting Limon/ABC text to Unicode directly (exact, no OCR). The known converters are LGPL
-(KhmerConverter) or unlicensed; a clean-room table would be needed.
+(KhmerConverter, packaged as `khmerconverter` in Debian) or show no licence (github.com/danhhong/limon_unicode_converter,
+github.com/chamnap/khmer_unicode_converter); a clean-room table would be needed.

@@ -187,6 +187,20 @@ final class PDFiumService {
         }
     }
 
+    /// The pieces of text a click can edit (Edit PDF text): each line split at wide gaps, so a click in a table cell
+    /// or a column takes that phrase, not the whole row. Empty for an unreadable layer.
+    func editableSegments(_ id: DocumentID, page index: Int) -> [KhmerTextRebuilder.Segment] {
+        guard textLayer(id, page: index) == .usable, let chars = page(id, index)?.chars else { return [] }
+        return KhmerTextRebuilder.segments(chars, byHeight: true).flatMap { $0 }.map {
+            KhmerTextRebuilder.Segment(text: KhmerNormalizer.normalize($0.text), box: $0.box, fontSize: $0.fontSize, baseline: $0.baseline)
+        }
+    }
+
+    /// The page's colour around `rect` (an edited line's cover).
+    func colorAround(_ id: DocumentID, rect: CGRect, page index: Int) -> [CGFloat] {
+        documents[id]?.colorAround(rect, page: index) ?? [1, 1, 1]
+    }
+
     /// Lines split into cell candidates (Export tables).
     func textSegments(_ id: DocumentID, page index: Int) -> [[KhmerTextRebuilder.Segment]] {
         guard textLayer(id, page: index) != .unreadable, let chars = page(id, index)?.chars else { return [] }

@@ -1,0 +1,213 @@
+import AppKit
+import PDFKit
+import XCTest
+@testable import SlekPDF
+
+/// Edit PDF text (Figma PDF Text Line 556:525): a click on a line of the PDF's own text opens it for typing with its
+/// text; committing covers the original line and draws the new text; the source PDF never changes; saved work keeps
+/// the edit editable.
+@MainActor
+final class EditPDFTextTests: XCTestCase {
+    private func open(_ url: URL? = nil) async throws -> DocumentSession {
+        FontRegistry.registerBundledFonts()
+        let session = DocumentSession()
+        await session.open(try url ?? XCTUnwrap(Bundle(for: EditPDFTextTests.self).url(forResource: "khmer-multipage", withExtension: "pdf")))
+        XCTAssertNotNil(session.document)
+        session.workspace = .annotate
+        return session
+    }
+
+    private func edits(_ session: DocumentSession, page: Int = 0) -> [(PageAnnotation, TextEditInfo)] {
+        (session.annotations[session.pages[page].id] ?? []).compactMap { annotation in
+            if case let .textEdit(info) = annotation.content { (annotation, info) } else { nil }
+        }
+    }
+
+    private func firstLine(_ session: DocumentSession) async throws -> EditableLine {
+        let found = await session.editableLines(onPageAt: 0)
+        let lines = try XCTUnwrap(found)
+        return try XCTUnwrap(lines.first { $0.text.unicodeScalars.contains { (0x1780...0x17FF).contains($0.value) } })
+    }
+
+    func testEditPDFTextIsTheDefaultTool() async throws {
+        let session = try await open()
+        XCTAssertEqual(session.annotateTool, .editText)
+        await session.close()
+    }
+
+    func testClickingALineOpensItWithItsTextAndCommittingReplacesItInOneUndo() async throws {
+        let session = try await open()
+        let undo = UndoManager()
+        undo.groupsByEvent = false
+        session.undoManager = undo
+        let line = try await firstLine(session)
+        let opened = await session.beginEditingLine(onPageAt: 0, at: CGPoint(x: line.box.midX, y: line.box.midY))
+        XCTAssertTrue(opened)
+        let draft = try XCTUnwrap(session.textEditing)
+        XCTAssertEqual(draft.text, line.text, "the editor opens with the line's own text")
+        XCTAssertEqual(draft.line?.original, line.text)
+        XCTAssertTrue(draft.bounds.contains(draft.line!.cover), "the editor covers the original line")
+        XCTAssertLessThan(draft.bounds.height, line.box.height * 2.5, "not a 44 pt text box over neighbouring lines")
+
+        let changed = "សេចក្តីជូនដំណឹងថ្មី"
+        session.typeInTextBox(changed)
+        undo.beginUndoGrouping()
+        session.commitTextEditing()
+        undo.endUndoGrouping()
+        XCTAssertNil(session.textEditing)
+        let (annotation, info) = try XCTUnwrap(edits(session).first)
+        XCTAssertEqual(info.text, changed)
+        XCTAssertEqual(info.original, line.text)
+        XCTAssertTrue(annotation.bounds.contains(info.cover))
+        XCTAssertTrue(session.hasUnsavedChanges)
+
+        undo.undo()
+        XCTAssertTrue(edits(session).isEmpty, "one undo puts the original back")
+        await session.close()
+    }
+
+    func testAnUnchangedLineAddsNothingAndAnEmptiedLineIsKept() async throws {
+        let session = try await open()
+        let line = try await firstLine(session)
+        let point = CGPoint(x: line.box.midX, y: line.box.midY)
+        await session.beginEditingLine(onPageAt: 0, at: point)
+        session.commitTextEditing()
+        XCTAssertTrue(edits(session).isEmpty, "opening and closing a line changes nothing")
+
+        await session.beginEditingLine(onPageAt: 0, at: point)
+        session.typeInTextBox("")
+        session.commitTextEditing()
+        XCTAssertEqual(edits(session).first?.1.text, "", "deleting a line's text removes it from the page")
+
+        // Clicking the edited line opens the edit again, not the original text.
+        await session.beginEditingLine(onPageAt: 0, at: point)
+        XCTAssertEqual(session.textEditing?.id, edits(session).first?.0.id)
+        session.commitTextEditing()
+        XCTAssertEqual(edits(session).count, 1)
+        await session.close()
+    }
+
+    func testAnEmptiedLineLeavesThePageColourWhereTheTextWas() async throws {
+        let session = try await open()
+        let line = try await firstLine(session)
+        let page = try XCTUnwrap(session.document?.page(at: 0))
+        let before = try darkPixels(page, in: line.box)
+        XCTAssertGreaterThan(before, 50, "the line has ink")
+        await session.beginEditingLine(onPageAt: 0, at: CGPoint(x: line.box.midX, y: line.box.midY))
+        session.typeInTextBox("")
+        session.commitTextEditing()
+        XCTAssertEqual(try darkPixels(page, in: line.box.insetBy(dx: 1, dy: 1)), 0, "the original line is covered")
+        await session.close()
+    }
+
+    func testSavedWorkKeepsTheEditEditableAndTheSourceUnchanged() async throws {
+        let source = try XCTUnwrap(Bundle(for: EditPDFTextTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
+        let sourceBytes = try Data(contentsOf: source)
+        let session = try await open(source)
+        let line = try await firstLine(session)
+        await session.beginEditingLine(onPageAt: 0, at: CGPoint(x: line.box.midX, y: line.box.midY))
+        session.typeInTextBox("ឯកសារដែលបានកែ")
+        session.commitTextEditing()
+        let saved = try XCTUnwrap(edits(session).first)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("edited-\(UUID()).pdf")
+        try await session.saveWork(to: url)
+        XCTAssertEqual(try Data(contentsOf: source), sourceBytes, "the source PDF is never changed")
+        await session.close()
+
+        let reopened = try await open(url)
+        let restored = edits(reopened)
+        XCTAssertEqual(restored.count, 1)
+        XCTAssertEqual(restored.first?.1, saved.1, "text, original, style, cover and baseline come back")
+        // Annotation rectangles are stored as 32-bit floats.
+        let bounds = try XCTUnwrap(restored.first?.0.bounds)
+        for (a, b) in [(bounds.minX, saved.0.bounds.minX), (bounds.minY, saved.0.bounds.minY), (bounds.width, saved.0.bounds.width), (bounds.height, saved.0.bounds.height)] {
+            XCTAssertEqual(a, b, accuracy: 0.01)
+        }
+        let page = try XCTUnwrap(reopened.document?.page(at: 0))
+        XCTAssertEqual(page.annotations.count, 1, "drawn once: PDFKit's copy of the saved annotation was taken off")
+        await reopened.close()
+    }
+
+    func testAScanNeedsOCRFirstThenItsLinesAreEditable() async throws {
+        // One blank page: no text layer.
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("scan-\(UUID()).pdf")
+        var box = CGRect(x: 0, y: 0, width: 400, height: 300)
+        let context = try XCTUnwrap(CGContext(url as CFURL, mediaBox: &box, nil))
+        context.beginPDFPage(nil)
+        context.endPDFPage()
+        context.closePDF()
+        let session = try await open(url)
+        let point = CGPoint(x: 120, y: 200)
+        let opened = await session.beginEditingLine(onPageAt: 0, at: point, language: .en)
+        XCTAssertFalse(opened)
+        XCTAssertEqual(session.toasts.current?.message, "Click a line of text on the page to edit it. Scanned pages need Khmer OCR first.")
+
+        let ocrLine = OCRLine(bounds: CGRect(x: 100, y: 190, width: 160, height: 24), text: "ព្រះរាជាណាចក្រកម្ពុជា", confidence: 95)
+        session.setOCR(OCRPage(lines: [ocrLine], languages: "khm", date: Date()), for: session.pages[0].id)
+        let openedAfterOCR = await session.beginEditingLine(onPageAt: 0, at: point)
+        XCTAssertTrue(openedAfterOCR)
+        XCTAssertEqual(session.textEditing?.text, "ព្រះរាជាណាចក្រកម្ពុជា")
+        session.commitTextEditing()
+        await session.close()
+    }
+
+    /// Before/after picture of an edited line (tmp/edit-pdf-text.png), for checking placement by eye. Snapshot runs only.
+    func testRenderAnEditedLine() async throws {
+        guard ProcessInfo.processInfo.environment["SNAPSHOT_DIR"] != nil else { throw XCTSkip("Set SNAPSHOT_DIR to write snapshots") }
+        let session = try await open()
+        let line = try await firstLine(session)
+        let page = try XCTUnwrap(session.document?.page(at: 0))
+        let area = line.box.insetBy(dx: -20, dy: -30)
+        func picture() -> NSImage {
+            let image = NSImage(size: NSSize(width: area.width * 3, height: area.height * 3))
+            image.lockFocus()
+            let context = NSGraphicsContext.current!.cgContext
+            context.setFillColor(.white)
+            context.fill(CGRect(origin: .zero, size: image.size))
+            context.scaleBy(x: 3, y: 3)
+            context.translateBy(x: -area.minX, y: -area.minY)
+            page.draw(with: .mediaBox, to: context)
+            image.unlockFocus()
+            return image
+        }
+        let before = picture()
+        await session.beginEditingLine(onPageAt: 0, at: CGPoint(x: line.box.midX, y: line.box.midY))
+        session.typeInTextBox(line.text + " ថ្មី")
+        session.commitTextEditing()
+        session.selectedAnnotationID = nil
+        let after = picture()
+        let both = NSImage(size: NSSize(width: before.size.width, height: before.size.height * 2 + 10))
+        both.lockFocus()
+        NSColor.systemGray.setFill()
+        NSRect(origin: .zero, size: both.size).fill()
+        after.draw(at: .zero, from: .zero, operation: .copy, fraction: 1)
+        before.draw(at: NSPoint(x: 0, y: before.size.height + 10), from: .zero, operation: .copy, fraction: 1)
+        both.unlockFocus()
+        let png = NSBitmapImageRep(data: both.tiffRepresentation!)!.representation(using: .png, properties: [:])!
+        try png.write(to: FileManager.default.temporaryDirectory.appendingPathComponent("edit-pdf-text.png"))
+        await session.close()
+    }
+
+    /// Pixels darker than mid-grey inside `rect` when the page is drawn as on screen.
+    private func darkPixels(_ page: PDFPage, in rect: CGRect) throws -> Int {
+        let bounds = page.bounds(for: .mediaBox)
+        let width = Int(bounds.width), height = Int(bounds.height)
+        var pixels = [UInt8](repeating: 255, count: width * height)
+        try pixels.withUnsafeMutableBytes { buffer in
+            let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+                                                  space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue))
+            context.setFillColor(gray: 1, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+            context.translateBy(x: -bounds.minX, y: -bounds.minY)
+            page.draw(with: .mediaBox, to: context)
+        }
+        var count = 0
+        for y in Int(rect.minY - bounds.minY)..<Int(rect.maxY - bounds.minY) where y >= 0 && y < height {
+            for x in Int(rect.minX - bounds.minX)..<Int(rect.maxX - bounds.minX) where x >= 0 && x < width {
+                // Memory rows run top-down.
+                if pixels[(height - 1 - y) * width + x] < 128 { count += 1 }
+            }
+        }
+        return count
+    }
+}

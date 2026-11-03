@@ -39,13 +39,14 @@ struct AnnotateInspector: View {
     }
 }
 
-/// Figma Annotate Tools (125:135): the active tool is Primary; choosing it again returns to Select.
+/// Figma Annotate Tools (125:135): the active tool is Primary; choosing it again returns to Edit PDF text (the default).
 struct AnnotateToolsView: View {
     @EnvironmentObject private var session: DocumentSession
     @Environment(\.appLanguage) private var language
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpace.s8) {
+            tool(.editPDFText, icon: .edit, tool: .editText, command: .editTextTool)
             tool(.addKhmerText, icon: .addText, tool: .text, command: .addTextTool)
             tool(.highlightText, icon: .highLight, tool: .highlight, command: .highlightTool)
             tool(.addComment, icon: .comment, tool: .comment, command: .commentTool)
@@ -61,13 +62,14 @@ struct AnnotateToolsView: View {
         case .highlight: .selectKhmerTextOnThePageToHighlightIt
         case .comment: .clickThePageWhereTheCommentBelongs
         case .text: .clickThePageWhereTheTextBelongs
+        case .editText: .clickALineOfTextOnThePageToEdit
         case .select: nil
         }
     }
 
     private func tool(_ title: CopyKey, icon: DSIcon, tool: AnnotateTool, command: ShortcutCommand) -> some View {
         DSButton(title, icon: icon, style: session.annotateTool == tool ? .primary : .secondary, fullWidth: true) {
-            session.annotateTool = session.annotateTool == tool ? .select : tool
+            session.annotateTool = session.annotateTool == tool ? .editText : tool
             session.pdfView?.window?.makeFirstResponder(session.pdfView)  // so V/H/C/Esc reach the canvas
         }
         .dsTooltip(title, shortcut: ShortcutStore.shared.shortcut(command)?.display)

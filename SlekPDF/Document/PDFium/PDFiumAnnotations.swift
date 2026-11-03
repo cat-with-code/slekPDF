@@ -64,18 +64,24 @@ nonisolated struct TextBoxStyle: Codable, Equatable, Sendable {
 nonisolated enum KhmerGlyphOutlines {
     /// The shaped text (CoreText, Noto Sans Khmer) laid out in `rect` as filled outlines, one path per glyph and
     /// underline. The saved appearance and on-screen drawing both use this, so they cannot differ.
-    static func outlines(text: String, in rect: CGRect, style: TextBoxStyle) -> [CGPath] {
+    static let textBoxInsets = CGSize(width: TextBoxStyle.horizontalInset, height: TextBoxStyle.verticalInset)
+
+    /// `insets`: from the box's sides and top (text boxes: 8 and 10 pt; edited PDF lines: none). `firstBaseline`:
+    /// page y of the first line's baseline (an edited line sits on the original line's baseline).
+    static func outlines(text: String, in rect: CGRect, style: TextBoxStyle, insets: CGSize = textBoxInsets,
+                         firstBaseline: CGFloat? = nil) -> [CGPath] {
         let font = CTFontCreateWithName(style.fontName as CFString, style.fontSize, nil)
         let paragraph = style.paragraphStyle()
         let framesetter = CTFramesetterCreateWithAttributedString(
             NSAttributedString(string: text, attributes: [.font: font, .paragraphStyle: paragraph]))
         // Lay out in a tall column so no line is dropped, then hang it from the box's top inset.
-        let column = CGSize(width: max(1, rect.width - 2 * TextBoxStyle.horizontalInset), height: 100_000)
+        let column = CGSize(width: max(1, rect.width - 2 * insets.width), height: 100_000)
         let frame = CTFramesetterCreateFrame(framesetter, CFRange(), CGPath(rect: CGRect(origin: .zero, size: column), transform: nil), nil)
-        let offset = CGPoint(x: rect.minX + TextBoxStyle.horizontalInset, y: rect.maxY - TextBoxStyle.verticalInset - column.height)
+        var offset = CGPoint(x: rect.minX + insets.width, y: rect.maxY - insets.height - column.height)
         let lines = CTFrameGetLines(frame) as! [CTLine]
         var origins = [CGPoint](repeating: .zero, count: lines.count)
         CTFrameGetLineOrigins(frame, CFRange(), &origins)
+        if let firstBaseline, let first = origins.first { offset.y = firstBaseline - first.y }
         let shear = style.italic ? CGAffineTransform(a: 1, b: 0, c: 0.2, d: 1, tx: 0, ty: 0) : .identity
 
         var paths: [CGPath] = []
@@ -103,21 +109,46 @@ nonisolated enum KhmerGlyphOutlines {
     }
 
     /// Height a box of `width` needs for `text` (Figma minimum 44 pt), so lines are never cut off.
-    static func fittedHeight(text: String, width: CGFloat, style: TextBoxStyle) -> CGFloat {
+    static func fittedHeight(text: String, width: CGFloat, style: TextBoxStyle, insets: CGSize = textBoxInsets,
+                             minimum: CGFloat = TextBoxStyle.minimumHeight) -> CGFloat {
         let font = CTFontCreateWithName(style.fontName as CFString, style.fontSize, nil)
         let paragraph = style.paragraphStyle()
         let sample = text.isEmpty || text.hasSuffix("\n") ? text + "ក" : text  // an empty last line still takes a line
         let framesetter = CTFramesetterCreateWithAttributedString(
             NSAttributedString(string: sample, attributes: [.font: font, .paragraphStyle: paragraph]))
         let size = CTFramesetterSuggestFrameSizeWithConstraints(
-            framesetter, CFRange(), nil, CGSize(width: max(1, width - 2 * TextBoxStyle.horizontalInset), height: 100_000), nil)
-        return max(TextBoxStyle.minimumHeight, ceil(size.height + 2 * TextBoxStyle.verticalInset))
+            framesetter, CFRange(), nil, CGSize(width: max(1, width - 2 * insets.width), height: 100_000), nil)
+        return max(minimum, ceil(size.height + 2 * insets.height))
+    }
+
+    /// Height of the ink of `text` set at 1 pt (glyph outlines, top of the highest mark to the bottom of the lowest
+    /// subscript). Dividing a line's drawn height by it gives the size that draws `text` as tall as the original.
+    static func inkHeight(text: String, style: TextBoxStyle) -> CGFloat {
+        let font = CTFontCreateWithName(style.fontName as CFString, 1, nil)
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [.font: font]))
+        return CTLineGetBoundsWithOptions(line, .useGlyphPathBounds).height
+    }
+
+    /// Width one line of `text` takes (no wrapping).
+    static func lineWidth(text: String, style: TextBoxStyle) -> CGFloat {
+        let font = CTFontCreateWithName(style.fontName as CFString, style.fontSize, nil)
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [.font: font]))
+        return ceil(CTLineGetTypographicBounds(line, nil, nil, nil))
     }
 
     /// A PDF content stream that fills `outlines(text:in:style:)` in the style's colour.
     static func appearanceStream(text: String, in rect: CGRect, style: TextBoxStyle) -> String {
         let colour = String(format: "%.4f %.4f %.4f rg", style.color[0], style.color[1], style.color[2])
         return ([colour] + outlines(text: text, in: rect, style: style).map { pdfOperators($0) + " f" }).joined(separator: "\n")
+    }
+
+    /// An edited PDF line: the original line covered with the page colour, then the new text on its baseline.
+    static func appearanceStream(edit: TextEditInfo, in rect: CGRect) -> String {
+        let c = edit.coverColor, t = edit.style.color
+        let cover = String(format: "%.4f %.4f %.4f rg %.2f %.2f %.2f %.2f re f", c[0], c[1], c[2],
+                           edit.cover.minX, edit.cover.minY, edit.cover.width, edit.cover.height)
+        let colour = String(format: "%.4f %.4f %.4f rg", t[0], t[1], t[2])
+        return ([cover, colour] + edit.outlines(in: rect).map { pdfOperators($0) + " f" }).joined(separator: "\n")
     }
 
     private static func pdfOperators(_ path: CGPath) -> String {
@@ -158,10 +189,45 @@ nonisolated struct PageAnnotation: Identifiable, Equatable, Sendable {
         case textBox(text: String, style: TextBoxStyle)
         case highlight(HighlightInfo)
         case comment(CommentInfo)
+        /// A line of the PDF's own text, changed in place (Edit PDF text). `bounds` is where the new text is laid out;
+        /// it always contains the cover.
+        case textEdit(TextEditInfo)
     }
 
     /// The same annotation ignoring identity (a reopened file gets new ids).
     func sameContent(as other: PageAnnotation) -> Bool { bounds == other.bounds && content == other.content }
+}
+
+/// Edit PDF text (Figma PDF Text Line 556:525): the original line is covered with the page colour and the new text is
+/// drawn in a bundled Khmer font at the line's size and baseline. The PDF itself is not changed; Save work keeps the
+/// edit editable.
+nonisolated struct TextEditInfo: Codable, Equatable, Sendable {
+    /// The line's text as it was (Restore original text).
+    var original: String
+    var text: String
+    var style: TextBoxStyle
+    /// The original line's rectangle (page space), painted over with `coverColor`.
+    var cover: CGRect
+    /// Page y of the original line's baseline.
+    var baseline: CGFloat
+    /// 0–1 RGB of the page around the line (white on most PDFs, paper colour on scans).
+    var coverColor: [CGFloat] = [1, 1, 1]
+
+    /// No insets: the text starts where the original line started.
+    static let insets = CGSize.zero
+
+    func outlines(in rect: CGRect) -> [CGPath] {
+        KhmerGlyphOutlines.outlines(text: text, in: rect, style: style, insets: Self.insets, firstBaseline: baseline)
+    }
+
+    /// The rectangle for `text`: from the line's start, as wide as the text (at least the original line), as tall
+    /// as its lines; always containing the cover.
+    func layoutBounds(pageBox: CGRect) -> CGRect {
+        let longest = text.components(separatedBy: "\n").map { KhmerGlyphOutlines.lineWidth(text: $0, style: style) }.max() ?? 0
+        let width = min(max(cover.width, longest + 2), max(cover.width, pageBox.maxX - cover.minX))
+        let height = KhmerGlyphOutlines.fittedHeight(text: text, width: width, style: style, insets: Self.insets, minimum: cover.height)
+        return CGRect(x: cover.minX, y: cover.maxY - height, width: width, height: height).union(cover)
+    }
 }
 
 nonisolated struct HighlightInfo: Codable, Equatable, Sendable {
@@ -223,7 +289,8 @@ nonisolated struct OCRPage: Codable, Equatable, Sendable {
 /// Private keys marking annotations Slek owns; other annotations in a PDF are left exactly as they are.
 nonisolated private enum SlekKey {
     static let textBox = "SlekTextBox", highlight = "SlekHighlight", comment = "SlekComment", ocr = "SlekOCR"
-    static let all = [textBox, highlight, comment, ocr]
+    static let textEdit = "SlekTextEdit"
+    static let all = [textBox, highlight, comment, ocr, textEdit]
 }
 
 nonisolated extension PDFiumDocument {
@@ -233,7 +300,7 @@ nonisolated extension PDFiumDocument {
         defer { FPDF_ClosePage(page) }
         let rect = annotation.bounds
         let subtype: Int32 = switch annotation.content {
-        case .textBox: FPDF_ANNOT_FREETEXT
+        case .textBox, .textEdit: FPDF_ANNOT_FREETEXT
         case .highlight: FPDF_ANNOT_HIGHLIGHT
         case .comment: FPDF_ANNOT_TEXT
         }
@@ -249,6 +316,11 @@ nonisolated extension PDFiumDocument {
             set("Contents", text)
             set(SlekKey.textBox, try json(style))
             let appearance = KhmerGlyphOutlines.appearanceStream(text: text, in: rect, style: style)
+            ok = ok && Self.wide(appearance) { FPDFAnnot_SetAP(annot, FPDF_ANNOT_APPEARANCEMODE_NORMAL, $0) } != 0
+        case let .textEdit(info):
+            set("Contents", info.text)
+            set(SlekKey.textEdit, try json(info))
+            let appearance = KhmerGlyphOutlines.appearanceStream(edit: info, in: rect)
             ok = ok && Self.wide(appearance) { FPDFAnnot_SetAP(annot, FPDF_ANNOT_APPEARANCEMODE_NORMAL, $0) } != 0
         case let .highlight(info):
             for line in info.lines {
@@ -287,6 +359,8 @@ nonisolated extension PDFiumDocument {
             }
             if let style = decode(TextBoxStyle.self, SlekKey.textBox) {
                 result.append(PageAnnotation(bounds: bounds, content: .textBox(text: Self.string(annot, "Contents") ?? "", style: style)))
+            } else if let info = decode(TextEditInfo.self, SlekKey.textEdit) {
+                result.append(PageAnnotation(bounds: bounds, content: .textEdit(info)))
             } else if let info = decode(HighlightInfo.self, SlekKey.highlight) {
                 result.append(PageAnnotation(bounds: bounds, content: .highlight(info)))
             } else if let info = decode(CommentInfo.self, SlekKey.comment) {
@@ -368,6 +442,37 @@ nonisolated extension PDFiumDocument {
                        space: CGColorSpaceCreateDeviceRGB(),
                        bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue),
                        provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+    }
+
+    /// The page's colour around `rect` (page space): the median of a ring of pixels just outside it, rendered at
+    /// 2 px per point. White on most PDFs; the paper colour on scans (an edited line's cover).
+    func colorAround(_ rect: CGRect, page index: Int) -> [CGFloat] {
+        guard let page = FPDF_LoadPage(handle, Int32(index)) else { return [1, 1, 1] }
+        defer { FPDF_ClosePage(page) }
+        let size = Self.deviceSize(page, quarterTurns: 0, ppi: 144)
+        guard let image = Self.renderBitmap(page, size: size, rotate: 0), let data = image.dataProvider?.data,
+              let bytes = CFDataGetBytePtr(data) else { return [1, 1, 1] }
+        func device(_ x: CGFloat, _ y: CGFloat) -> (Int, Int) {
+            var dx: Int32 = 0, dy: Int32 = 0
+            _ = FPDF_PageToDevice(page, 0, 0, Int32(size.width), Int32(size.height), 0, Double(x), Double(y), &dx, &dy)
+            return (Int(dx), Int(dy))
+        }
+        let ring = rect.insetBy(dx: -3, dy: -3)
+        var samples: [(r: CGFloat, g: CGFloat, b: CGFloat)] = []
+        let steps = 24
+        for i in 0...steps {
+            let t = CGFloat(i) / CGFloat(steps)
+            for point in [CGPoint(x: ring.minX + t * ring.width, y: ring.minY), CGPoint(x: ring.minX + t * ring.width, y: ring.maxY),
+                          CGPoint(x: ring.minX, y: ring.minY + t * ring.height), CGPoint(x: ring.maxX, y: ring.minY + t * ring.height)] {
+                let (x, y) = device(point.x, point.y)
+                guard x >= 0, y >= 0, x < image.width, y < image.height else { continue }
+                let offset = y * image.bytesPerRow + x * 4  // BGRA
+                samples.append((CGFloat(bytes[offset + 2]) / 255, CGFloat(bytes[offset + 1]) / 255, CGFloat(bytes[offset]) / 255))
+            }
+        }
+        guard !samples.isEmpty else { return [1, 1, 1] }
+        func median(_ values: [CGFloat]) -> CGFloat { values.sorted()[values.count / 2] }
+        return [median(samples.map(\.r)), median(samples.map(\.g)), median(samples.map(\.b))]
     }
 
     /// Removes Slek's annotations from page `index` (before writing the model's current ones).

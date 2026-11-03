@@ -2123,5 +2123,40 @@
     "km": "ថ្ងៃនេះ {0}",
     "en": "today {0}",
     "note": "Part of Figma Copy/12 edits · last change today 10:24"
+  },
+  "Edit PDF text": {
+    "km": "កែអត្ថបទ PDF",
+    "en": "Edit PDF text",
+    "note": "Figma Copy variable (Edit PDF text, 3 Nov 2026); draft Khmer — needs review"
+  },
+  "Edit PDF Text": {
+    "km": "កែអត្ថបទ PDF",
+    "en": "Edit PDF Text",
+    "note": "Figma Copy variable (Edit PDF text, 3 Nov 2026); draft Khmer — needs review"
+  },
+  "Click a line of text on the page to edit": {
+    "km": "ចុចលើបន្ទាត់អត្ថបទនៅលើទំព័រ ដើម្បីកែវា។ ទំព័រដែលបានស្កេន ត្រូវស្គាល់អក្សរដោយ OCR ខ្មែរជាមុនសិន។",
+    "en": "Click a line of text on the page to edit it. Scanned pages need Khmer OCR first.",
+    "note": "Figma Copy variable (Edit PDF text, 3 Nov 2026); draft Khmer — needs review"
+  },
+  "Restore original text": {
+    "km": "ស្ដារអត្ថបទដើមវិញ",
+    "en": "Restore original text",
+    "note": "Figma Copy variable (Edit PDF text, 3 Nov 2026); draft Khmer — needs review"
+  },
+  "PDF text properties": {
+    "km": "លក្ខណៈអត្ថបទ PDF",
+    "en": "PDF text properties",
+    "note": "Figma Copy variable (Edit PDF text, 3 Nov 2026); draft Khmer — needs review"
+  },
+  "Applies to the selected line of PDF text": {
+    "km": "អនុវត្តចំពោះបន្ទាត់អត្ថបទ PDF ដែលបានជ្រើស។",
+    "en": "Applies to the selected line of PDF text.",
+    "note": "Figma Copy variable (Edit PDF text, 3 Nov 2026); draft Khmer — needs review"
+  },
+  "Edited": {
+    "km": "បានកែ",
+    "en": "Edited",
+    "note": "Figma Copy variable (Edit PDF text, 3 Nov 2026); draft Khmer — needs review"
   }
 }

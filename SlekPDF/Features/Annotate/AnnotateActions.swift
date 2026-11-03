@@ -1,8 +1,8 @@
 import AppKit
 import PDFKit
 
-/// Annotate Tools (Figma 125:135). Esc returns to Select.
-enum AnnotateTool: Equatable { case select, text, highlight, comment }
+/// Annotate Tools (Figma 125:135). Edit PDF text is the default: hover a line and click it to edit; Esc returns to it.
+enum AnnotateTool: Equatable { case editText, select, text, highlight, comment }
 
 /// A comment being written or edited in the Editing Comment Card.
 struct CommentDraft: Equatable {
@@ -17,12 +17,38 @@ struct CommentDraft: Equatable {
 }
 
 /// A Khmer text box being typed in (Figma Added Text Box, Editing). `id` is set when editing an existing box.
+/// With `line`, it is a line of the PDF's own text being edited (Figma PDF Text Line, Editing).
 struct TextBoxDraft: Equatable {
     var id: PageAnnotation.ID?
     var pageIndex: Int
     var bounds: CGRect
     var text: String
     var style: TextBoxStyle
+    var line: LineEdit?
+    /// Page point the caret goes to when the editor opens (where the line was clicked).
+    var caret: CGPoint?
+    /// One typing session: a new draft gets a new on-page editor even on the same page.
+    var session = UUID()
+
+    struct LineEdit: Equatable {
+        var original: String
+        var cover: CGRect
+        var baseline: CGFloat
+        var coverColor: [CGFloat]
+    }
+
+    /// The edit this draft would save.
+    var textEdit: TextEditInfo? {
+        line.map { TextEditInfo(original: $0.original, text: text, style: style, cover: $0.cover, baseline: $0.baseline, coverColor: $0.coverColor) }
+    }
+}
+
+/// A piece of the page's text a click can edit: the PDF's own text, or a Khmer OCR line on a recognized scan.
+struct EditableLine: Equatable {
+    var text: String
+    var box: CGRect
+    var fontSize: CGFloat
+    var baseline: CGFloat
 }
 
 /// One entry of the inspector's comment list.
@@ -117,7 +143,7 @@ extension DocumentSession {
         let comment = PageAnnotation(bounds: CGRect(origin: draft.anchor, size: CGSize(width: size, height: size)),
                                      content: .comment(CommentInfo(text: text, author: Self.currentAuthor, date: Date(), quote: draft.quote)))
         addAnnotation(comment, toPageAt: draft.pageIndex)
-        annotateTool = .select
+        annotateTool = .editText
         selectedAnnotationID = comment.id
     }
 
@@ -163,8 +189,8 @@ extension DocumentSession {
                 commitTextEditing()
                 return true
             }
-            guard annotateTool != .select || selectedAnnotationID != nil || commentDraft != nil else { return false }
-            annotateTool = .select
+            guard annotateTool != .editText || selectedAnnotationID != nil || commentDraft != nil else { return false }
+            annotateTool = .editText
             selectedAnnotationID = nil
             commentDraft = nil
             return true
@@ -175,7 +201,7 @@ extension DocumentSession {
         }
         guard let shortcut = KeyShortcut(event: event) else { return false }
         let store = ShortcutStore.shared
-        if let box = selectedTextBox {
+        if let box = selectedTextBox, case .textBox = box.content {
             switch event.keyCode {
             case 36, 76:  // ↩, enter: edit the text
                 beginEditingTextBox(box.id)
@@ -193,7 +219,7 @@ extension DocumentSession {
             default: break
             }
         }
-        let tools: [(ShortcutCommand, AnnotateTool)] = [(.selectTool, .select), (.addTextTool, .text),
+        let tools: [(ShortcutCommand, AnnotateTool)] = [(.selectTool, .select), (.editTextTool, .editText), (.addTextTool, .text),
                                                         (.highlightTool, .highlight), (.commentTool, .comment)]
         guard let tool = tools.first(where: { store.shortcut($0.0) == shortcut })?.1 else { return false }
         annotateTool = tool
@@ -220,6 +246,10 @@ extension DocumentSession {
             menu.addItem(MenuAction.item(copy.string(.edit, language)) { [weak self] in self?.beginEditingTextBox(id) })
             menu.addItem(.separator())
             menu.addItem(MenuAction.item(copy.string(.deleteTextBox, language)) { [weak self] in self?.removeAnnotation(id: id) })
+        case .textEdit:
+            menu.addItem(MenuAction.item(copy.string(.edit, language)) { [weak self] in self?.beginEditingTextBox(id) })
+            menu.addItem(.separator())
+            menu.addItem(MenuAction.item(copy.string(.restoreOriginalText, language)) { [weak self] in self?.removeAnnotation(id: id) })
         }
         return menu
     }
@@ -237,11 +267,22 @@ extension DocumentSession {
         return annotation
     }
 
-    /// What Text Properties edits: the box being typed in, else the selected box. Nil = controls disabled.
+    /// What Text Properties edits: the box or line being typed in, else the selected box or edited line.
+    /// Nil = controls disabled.
     var textBoxTarget: (bounds: CGRect, style: TextBoxStyle, pageIndex: Int)? {
         if let draft = textEditing { return (draft.bounds, draft.style, draft.pageIndex) }
-        guard let box = selectedTextBox, case let .textBox(_, style) = box.content else { return nil }
-        return (box.bounds, style, pageIndex(of: box.id) ?? 0)
+        if let box = selectedTextBox, case let .textBox(_, style) = box.content { return (box.bounds, style, pageIndex(of: box.id) ?? 0) }
+        if let id = selectedAnnotationID, let edited = annotation(id), case let .textEdit(info) = edited.content {
+            return (edited.bounds, info.style, pageIndex(of: id) ?? 0)
+        }
+        return nil
+    }
+
+    /// Whether Text Properties is about a line of the PDF's own text (no Position; Restore original text).
+    var textTargetIsPDFLine: Bool {
+        if let draft = textEditing { return draft.line != nil }
+        if let id = selectedAnnotationID, let edited = annotation(id), case .textEdit = edited.content { return true }
+        return false
     }
 
     /// Add Khmer text: a new box with its top-left corner at `point`, ready for typing.
@@ -257,25 +298,43 @@ extension DocumentSession {
         textEditing = TextBoxDraft(pageIndex: index, bounds: CGRect(origin: origin, size: size), text: "", style: TextBoxStyle())
     }
 
-    func beginEditingTextBox(_ id: PageAnnotation.ID) {
-        guard let annotation = annotation(id), case let .textBox(text, style) = annotation.content, let index = pageIndex(of: id) else { return }
-        commitTextEditing()
-        selectedAnnotationID = id
-        textEditing = TextBoxDraft(id: id, pageIndex: index, bounds: annotation.bounds, text: text, style: style)
+    func beginEditingTextBox(_ id: PageAnnotation.ID, caret: CGPoint? = nil) {
+        guard let annotation = annotation(id), let index = pageIndex(of: id) else { return }
+        switch annotation.content {
+        case let .textBox(text, style):
+            commitTextEditing()
+            selectedAnnotationID = id
+            textEditing = TextBoxDraft(id: id, pageIndex: index, bounds: annotation.bounds, text: text, style: style)
+        case let .textEdit(info):
+            commitTextEditing()
+            selectedAnnotationID = id
+            textEditing = TextBoxDraft(id: id, pageIndex: index, bounds: annotation.bounds, text: info.text, style: info.style,
+                                       line: .init(original: info.original, cover: info.cover, baseline: info.baseline, coverColor: info.coverColor),
+                                       caret: caret)
+        default:
+            return
+        }
     }
 
     /// Typing in the on-page editor: the box grows with the text.
     func typeInTextBox(_ text: String) {
         guard var draft = textEditing, draft.text != text else { return }
         draft.text = text
-        draft.bounds = Self.fitted(draft.bounds, text: text, style: draft.style)
+        draft.bounds = layout(draft)
         textEditing = draft
+    }
+
+    /// Where a draft's text goes: a text box keeps its top and width; an edited line grows from the line's start.
+    func layout(_ draft: TextBoxDraft) -> CGRect {
+        guard let edit = draft.textEdit else { return Self.fitted(draft.bounds, text: draft.text, style: draft.style) }
+        return edit.layoutBounds(pageBox: document?.page(at: draft.pageIndex)?.bounds(for: .mediaBox) ?? .infinite)
     }
 
     /// Ends typing (Esc, a click elsewhere, another tool, Save work): one undoable change. An emptied box is removed;
     /// a new empty box is dropped.
     func commitTextEditing() {
         guard let draft = textEditing else { return }
+        if let edit = draft.textEdit { return commitLineEdit(draft, edit) }
         textEditing = nil
         let isBlank = draft.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let bounds = Self.fitted(draft.bounds, text: draft.text, style: draft.style)
@@ -292,16 +351,43 @@ extension DocumentSession {
             addAnnotation(annotation, toPageAt: draft.pageIndex)
             selectedAnnotationID = annotation.id
         }
-        if annotateTool == .text { annotateTool = .select }
+        if annotateTool == .text { annotateTool = .editText }
+    }
+
+    /// An edited line is kept even when emptied (that deletes the line from the page); a new edit that changed
+    /// nothing is dropped. One undo step.
+    private func commitLineEdit(_ draft: TextBoxDraft, _ edit: TextEditInfo) {
+        textEditing = nil
+        let bounds = layout(draft)
+        if let id = draft.id {
+            guard var annotation = annotation(id) else { return }
+            annotation.bounds = bounds
+            annotation.content = .textEdit(edit)
+            if annotation != self.annotation(id) { updateAnnotation(annotation) }
+            selectedAnnotationID = id
+        } else {
+            guard edit.text != edit.original else { return }
+            let annotation = PageAnnotation(bounds: bounds, content: .textEdit(edit))
+            addAnnotation(annotation, toPageAt: draft.pageIndex)
+            selectedAnnotationID = annotation.id
+        }
     }
 
     /// Text Properties: changes the style of the box being typed in or the selected box (undoable; height refits).
     func changeTextBoxStyle(_ change: (inout TextBoxStyle) -> Void) {
         if var draft = textEditing {
             change(&draft.style)
-            draft.bounds = Self.fitted(draft.bounds, text: draft.text, style: draft.style)
+            draft.bounds = layout(draft)
             textEditing = draft
             return
+        }
+        if let id = selectedAnnotationID, var edited = annotation(id), case var .textEdit(info) = edited.content {
+            let before = info.style
+            change(&info.style)
+            guard info.style != before else { return }
+            edited.content = .textEdit(info)
+            edited.bounds = info.layoutBounds(pageBox: pageIndex(of: id).flatMap { document?.page(at: $0)?.bounds(for: .mediaBox) } ?? .infinite)
+            return updateAnnotation(edited)
         }
         guard var box = selectedTextBox, case let .textBox(text, style) = box.content else { return }
         var changed = style
@@ -315,6 +401,7 @@ extension DocumentSession {
     /// Moves or resizes the target box; the height always fits the text. `undoable: false` for live drag steps.
     func setTextBoxBounds(_ bounds: CGRect, undoable: Bool = true) {
         if var draft = textEditing {
+            guard draft.line == nil else { return }  // an edited line keeps its place
             draft.bounds = Self.fitted(bounds, text: draft.text, style: draft.style)
             textEditing = draft
             return
@@ -355,5 +442,67 @@ extension DocumentSession {
         let width = max(40, bounds.width)
         let height = KhmerGlyphOutlines.fittedHeight(text: text, width: width, style: style)
         return CGRect(x: bounds.minX, y: bounds.maxY - height, width: width, height: height)
+    }
+}
+
+// MARK: - Edit PDF text (Figma PDF Text Line 556:525)
+
+extension DocumentSession {
+    /// The text a click can edit on page `index`: the PDF's own text where it is readable, else the page's Khmer OCR
+    /// lines. Nil when the page has neither (a scan not recognized yet, or a legacy-font layer).
+    func editableLines(onPageAt index: Int) async -> [EditableLine]? {
+        guard pages.indices.contains(index), let id = pdfiumID else { return nil }
+        let ref = pages[index]
+        let doc = documentID(for: ref) ?? id
+        let segments = await PDFiumService.shared.editableSegments(doc, page: ref.source)
+        if !segments.isEmpty {
+            return segments.map { EditableLine(text: $0.text, box: $0.box, fontSize: $0.fontSize, baseline: $0.baseline) }
+        }
+        guard let ocr = ocrResults[ref.id], !ocr.lines.isEmpty else { return nil }
+        // OCR boxes have no baseline: Khmer sits about a quarter of the line above the box's bottom (subscripts below).
+        return ocr.lines.map { line in
+            EditableLine(text: KhmerNormalizer.normalize(line.displayText), box: line.bounds,
+                         fontSize: line.bounds.height * 0.62, baseline: line.bounds.minY + line.bounds.height * 0.27)
+        }
+    }
+
+    /// Edit PDF text: a click at `point` (page space) opens the line under it for typing, with its text. An edit
+    /// already on that line opens again. Returns false when there is no line there (or the page needs OCR first,
+    /// which is shown as a hint).
+    @discardableResult
+    func beginEditingLine(onPageAt index: Int, at point: CGPoint, language: AppLanguage = .km) async -> Bool {
+        guard pages.indices.contains(index), document?.page(at: index) != nil else { return false }
+        commitTextEditing()
+        if let existing = (annotations[pages[index].id] ?? []).last(where: {
+            if case .textEdit = $0.content { $0.bounds.insetBy(dx: -1, dy: -1).contains(point) } else { false }
+        }) {
+            beginEditingTextBox(existing.id, caret: point)
+            return true
+        }
+        guard let lines = await editableLines(onPageAt: index) else {
+            toasts.show(.default, CopyCatalog.shared.string(.clickALineOfTextOnThePageToEdit, language))
+            return false
+        }
+        // The smallest piece of text under the click (a word group in a table cell rather than the row).
+        guard let line = lines.filter({ $0.box.insetBy(dx: -2, dy: -2).contains(point) })
+            .min(by: { $0.box.width * $0.box.height < $1.box.width * $1.box.height }) else { return false }
+        let ref = pages[index]
+        let cover = line.box.insetBy(dx: -1, dy: -1)
+        let coverColor = await PDFiumService.shared.colorAround(documentID(for: ref) ?? pdfiumID!, rect: cover, page: ref.source)
+        // The size at which the line's own text, set in the bundled Khmer font, is as tall as it is on the page
+        // (PDFium's font size is wrong for PDFs that scale text with a matrix, and OCR has none).
+        var style = TextBoxStyle()
+        let ink = KhmerGlyphOutlines.inkHeight(text: line.text, style: style)
+        let fontSize = ink > 0.2 ? min(200, max(4, line.box.height / ink)) : max(4, line.box.height * 0.62)
+        style.fontSize = fontSize
+        style.lineSpacing = max(1.2, line.box.height / fontSize)
+        var draft = TextBoxDraft(pageIndex: index, bounds: cover, text: line.text, style: style,
+                                 line: .init(original: line.text, cover: cover, baseline: line.baseline, coverColor: coverColor),
+                                 caret: point)
+        draft.bounds = layout(draft)
+        selectedAnnotationID = nil
+        commentDraft = nil
+        textEditing = draft
+        return true
     }
 }

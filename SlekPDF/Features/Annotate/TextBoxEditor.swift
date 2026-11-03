@@ -40,11 +40,18 @@ final class TextBoxEditor: NSTextView, NSTextViewDelegate {
         string = text
     }
 
-    /// Applies the box's style at the PDF view's zoom (`scale` points on screen per PDF point).
-    func apply(_ style: TextBoxStyle, scale: CGFloat) {
-        guard style != self.style || scale != self.scale else { return }
+    private(set) var insets = KhmerGlyphOutlines.textBoxInsets
+
+    /// Applies the box's style at the PDF view's zoom (`scale` points on screen per PDF point). An edited PDF line has
+    /// no insets and the page's own colour behind it (it covers the original line while typing).
+    func apply(_ style: TextBoxStyle, scale: CGFloat, insets: CGSize = KhmerGlyphOutlines.textBoxInsets, background: [CGFloat]? = nil) {
+        if let background {
+            backgroundColor = NSColor(srgbRed: background[0], green: background[1], blue: background[2], alpha: 1)
+        }
+        guard style != self.style || scale != self.scale || insets != self.insets else { return }
         self.style = style
         self.scale = scale
+        self.insets = insets
         let size = style.fontSize * scale
         let font = NSFont(name: style.fontName, size: size) ?? .systemFont(ofSize: size)
         let paragraph = style.paragraphStyle(scale: scale)
@@ -54,7 +61,7 @@ final class TextBoxEditor: NSTextView, NSTextViewDelegate {
         ]
         if style.italic { attributes[.obliqueness] = 0.2 }
         if style.underline { attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue }
-        textContainerInset = NSSize(width: TextBoxStyle.horizontalInset * scale, height: TextBoxStyle.verticalInset * scale)
+        textContainerInset = NSSize(width: insets.width * scale, height: insets.height * scale)
         if let storage = textStorage, storage.length > 0 {
             storage.setAttributes(attributes, range: NSRange(location: 0, length: storage.length))
         }

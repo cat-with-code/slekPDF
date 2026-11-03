@@ -23,6 +23,7 @@ enum DSIcon: String, CaseIterable {
     case down = "down"
     case download = "download"
     case drag = "drag"
+    case edit = "edit"
     case fileExcel = "file-excel"
     case filePdf = "file-pdf"
     case fileTxt = "file-txt"

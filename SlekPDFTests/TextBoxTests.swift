@@ -59,7 +59,7 @@ final class TextBoxTests: XCTestCase {
         guard case let .textBox(text, _) = box.content else { return XCTFail("not a text box") }
         XCTAssertEqual(text, "\(khmer)\nបន្ទាត់ទីពីរ")
         XCTAssertEqual(session.selectedAnnotationID, box.id)
-        XCTAssertEqual(session.annotateTool, .select)
+        XCTAssertEqual(session.annotateTool, .editText)
         XCTAssertNil(session.textEditing)
         XCTAssertTrue(try XCTUnwrap(session.document?.page(at: 0)?.annotations.compactMap { $0 as? SlekPDFAnnotation }.first).isSelected)
 

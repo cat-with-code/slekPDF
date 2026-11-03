@@ -64,3 +64,26 @@ The single-key tools (V/T/H/C/Esc) are handled by the canvas and are inactive wh
    - Khmer typing with a real input method is untested here (needs a person at the keyboard).
 
 Khmer typing in text boxes can't be exercised from tests; report it as untested until it is tried by hand.
+
+## Edit PDF text (user request, 3 Nov 2026; Figma PDF Text Line 556:525, KM · 03b Annotate · edit PDF text)
+
+Click a line of the PDF's own text and change it in place. Storage: a FreeText annotation with `/SlekTextEdit`
+(`TextEditInfo`: original, text, style, cover rect, baseline, cover colour); its appearance paints the cover in the page
+colour, then the new text (CoreText outlines) on the original baseline. The source PDF is never changed; Save work keeps
+the edit editable; nothing is written unless the person saves.
+
+4. Slice 1 ✅ (EditPDFTextTests): Edit PDF text is the default Annotate tool (E; Esc returns to it; V = Select). Click →
+   the phrase under the click (a line split at column gaps measured by character height, word spaces kept) opens in
+   the editor with its text, caret at the click, cover colour sampled around the line. Size = the line's ink height
+   ÷ the same text's ink height in Noto Sans Khmer (PDFium font sizes are wrong under text matrices). Unreadable
+   layers (legacy fonts, broken glyph maps) and scans use the page's OCR lines; without them a hint says to run
+   Khmer OCR. Unchanged = no edit; emptied = the line is deleted; clicking an edit reopens it; one undo; right-click
+   Edit / Restore original text; ⌫ restores. Prints with the document (content, not an annotation).
+   Next:
+   - Hover outline (needs a main-actor cache of each visible page's lines).
+   - Inspector: PDF text properties variant (no Position, Restore original text), Edited marker.
+   - Exports: Word / Excel / plain text / searchable PDF use the edited text; delivery copies remove the original text
+     objects under the cover (spike first: object granularity, pixel compare outside the cover; FPDFPage_GenerateContent
+     rewrites the page stream). Only then show “Exported copies replace the original text” and update the known-limits
+     copy.
+   - Copy and search inside Slek return the edited text; rotated pages.

@@ -36,6 +36,9 @@ nonisolated final class SlekPDFAnnotation: PDFAnnotation {
         case .comment:
             type = .text
             outlines = []
+        case let .textEdit(info):
+            type = .freeText
+            outlines = info.outlines(in: model.bounds)
         }
         // Room around the content for the selection outline and handles.
         super.init(bounds: model.bounds.insetBy(dx: -Self.handleSize, dy: -Self.handleSize), forType: type, withProperties: nil)
@@ -45,6 +48,7 @@ nonisolated final class SlekPDFAnnotation: PDFAnnotation {
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
 
     var isComment: Bool { if case .comment = model.content { true } else { false } }
+    var isTextEdit: Bool { if case .textEdit = model.content { true } else { false } }
 
     /// Whether a click at `point` (page space) lands on this annotation (a selected text box includes its handles).
     func contains(_ point: CGPoint) -> Bool {
@@ -52,6 +56,7 @@ nonisolated final class SlekPDFAnnotation: PDFAnnotation {
         case let .highlight(info): info.lines.contains { $0.insetBy(dx: -1, dy: -1).contains(point) }
         case .textBox: model.bounds.insetBy(dx: isSelected ? -Self.handleSize : 0, dy: isSelected ? -Self.handleSize : 0).contains(point)
         case .comment: model.bounds.contains(point)
+        case .textEdit: model.bounds.insetBy(dx: -1, dy: -1).contains(point)
         }
     }
 
@@ -115,6 +120,20 @@ nonisolated final class SlekPDFAnnotation: PDFAnnotation {
             }
         case let .comment(info):
             drawPin(in: context, resolved: info.resolved)
+        case let .textEdit(info):
+            // Figma PDF Text Line, Edited: the original line covered with the page colour, the new text on its baseline.
+            context.setFillColor(CGColor(srgbRed: info.coverColor[0], green: info.coverColor[1], blue: info.coverColor[2], alpha: 1))
+            context.fill(info.cover)
+            context.setFillColor(CGColor(srgbRed: info.style.color[0], green: info.style.color[1], blue: info.style.color[2], alpha: 1))
+            for path in outlines {
+                context.addPath(path)
+                context.fillPath()
+            }
+            if isSelected {  // Selected: accent outline, no handles (an edited line keeps its place)
+                context.setStrokeColor(Self.accentColor)
+                context.setLineWidth(1.5)
+                context.stroke(model.bounds.insetBy(dx: -1, dy: -1))
+            }
         }
     }
 

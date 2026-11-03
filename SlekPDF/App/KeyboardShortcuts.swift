@@ -112,7 +112,7 @@ enum ShortcutCommand: String, CaseIterable, Codable {
     // Document
     case previousPage, nextPage, goToPage, rotateLeft, rotateRight, movePageEarlier, movePageLater, deleteSelectedPages
     // Tools
-    case selectTool, addTextTool, highlightTool, commentTool, recognizeText, reviewOCR, markReviewed
+    case selectTool, editTextTool, addTextTool, highlightTool, commentTool, recognizeText, reviewOCR, markReviewed
     // Window & Help
     case minimize, showNextTab, showPreviousTab, slekPDFHelp, keyboardShortcuts
     // No default keys; can be given a custom shortcut.
@@ -144,7 +144,7 @@ enum ShortcutCommand: String, CaseIterable, Codable {
              .showInspector, .enterFullScreen: .view
         case .previousPage, .nextPage, .goToPage, .rotateLeft, .rotateRight, .movePageEarlier, .movePageLater, .deleteSelectedPages,
              .splitIntoPDFs, .insertPages: .document
-        case .selectTool, .addTextTool, .highlightTool, .commentTool, .recognizeText, .reviewOCR, .markReviewed, .exportSearchablePDF: .tools
+        case .selectTool, .editTextTool, .addTextTool, .highlightTool, .commentTool, .recognizeText, .reviewOCR, .markReviewed, .exportSearchablePDF: .tools
         case .minimize, .showNextTab, .showPreviousTab, .slekPDFHelp, .keyboardShortcuts, .zoomWindow, .releaseNotes, .privacyLicenses,
              .reportProblem: .windowHelp
         }
@@ -191,6 +191,7 @@ enum ShortcutCommand: String, CaseIterable, Codable {
         case .movePageLater: .movePageLater
         case .deleteSelectedPages: .deleteSelectedPages
         case .selectTool: .select
+        case .editTextTool: .editPDFText2
         case .addTextTool: .addKhmerText
         case .highlightTool: .highlightText
         case .commentTool: .addComment
@@ -275,6 +276,7 @@ enum ShortcutCommand: String, CaseIterable, Codable {
         case .movePageLater: return KeyShortcut("↓", [.option, .command])
         case .deleteSelectedPages: return KeyShortcut("⌫", cmd)
         case .selectTool: return KeyShortcut("v", [])
+        case .editTextTool: return KeyShortcut("e", [])
         case .addTextTool: return KeyShortcut("t", [])
         case .highlightTool: return KeyShortcut("h", [])
         case .commentTool: return KeyShortcut("c", [])

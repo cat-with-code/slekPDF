@@ -201,7 +201,12 @@ final class KhmerPDFView: PDFView {
             finishHighlight()
         case .text where annotation == nil:
             session.beginTextBox(onPageAt: hit.index, at: hit.point)
-        case .select, .text:
+        case .editText where annotation == nil || annotation?.isTextEdit == true:
+            // Edit PDF text: the line under the click opens for typing (an edited line opens again).
+            if let annotation { return session.beginEditingTextBox(annotation.model.id, caret: hit.point) }
+            let (index, point, language) = (hit.index, hit.point, language)
+            Task { await session.beginEditingLine(onPageAt: index, at: point, language: language) }
+        case .select, .text, .editText:
             guard let annotation else {
                 session.selectedAnnotationID = nil
                 return super.mouseDown(with: event)
@@ -254,7 +259,7 @@ final class KhmerPDFView: PDFView {
     // MARK: Text box editor
 
     private var editor: TextBoxEditor?
-    private var editorKey: (id: PageAnnotation.ID?, page: Int)?
+    private var editorKey: UUID?
 
     /// Shows, moves or removes the on-page editor to match `session.textEditing` (also on scroll and zoom).
     func syncTextEditor() {
@@ -267,7 +272,8 @@ final class KhmerPDFView: PDFView {
             }
             return
         }
-        if editor == nil || editorKey?.id != draft.id || editorKey?.page != draft.pageIndex {
+        var isNew = false
+        if editor == nil || editorKey != draft.session {
             editor?.removeFromSuperview()
             let created = TextBoxEditor(text: draft.text)
             created.setAccessibilityLabel(CopyCatalog.shared.string(.editAnAddedTextBox, language))
@@ -275,12 +281,20 @@ final class KhmerPDFView: PDFView {
             created.onEnd = { [weak session] in session?.commitTextEditing() }
             addSubview(created)
             editor = created
-            editorKey = (draft.id, draft.pageIndex)
+            editorKey = draft.session
             window?.makeFirstResponder(created)
+            isNew = true
         }
         guard let editor else { return }
-        editor.apply(draft.style, scale: scaleFactor)
+        editor.apply(draft.style, scale: scaleFactor, insets: draft.line == nil ? KhmerGlyphOutlines.textBoxInsets : TextEditInfo.insets,
+                     background: draft.line?.coverColor)
         editor.frame = convert(draft.bounds, from: page).integral
+        // An edited line opens with the caret where it was clicked.
+        if isNew, let caret = draft.caret {
+            editor.layoutManager?.ensureLayout(for: editor.textContainer!)
+            let index = editor.characterIndexForInsertion(at: editor.convert(convert(caret, from: page), from: self))
+            editor.setSelectedRange(NSRange(location: min(index, (editor.string as NSString).length), length: 0))
+        }
     }
 
     override func mouseUp(with event: NSEvent) {

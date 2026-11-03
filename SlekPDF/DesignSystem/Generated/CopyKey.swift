@@ -487,4 +487,11 @@ enum CopyKey: String, CaseIterable {
     case openRecoveredWork = "Open recovered work"
     case fmtNEditsLastChangeTime = "fmt: N edits · last change time"
     case fmtTodayTime = "fmt: today time"
+    case editPDFText = "Edit PDF text"
+    case editPDFText2 = "Edit PDF Text"
+    case clickALineOfTextOnThePageToEdit = "Click a line of text on the page to edit"
+    case restoreOriginalText = "Restore original text"
+    case pdfTextProperties = "PDF text properties"
+    case appliesToTheSelectedLineOfPDFText = "Applies to the selected line of PDF text"
+    case edited = "Edited"
 }

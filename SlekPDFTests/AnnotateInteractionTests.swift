@@ -61,7 +61,7 @@ final class AnnotateInteractionTests: XCTestCase {
         XCTAssertEqual(comment.info.author, DocumentSession.currentAuthor)
         XCTAssertEqual(comment.annotation.bounds.origin, CGPoint(x: 100, y: 300))
         XCTAssertNil(session.commentDraft)
-        XCTAssertEqual(session.annotateTool, .select)
+        XCTAssertEqual(session.annotateTool, .editText)
         XCTAssertEqual(session.selectedAnnotationID, comment.id)
         let pin = try XCTUnwrap(session.document?.page(at: 1)?.annotations.compactMap { $0 as? SlekPDFAnnotation }.first)
         XCTAssertTrue(pin.isSelected)
@@ -122,8 +122,12 @@ final class AnnotateInteractionTests: XCTestCase {
         XCTAssertTrue(session.handleAnnotateKey(key("c", code: 8)))
         XCTAssertEqual(session.annotateTool, .comment)
         XCTAssertTrue(session.handleAnnotateKey(key("\u{1b}", code: 53)))
-        XCTAssertEqual(session.annotateTool, .select)
+        XCTAssertEqual(session.annotateTool, .editText, "Esc returns to the default tool, Edit PDF text")
         XCTAssertFalse(session.handleAnnotateKey(key("\u{1b}", code: 53)), "nothing to cancel: Esc goes on")
+        XCTAssertTrue(session.handleAnnotateKey(key("v", code: 9)))
+        XCTAssertEqual(session.annotateTool, .select)
+        XCTAssertTrue(session.handleAnnotateKey(key("e", code: 14)))
+        XCTAssertEqual(session.annotateTool, .editText)
         XCTAssertTrue(session.handleAnnotateKey(key("t", code: 17)))
         XCTAssertEqual(session.annotateTool, .text)
         session.annotateTool = .select
@@ -155,7 +159,7 @@ final class AnnotateInteractionTests: XCTestCase {
         session.annotateTool = .highlight
         session.selectedAnnotationID = highlight.id
         session.workspace = .read
-        XCTAssertEqual(session.annotateTool, .select)
+        XCTAssertEqual(session.annotateTool, .editText)
         XCTAssertNil(session.selectedAnnotationID)
         XCTAssertNil(session.commentDraft)
         XCTAssertEqual(session.annotations[session.pages[0].id]?.count, 1, "annotations stay; only the tool state resets")

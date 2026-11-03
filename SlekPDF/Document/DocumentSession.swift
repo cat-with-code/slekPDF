@@ -26,7 +26,7 @@ final class DocumentSession: ObservableObject {
         didSet {
             guard workspace != .annotate, oldValue == .annotate else { return }
             commitTextEditing()
-            annotateTool = .select
+            annotateTool = .editText
             commentDraft = nil
             selectedAnnotationID = nil
         }
@@ -104,8 +104,9 @@ final class DocumentSession: ObservableObject {
 
     /// Annotate: Slek's annotations per page (the PageRef, so they follow reorder, rotation and delete/undo).
     @Published private(set) var annotations: [PageRef.ID: [PageAnnotation]] = [:]
-    /// Annotate Tools (Figma 125:135): Select (V), Add Khmer text (T), Highlight (H), Comment (C); Esc = Select.
-    @Published var annotateTool: AnnotateTool = .select {
+    /// Annotate Tools (Figma 125:135): Edit PDF text (E, the default: click a line to edit it), Select (V),
+    /// Add Khmer text (T), Highlight (H), Comment (C); Esc returns to Edit PDF text.
+    @Published var annotateTool: AnnotateTool = .editText {
         didSet { if annotateTool != oldValue, annotateTool != .text, textEditing != nil { commitTextEditing() } }
     }
     /// The annotation selected on the page or in the comment list (drawn with the accent outline / selected pin).
@@ -364,7 +365,7 @@ final class DocumentSession: ObservableObject {
         savedOCR = [:]
         ocrReviewItem = nil
         textEditing = nil  // first: changing the tool would commit it
-        annotateTool = .select
+        annotateTool = .editText
         selectedAnnotationID = nil
         commentDraft = nil
         selectedPageIDs = []
@@ -770,7 +771,7 @@ final class DocumentSession: ObservableObject {
     /// copy is matched by type and top-left corner (PDFKit resizes note icons but keeps that corner).
     private static func isStoredCopy(_ annotation: PDFAnnotation, of stored: PageAnnotation) -> Bool {
         let type = switch stored.content {
-        case .textBox: "FreeText"
+        case .textBox, .textEdit: "FreeText"
         case .highlight: "Highlight"
         case .comment: "Text"
         }

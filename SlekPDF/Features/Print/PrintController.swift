@@ -20,6 +20,8 @@ final class PrintOptions: ObservableObject {
 
     /// Whether an annotation already in the PDF prints with these options.
     func prints(_ annotation: PDFAnnotation) -> Bool {
+        // Edited PDF text is the document's content now, not an annotation on it.
+        if let slek = annotation as? SlekPDFAnnotation, slek.isTextEdit { return true }
         guard content == .documentAndAnnotations else { return false }
         // Comment pins are on-screen markers; comments print only as the summary page (once built).
         if let slek = annotation as? SlekPDFAnnotation, slek.isComment { return false }

@@ -68,28 +68,43 @@ nonisolated enum KhmerTextRebuilder {
     struct Segment: Equatable, Sendable {
         let text: String
         let box: CGRect
+        /// Median font size and baseline (page y) of the segment's characters.
+        var fontSize: CGFloat = 0
+        var baseline: CGFloat = 0
     }
 
     /// Each line split where the gap between characters is wider than about one em (columns, not word spaces).
-    static func segments(_ chars: [PDFiumChar]) -> [[Segment]] {
+    /// `byHeight`: measure the em by the characters' drawn height instead of PDFium's font size, which is wrong for
+    /// PDFs that scale text with a matrix (Edit PDF text must not split a sentence at its word spaces).
+    static func segments(_ chars: [PDFiumChar], byHeight: Bool = false) -> [[Segment]] {
         splitIntoLines(chars).compactMap { line in
             let real = line.filter { !$0.isGenerated && !$0.box.isEmpty }.sorted { $0.box.minX < $1.box.minX }
             guard !real.isEmpty else { return nil }
             var groups: [Set<Int>] = [[real[0].index]]
             var right = real[0].box.maxX
+            let heights = real.map(\.box.height).sorted()
+            let lineEm = max(heights[heights.count / 2], 6)
             for char in real.dropFirst() {
-                if char.box.minX - right > max(CGFloat(char.fontSize), 6) { groups.append([]) }
+                let em = byHeight ? lineEm : max(CGFloat(char.fontSize), 6)
+                if char.box.minX - right > em { groups.append([]) }
                 groups[groups.count - 1].insert(char.index)
                 right = max(right, char.box.maxX)
             }
             let segments = groups.compactMap { members -> Segment? in
-                let part = line.filter { members.contains($0.index) }
+                // The members plus the spaces PDFium generated between them (word spaces the file does not contain).
+                guard let first = line.firstIndex(where: { members.contains($0.index) }),
+                      let last = line.lastIndex(where: { members.contains($0.index) }) else { return nil }
+                let part = line[first...last].filter { members.contains($0.index) || ($0.isGenerated && $0.scalar == " ") }
                 var text = ""
                 text.unicodeScalars.append(contentsOf: rebuildLine(part).map(\.scalar))
                 text = text.trimmingCharacters(in: .whitespaces)
                 let boxes = part.filter { !$0.box.isEmpty }.map(\.box)
                 guard !text.isEmpty, let first = boxes.first else { return nil }
-                return Segment(text: text, box: boxes.dropFirst().reduce(first) { $0.union($1) })
+                let real = part.filter { !$0.isGenerated }
+                let sizes = real.map(\.fontSize).sorted(), baselines = real.map(\.origin.y).sorted()
+                return Segment(text: text, box: boxes.dropFirst().reduce(first) { $0.union($1) },
+                               fontSize: CGFloat(sizes.isEmpty ? 0 : sizes[sizes.count / 2]),
+                               baseline: baselines.isEmpty ? first.minY : baselines[baselines.count / 2])
             }
             return segments.isEmpty ? nil : segments
         }

@@ -148,6 +148,17 @@ nonisolated final class PDFiumDocument {
         guard FPDFPage_GenerateContent(page) != 0 else { throw PDFiumError.saveFailed }
     }
 
+    /// Appends page `index` of `source` (content, resources and annotations copied as they are — nothing is
+    /// redrawn), turned `quarterTurns` × 90° further clockwise.
+    func appendPage(from source: PDFiumDocument, index: Int, quarterTurns: Int) throws {
+        var pageIndex = Int32(index)
+        guard FPDF_ImportPagesByIndex(handle, source.handle, &pageIndex, 1, Int32(pageCount)) != 0 else { throw PDFiumError.page }
+        guard quarterTurns % 4 != 0 else { return }
+        guard let page = FPDF_LoadPage(handle, Int32(pageCount - 1)) else { throw PDFiumError.page }
+        defer { FPDF_ClosePage(page) }
+        FPDFPage_SetRotation(page, (FPDFPage_GetRotation(page) + Int32(quarterTurns % 4) + 4) % 4)
+    }
+
     /// Saves to `url`. `incremental` appends changes after the original bytes, leaving them untouched.
     func save(to url: URL, incremental: Bool = true) throws {
         let data = try PDFiumWriter.write { writer in

@@ -92,8 +92,8 @@ private struct FileMenuCommands: Commands {
             .disabled(!session.isAvailable)
         }
         CommandGroup(replacing: .saveItem) {
-            // 42/43 Save work, Save a copy and 05 Export are not built yet.
-            Button(language(.menuSaveWork)) {}.shortcut(.saveWork).disabled(true)
+            // 42/43 Save work; Save a copy and 05 Export are not built yet.
+            Button(language(.menuSaveWork)) { session?.requestSaveWork(language) }.shortcut(.saveWork).disabled(!session.hasDocument)
             Button(language(.menuSaveACopy)) {}.shortcut(.saveACopy).disabled(true)
             Button(language(.menuExport)) {}.shortcut(.export).disabled(true)
         }
@@ -210,9 +210,13 @@ private struct DocumentAndToolsCommands: Commands {
                 .shortcut(.goToPage)
                 .disabled(!hasDocument)
             Divider()
-            Button(language(.menuRotateLeft)) {}.shortcut(.rotateLeft).disabled(true)
-            Button(language(.menuRotateRight)) {}.shortcut(.rotateRight).disabled(true)
-            Button(language(.menuDeleteSelectedPages)) {}.shortcut(.deleteSelectedPages).disabled(true)
+            // Rotate the selected pages (Organize) or the current page; a page edit, saved with Save work.
+            Button(language(.menuRotateLeft)) { session?.rotateSelectedPages(clockwise: false) }.shortcut(.rotateLeft).disabled(!hasDocument)
+            Button(language(.menuRotateRight)) { session?.rotateSelectedPages(clockwise: true) }.shortcut(.rotateRight).disabled(!hasDocument)
+            Button(language(.menuDeleteSelectedPages)) { session?.requestDeletePages(language) }  // 20 Delete pages?
+                .shortcut(.deleteSelectedPages)
+                .disabled(!hasDocument || session?.workspace != .organizePages || (session?.selectedPageIDs.isEmpty ?? true)
+                          || (session?.selectedPageIDs.count ?? 0) >= (session?.pageCount ?? 0))
             Divider()
             Button(language(.menuInsertPagesFromFile)) {}.shortcut(.insertPages).disabled(true)
             Button(language(.menuSplitIntoPDFs)) {}.shortcut(.splitIntoPDFs).disabled(true)

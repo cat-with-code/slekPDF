@@ -10,6 +10,8 @@ struct DSDialog<Content: View>: View {
     let cancel: CopyKey
     let confirm: CopyKey
     var confirmDisabled = false
+    /// Destructive for irreversible actions (Figma Button: Destructive, e.g. "Delete pages").
+    var confirmStyle: DSButton.Style = .primary
     let onCancel: () -> Void
     let onConfirm: () -> Void
     @ViewBuilder var content: Content
@@ -28,7 +30,7 @@ struct DSDialog<Content: View>: View {
             HStack(spacing: DSSpace.s8) {
                 Spacer()
                 DSButton(cancel, action: onCancel).keyboardShortcut(.cancelAction)
-                DSButton(confirm, style: .primary, action: onConfirm)
+                DSButton(confirm, style: confirmStyle, action: onConfirm)
                     .keyboardShortcut(.defaultAction)
                     .disabled(confirmDisabled)
             }

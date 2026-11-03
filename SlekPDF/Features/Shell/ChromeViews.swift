@@ -45,11 +45,16 @@ struct ToolbarView: View {
             }
             DSButton(.openPDF, icon: .folderOpen) { session.isImporterPresented = true }
                 .dsTooltip(.openPDF, shortcut: "⌘O")
-            // Honest states: these stay disabled until their features exist (as in the menu bar).
-            DSButton(.saveWork, icon: .save).disabled(true)  // 42 Save work
+            DSButton(.saveWork, icon: .save) { session.requestSaveWork(language) }  // 42 Save work
+                .dsTooltip(.saveWork, shortcut: ShortcutStore.shared.shortcut(.saveWork)?.display)
+                .disabled(!hasDocument || session.isModalPresented)
             DSDivider(axis: .vertical).frame(height: 24).padding(.horizontal, DSSpace.s4)
-            DSButton(.undo, icon: .undo, style: .plain).disabled(true)  // nothing to undo before Organize/Annotate
-            DSButton(.redo, icon: .redo, style: .plain).disabled(true)
+            DSButton(.undo, icon: .undo, style: .plain) { session.undoManager?.undo() }
+                .dsTooltip(.undo, shortcut: ShortcutStore.shared.shortcut(.undo)?.display)
+                .disabled(!hasDocument || session.isModalPresented || session.undoManager?.canUndo != true)
+            DSButton(.redo, icon: .redo, style: .plain) { session.undoManager?.redo() }
+                .dsTooltip(.redo, shortcut: ShortcutStore.shared.shortcut(.redo)?.display)
+                .disabled(!hasDocument || session.isModalPresented || session.undoManager?.canRedo != true)
             Spacer()
             DSButton(.print, icon: .printer, style: .plain) { PrintController.print(session, language: language) }  // D-25
                 .dsTooltip(.print, shortcut: ShortcutStore.shared.shortcut(.print)?.display)

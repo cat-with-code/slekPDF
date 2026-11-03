@@ -31,6 +31,10 @@ Status after the shell scaffold (30 Oct 2026). "Verified" means built, tested an
 6. **Word / Excel icons.** The prototype uses the official Microsoft Word and Excel marks. They are Microsoft trademarks; check Microsoft's brand-use rules (or switch to the IconPark `file-word` / `file-excel` icons already in the set) before shipping.
 7. **Bundle identifier and signing team.** Placeholder `com.example.SlekPDF`; needs the real reverse-domain ID and Apple Developer team.
 
+## Saved work format — decided 3 Nov 2026
+
+Save work (42/43) writes an **editable PDF** ("<name> — work.pdf" in the default export folder): page changes applied with PDFium (no page redrawing), added text, highlights and comments as standard PDF annotations, so it reopens editable in Slek PDF and opens in any PDF app. Export produces flattened delivery copies. The source PDF is never modified.
+
 ## App menu & Help screens (D-27 … D-34a) — built 3 Nov 2026, open items
 
 - **Contact details missing in Figma.** No support email or website URL exists in the file: Report/Feedback open the email without a recipient and Developer ▸ Website and Help ▸ Online Documentation are disabled. Set `SupportContact` in `AppPanels.swift`.

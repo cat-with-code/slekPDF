@@ -60,6 +60,36 @@ final class ComponentGallerySnapshotTests: XCTestCase {
         }
     }
 
+    /// Prototype 02 Organize pages, 20 Delete pages? and 42 Save work with a real 3-page PDF, 1280×900.
+    func testRenderOrganize() async throws {
+        guard ProcessInfo.processInfo.environment["SNAPSHOT_DIR"] != nil else {
+            throw XCTSkip("Set SNAPSHOT_DIR to write snapshots")
+        }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("shell-snapshots")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        FontRegistry.registerBundledFonts()
+        let url = try XCTUnwrap(Bundle(for: ComponentGallerySnapshotTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
+        for (name, dialog) in [("02-organize", nil), ("20-delete", DocumentSession.OrganizeDialog.deletePages), ("42-save-work", .saveWork)] {
+            for language in AppLanguage.allCases {
+                let session = DocumentSession()
+                await session.open(url)
+                session.workspace = .organizePages
+                if dialog == .deletePages { session.selectedPageIDs = Set(session.pages.dropFirst().map(\.id)) }
+                session.organizeDialog = dialog
+                let state = AppState(defaults: UserDefaults(suiteName: "organize-\(UUID())")!)
+                state.language = language
+                let view = MainWindowView()
+                    .environmentObject(state).environmentObject(session)
+                    .environmentObject(RecentDocuments(defaults: UserDefaults(suiteName: "organize-recents-\(UUID())")!))
+                    .environmentObject(session.toasts)
+                    .environment(\.appLanguage, language)
+                try render(view, size: ChromeMetrics.defaultWindowSize, appearance: .aqua,
+                           to: dir.appendingPathComponent("\(name)-\(language.rawValue)-light.png"))
+                await session.close()
+            }
+        }
+    }
+
     private func render(_ view: some View, size: CGSize, appearance: NSAppearance.Name, to url: URL) throws {
         let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height))
         host.frame = CGRect(origin: .zero, size: size)

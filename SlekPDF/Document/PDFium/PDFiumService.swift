@@ -33,6 +33,15 @@ final class PDFiumService {
         pages[id] = nil
     }
 
+    /// Saved work (decision: an editable PDF): the open document's pages in `pages` order with extra rotation,
+    /// written as a new file. The source file is only read.
+    func saveWork(_ id: DocumentID, pages: [(source: Int, quarterTurns: Int)], to url: URL) throws {
+        guard let source = documents[id] else { throw PDFiumError.file }
+        let output = PDFiumDocument()
+        for page in pages { try output.appendPage(from: source, index: page.source, quarterTurns: page.quarterTurns) }
+        try output.save(to: url, incremental: false)
+    }
+
     /// Rebuilt (readable) text per page, cached: used by copy and search.
     private var pages: [DocumentID: [Int: (text: KhmerTextRebuilder.Result, chars: [PDFiumChar])]] = [:]
 

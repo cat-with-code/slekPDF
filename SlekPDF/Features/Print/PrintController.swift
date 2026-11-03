@@ -32,7 +32,7 @@ enum PrintController {
     /// Opens the print sheet on the document's window; once the job is sent, shows the Printing… toast (D-26).
     @MainActor
     static func print(_ session: DocumentSession, language: AppLanguage) {
-        guard let document = session.document, let window = session.pdfView?.window,
+        guard let document = session.document, let window = session.pdfView?.window ?? NSApp.keyWindow,
               let info = NSPrintInfo.shared.copy() as? NSPrintInfo,
               let operation = document.printOperation(for: info, scalingMode: .pageScaleToFit, autoRotate: true)
         else { return }

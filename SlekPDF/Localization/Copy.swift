@@ -79,6 +79,26 @@ extension AppLanguage {
 
 extension CopyCatalog {
     /// Fills `{0}`, `{1}`… in a template entry. Integers use the language's digits.
+    /// `format` with an English singular variant (`en_one`) when `count` is 1; Khmer has one form.
+    func count(_ key: CopyKey, _ language: AppLanguage, _ count: Int, _ arguments: Any...) -> String {
+        var text = (language == .en && count == 1 ? entries[key.rawValue]?["en_one"] : nil) ?? string(key, language)
+        for (index, argument) in ([count] + arguments).enumerated() {
+            let value = (argument as? Int).map(language.number) ?? "\(argument)"
+            text = text.replacingOccurrences(of: "{\(index)}", with: value)
+        }
+        return text
+    }
+
+    /// `format`, using the English singular variant (`en_one`) when `singular` is true.
+    func variant(_ key: CopyKey, _ language: AppLanguage, singular: Bool, _ arguments: Any...) -> String {
+        var text = (language == .en && singular ? entries[key.rawValue]?["en_one"] : nil) ?? string(key, language)
+        for (index, argument) in arguments.enumerated() {
+            let value = (argument as? Int).map(language.number) ?? "\(argument)"
+            text = text.replacingOccurrences(of: "{\(index)}", with: value)
+        }
+        return text
+    }
+
     func format(_ key: CopyKey, _ language: AppLanguage, _ arguments: Any...) -> String {
         var text = string(key, language)
         for (index, argument) in arguments.enumerated() {

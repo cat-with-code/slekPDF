@@ -40,6 +40,7 @@ struct DocumentWindow: View {
 /// Rows: title bar 44 · toolbar 50 · workspace tabs 44 · workspace (sidebar | canvas | inspector) · status bar 36.
 struct MainWindowView: View {
     @EnvironmentObject private var session: DocumentSession
+    @Environment(\.undoManager) private var undoManager
     @EnvironmentObject private var toasts: ToastCenter
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -63,10 +64,16 @@ struct MainWindowView: View {
                             CollapsedSidebarRail().transition(.opacity)
                             DSDivider(axis: .vertical)
                         }
-                        DocumentCanvas()
+                        if session.workspace == .organizePages {
+                            OrganizeCanvas()  // Prototype 02
+                        } else {
+                            DocumentCanvas()
+                        }
                         DSDivider(axis: .vertical)
                         if session.isInspectorVisible {
-                            ReadInspectorView()
+                            Group {
+                                if session.workspace == .organizePages { OrganizeInspector() } else { ReadInspectorView() }
+                            }
                                 .frame(width: sizeClass.inspectorWidth)
                                 .transition(panelTransition(edge: .trailing))
                         } else {
@@ -115,9 +122,13 @@ struct MainWindowView: View {
                 ModalLayer { OpenErrorDialog(error: error) }
             } else if let panel = session.panel {
                 ModalLayer { AppPanelView(panel: panel) }
+            } else if let dialog = session.organizeDialog {
+                ModalLayer { OrganizeDialogView(dialog: dialog) }
             }
         }
         .animation(.easeOut(duration: 0.15), value: session.isModalPresented)
+        .onAppear { session.undoManager = undoManager }
+        .onChange(of: undoManager) { session.undoManager = $0 }
         .ignoresSafeArea()
     }
 

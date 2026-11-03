@@ -8,6 +8,8 @@ struct DSTextField: View {
     var icon: DSIcon?
     var isSecure = false
     var helper: CopyKey?
+    /// Helper text already in the interface language (e.g. "Saved in “Documents”").
+    var helperText: String?
     var error: CopyKey?
     var onSubmit: () -> Void = {}
     @FocusState private var isFocused: Bool
@@ -46,6 +48,8 @@ struct DSTextField: View {
             )
             if let message = error ?? helper {
                 DSLabel(message, style: .caption).foregroundColor(error != nil ? DSColor.statusDanger : DSColor.textTertiary)
+            } else if let helperText {
+                Text(helperText).dsText(.caption).foregroundColor(DSColor.textTertiary)
             }
         }
         .onAppear { isFocused = true }

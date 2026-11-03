@@ -1217,5 +1217,107 @@
   "fmt: Printing N pages to printer": {
     "km": "កំពុងបោះពុម្ព {0} ទំព័រ ទៅ{1}…",
     "en": "Printing {0} pages to {1}…"
+  },
+  "Page overview": {
+    "km": "ទិដ្ឋភាពទូទៅនៃទំព័រ",
+    "en": "Page overview"
+  },
+  "fmt: N pages selected": {
+    "km": "បានជ្រើសរើស {0} ទំព័រ",
+    "en": "{0} pages selected",
+    "en_one": "{0} page selected",
+    "note": "Template derived from Figma example copy Copy/1 page selected"
+  },
+  "Move earlier": {
+    "km": "ផ្លាស់ទីមុន",
+    "en": "Move earlier"
+  },
+  "Move later": {
+    "km": "ផ្លាស់ទីក្រោយ",
+    "en": "Move later"
+  },
+  "Drag pages to reorder · or use Move earl": {
+    "km": "អូសទំព័រដើម្បីតម្រៀបឡើងវិញ · ឬប្រើ ផ្លាស់ទីមុន / ក្រោយ (⌘↑ ⌘↓)",
+    "en": "Drag pages to reorder · or use Move earlier / later (⌘↑ ⌘↓)"
+  },
+  "Selected pages": {
+    "km": "ទំព័រដែលបានជ្រើសរើស",
+    "en": "Selected pages"
+  },
+  "Rotate selected pages": {
+    "km": "បង្វិលទំព័រដែលបានជ្រើស",
+    "en": "Rotate selected pages"
+  },
+  "Split into PDFs…": {
+    "km": "បំបែកជា PDF…",
+    "en": "Split into PDFs…"
+  },
+  "Combine documents": {
+    "km": "បញ្ចូលឯកសារ",
+    "en": "Combine documents"
+  },
+  "Review file order before merging Undo pa": {
+    "km": "ពិនិត្យលំដាប់ឯកសារ មុនពេលបញ្ចូល។ មិនធ្វើវិញការផ្លាស់ប្ដូរ មុនពេលរក្សាទុក។",
+    "en": "Review file order before merging. Undo page changes before saving."
+  },
+  "Merge PDFs…": {
+    "km": "បញ្ចូល PDF…",
+    "en": "Merge PDFs…"
+  },
+  "Save": {
+    "km": "រក្សាទុក",
+    "en": "Save"
+  },
+  "A new copy is saved; source files are pr": {
+    "km": "ច្បាប់ចម្លងថ្មីត្រូវបានរក្សាទុក ឯកសារដើមនៅដដែល។",
+    "en": "A new copy is saved; source files are preserved."
+  },
+  "Open export": {
+    "km": "បើកការនាំចេញ",
+    "en": "Open export"
+  },
+  "fmt: Delete N selected pages": {
+    "km": "លុបទំព័រដែលបានជ្រើស {0}?",
+    "en": "Delete {0} selected pages?",
+    "en_one": "Delete {0} selected page?",
+    "note": "Template derived from Figma example copy Copy/Delete 2 selected pages?"
+  },
+  "fmt: Pages will be removed from the new copy": {
+    "km": "ទំព័រ {0} នឹងត្រូវដកចេញពីច្បាប់ចម្លងថ្មី។ អ្នកអាចមិនធ្វើវិញបាន រហូតដល់ពេលរក្សាទុក។",
+    "en": "Pages {0} will be removed from the new copy. You can undo this until you save.",
+    "en_one": "Page {0} will be removed from the new copy. You can undo this until you save.",
+    "note": "Template derived from Figma example copy Copy/Pages 2 and 3 will be removed…"
+  },
+  "Don’t ask again this session": {
+    "km": "កុំសួរម្ដងទៀតក្នុងវគ្គនេះ",
+    "en": "Don’t ask again this session"
+  },
+  "Delete pages": {
+    "km": "លុបទំព័រ",
+    "en": "Delete pages"
+  },
+  "fmt: N pages deleted": {
+    "km": "បានលុប {0} ទំព័រ",
+    "en": "{0} pages deleted",
+    "en_one": "{0} page deleted",
+    "note": "Template derived from Figma example copy Copy/2 pages deleted"
+  },
+  "Keep your added text, comments and page ": {
+    "km": "រក្សាទុកអត្ថបទដែលបានបន្ថែម មតិយោបល់ និងការផ្លាស់ប្ដូរទំព័រ ដើម្បីអាចបន្តនៅពេលក្រោយ។ PDF ដើមនៅតែមិនផ្លាស់ប្ដូរ។",
+    "en": "Keep your added text, comments and page changes so you can continue later. The original PDF stays unchanged."
+  },
+  "Name": {
+    "km": "ឈ្មោះ",
+    "en": "Name"
+  },
+  "fmt: Saved in folder": {
+    "km": "រក្សាទុកក្នុង “{0}”",
+    "en": "Saved in “{0}”",
+    "note": "Template derived from Figma example copy Copy/Saved in “Documents” · the work-file format is still to be decided (format now decided: editable PDF)."
+  },
+  "fmt: Work saved name": {
+    "km": "បានរក្សាទុកការងារ · {0}",
+    "en": "Work saved · {0}",
+    "note": "Template derived from Figma example copy Copy/Work saved · Monthly report — work"
   }
 }

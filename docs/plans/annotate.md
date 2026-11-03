@@ -51,6 +51,16 @@ The single-key tools (V/T/H/C/Esc) are handled by the canvas and are inactive wh
    - Copy without Figma variables (Reopen, Resolved, Remove highlight, Delete comment, Write a comment…, Reply…,
      two tool hints) uses draft Khmer — needs review.
    - Snapshot shows thin vertical lines at the ends of outlined full-width DSButtons (also in 02 Organize): check live.
-3. Text boxes (overlay editing, Text Properties panel).
+3. ✅ Text boxes (TextBoxTests; snapshot 03-annotate-text-box). T / Add Khmer text → click places a 240 × 44 pt box
+   and a native NSTextView editor over it (Khmer IME; own typing undo; one undo on commit). Esc / click elsewhere /
+   another tool / Save work / Print commit; empty boxes are dropped. Double-click or ↩ edits, drag moves, side and
+   corner handles set the width (height always fits the text), arrows nudge (⇧ 10 pt), ⌫ deletes, right-click Edit /
+   Delete. Text Properties (123:292) edits the box being typed in or the selected one; disabled otherwise.
+   Line spacing = multiple of the font size (14 pt × 1.6 → 44 pt one-line box, as in Figma). Open points:
+   - Hover (dashed outline) is not shown; handles and the outline scale with zoom (page space).
+   - Editing on a rotated page shows the editor unrotated.
+   - The editor's TextKit layout and the committed CoreText drawing can differ by a pixel or so.
+   - Draft Khmer for colour names, B/I/U and alignment tooltips, “Delete text box”, the text tool hint.
+   - Khmer typing with a real input method is untested here (needs a person at the keyboard).
 
 Khmer typing in text boxes can't be exercised from tests; report it as untested until it is tried by hand.

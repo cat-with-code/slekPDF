@@ -37,8 +37,8 @@ nonisolated final class SlekPDFAnnotation: PDFAnnotation {
             type = .text
             outlines = []
         }
-        // A little room around the content for the selection outline.
-        super.init(bounds: model.bounds.insetBy(dx: -2, dy: -2), forType: type, withProperties: nil)
+        // Room around the content for the selection outline and handles.
+        super.init(bounds: model.bounds.insetBy(dx: -Self.handleSize, dy: -Self.handleSize), forType: type, withProperties: nil)
         isReadOnly = true
     }
 
@@ -46,10 +46,41 @@ nonisolated final class SlekPDFAnnotation: PDFAnnotation {
 
     var isComment: Bool { if case .comment = model.content { true } else { false } }
 
-    /// Whether a click at `point` (page space) lands on this annotation.
+    /// Whether a click at `point` (page space) lands on this annotation (a selected text box includes its handles).
     func contains(_ point: CGPoint) -> Bool {
-        if case let .highlight(info) = model.content { return info.lines.contains { $0.insetBy(dx: -1, dy: -1).contains(point) } }
-        return model.bounds.contains(point)
+        switch model.content {
+        case let .highlight(info): info.lines.contains { $0.insetBy(dx: -1, dy: -1).contains(point) }
+        case .textBox: model.bounds.insetBy(dx: isSelected ? -Self.handleSize : 0, dy: isSelected ? -Self.handleSize : 0).contains(point)
+        case .comment: model.bounds.contains(point)
+        }
+    }
+
+    /// Figma Added Text Box handles: 7 pt squares centred on the corners and edge midpoints.
+    static let handleSize: CGFloat = 7
+
+    enum Handle: CaseIterable { case topLeft, top, topRight, left, right, bottomLeft, bottom, bottomRight }
+
+    static func handleCenter(_ handle: Handle, of rect: CGRect) -> CGPoint {
+        switch handle {
+        case .topLeft: CGPoint(x: rect.minX, y: rect.maxY)
+        case .top: CGPoint(x: rect.midX, y: rect.maxY)
+        case .topRight: CGPoint(x: rect.maxX, y: rect.maxY)
+        case .left: CGPoint(x: rect.minX, y: rect.midY)
+        case .right: CGPoint(x: rect.maxX, y: rect.midY)
+        case .bottomLeft: CGPoint(x: rect.minX, y: rect.minY)
+        case .bottom: CGPoint(x: rect.midX, y: rect.minY)
+        case .bottomRight: CGPoint(x: rect.maxX, y: rect.minY)
+        }
+    }
+
+    /// The handle of a selected text box under `point`, if any.
+    func handle(at point: CGPoint) -> Handle? {
+        guard isSelected, case .textBox = model.content else { return nil }
+        return Handle.allCases.first { handle in
+            let center = Self.handleCenter(handle, of: model.bounds)
+            return CGRect(x: center.x - Self.handleSize, y: center.y - Self.handleSize, width: 2 * Self.handleSize, height: 2 * Self.handleSize)
+                .contains(point)
+        }
     }
 
     override func draw(with box: PDFDisplayBox, in context: CGContext) {
@@ -64,6 +95,7 @@ nonisolated final class SlekPDFAnnotation: PDFAnnotation {
                 context.addPath(path)
                 context.fillPath()
             }
+            if isSelected { drawSelection(in: context) }
         case let .highlight(info):
             // Figma Highlight (125:26): Annotation/Highlight at 55 %, radius 2, one rectangle per line;
             // multiply keeps the text under it crisp. Selected = accent outline.
@@ -114,6 +146,20 @@ nonisolated final class SlekPDFAnnotation: PDFAnnotation {
             context.setFillColor(Self.iconColor)
             context.fill(iconRect)
             context.endTransparencyLayer()
+        }
+    }
+
+    /// Figma Added Text Box, Selected: 1.5 pt accent outline and eight Background/Page handles with accent borders.
+    private func drawSelection(in context: CGContext) {
+        context.setStrokeColor(Self.accentColor)
+        context.setLineWidth(1.5)
+        context.stroke(model.bounds)
+        for handle in Handle.allCases {
+            let center = Self.handleCenter(handle, of: model.bounds)
+            let square = CGRect(x: center.x - Self.handleSize / 2, y: center.y - Self.handleSize / 2, width: Self.handleSize, height: Self.handleSize)
+            context.setFillColor(CGColor(gray: 1, alpha: 1))
+            context.fill(square)
+            context.stroke(square.insetBy(dx: 0.75, dy: 0.75))
         }
     }
 

@@ -141,3 +141,55 @@ struct ThemeSwitch: View {
         .buttonStyle(.plain)
     }
 }
+
+/// Figma "Toggle Icon Button" (123:36): 28 pt on/off formatting control (bold, italic, underline, alignment).
+/// On = Background/Selected with an accent icon. Alignment toggles are used as a radio group by the caller.
+struct DSToggleIconButton: View {
+    let icon: DSIcon
+    let label: CopyKey
+    let isOn: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        Button(action: action) {
+            icon.image(size: 16)
+                .foregroundColor(isOn ? DSColor.textAccent : DSColor.textPrimary)
+                .frame(width: 28, height: 28)
+                .background(RoundedRectangle(cornerRadius: DSRadius.sm)
+                    .fill(isOn ? DSColor.backgroundSelected : isHovered && isEnabled ? DSColor.backgroundHover : .clear))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .opacity(isEnabled ? 1 : 0.4)
+        .onHover { isHovered = $0 }
+        .dsTooltip(label)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+}
+
+/// Figma "Color Swatch" (123:62): 24 pt document colour with a Border/Subtle edge; Selected = 2 pt accent ring.
+/// Always named (tooltip and VoiceOver), never colour alone.
+struct DSColorSwatch: View {
+    let color: Color
+    let name: CopyKey
+    let isSelected: Bool
+    let action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        Button(action: action) {
+            Circle().fill(color)
+                .overlay(Circle().strokeBorder(DSColor.borderSubtle, lineWidth: DSStroke.default))
+                .frame(width: 24, height: 24)
+                .overlay(Circle().strokeBorder(DSColor.accentDefault, lineWidth: DSStroke.focus).padding(-4).opacity(isSelected ? 1 : 0))
+                .frame(width: 24, height: 24)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .opacity(isEnabled ? 1 : 0.4)
+        .dsTooltip(name)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}

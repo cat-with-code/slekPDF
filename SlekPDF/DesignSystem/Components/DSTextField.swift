@@ -11,6 +11,8 @@ struct DSTextField: View {
     /// Helper text already in the interface language (e.g. "Saved in “Documents”").
     var helperText: String?
     var error: CopyKey?
+    /// Focus the field when it appears (dialogs); off for fields in panels.
+    var autofocus = true
     var onSubmit: () -> Void = {}
     @FocusState private var isFocused: Bool
     @Environment(\.appLanguage) private var language
@@ -52,6 +54,6 @@ struct DSTextField: View {
                 Text(helperText).dsText(.caption).foregroundColor(DSColor.textTertiary)
             }
         }
-        .onAppear { isFocused = true }
+        .onAppear { if autofocus { isFocused = true } }
     }
 }

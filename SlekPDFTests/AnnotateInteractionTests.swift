@@ -124,7 +124,9 @@ final class AnnotateInteractionTests: XCTestCase {
         XCTAssertTrue(session.handleAnnotateKey(key("\u{1b}", code: 53)))
         XCTAssertEqual(session.annotateTool, .select)
         XCTAssertFalse(session.handleAnnotateKey(key("\u{1b}", code: 53)), "nothing to cancel: Esc goes on")
-        XCTAssertFalse(session.handleAnnotateKey(key("t", code: 17)), "Add Khmer text arrives in step 3")
+        XCTAssertTrue(session.handleAnnotateKey(key("t", code: 17)))
+        XCTAssertEqual(session.annotateTool, .text)
+        session.annotateTool = .select
 
         session.beginComment(onPageAt: 0, at: CGPoint(x: 50, y: 50))
         session.commentDraft?.text = "x"

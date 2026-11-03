@@ -14,11 +14,51 @@ nonisolated struct TextBoxStyle: Codable, Equatable, Sendable {
     var underline = false
     var alignment: Alignment = .left
     /// Document colour as 0–1 RGB.
-    var color: [CGFloat] = [0.11, 0.11, 0.11]
+    var color: [CGFloat] = Swatch.black.rgb
 
     enum Alignment: String, Codable, Sendable { case left, center, right }
 
     var fontName: String { bold ? "NotoSansKhmer-Bold" : "NotoSansKhmer-Regular" }
+
+    /// Line spacing is a multiple of the font size (Figma: 14 pt text, spacing 1.6 → ≈ 24 pt lines, a 44 pt box).
+    /// `scale` sizes it for the on-screen editor at the view's zoom.
+    func paragraphStyle(scale: CGFloat = 1) -> NSParagraphStyle {
+        let paragraph = NSMutableParagraphStyle()
+        let line = fontSize * lineSpacing * scale
+        paragraph.minimumLineHeight = line
+        paragraph.maximumLineHeight = line
+        paragraph.alignment = switch alignment {
+        case .left: .left
+        case .center: .center
+        case .right: .right
+        }
+        return paragraph
+    }
+
+    /// Figma Added Text Box (125:23): text 8 pt from the sides and 10 pt from the top; 44 pt tall for one line.
+    static let horizontalInset: CGFloat = 8
+    static let verticalInset: CGFloat = 10
+    static let minimumHeight: CGFloat = 44
+
+    /// Document colours (Figma Color Swatch 123:62 — primitives, because they are written into the PDF).
+    enum Swatch: String, CaseIterable, Sendable {
+        case black, blue, red, green, orange
+
+        var rgb: [CGFloat] {
+            let hex: UInt32 = switch self {
+            case .black: 0x1C1C1C   // Neutral/100
+            case .blue: 0x3A1EF1    // Blue/500
+            case .red: 0xD4280D     // Red/600
+            case .green: 0x087D17   // Green/800
+            case .orange: 0xA25913  // Orange/700
+            }
+            return [CGFloat((hex >> 16) & 0xFF) / 255, CGFloat((hex >> 8) & 0xFF) / 255, CGFloat(hex & 0xFF) / 255]
+        }
+    }
+
+    var swatch: Swatch? {
+        Swatch.allCases.first { zip($0.rgb, color).allSatisfy { abs($0 - $1) < 0.01 } }
+    }
 }
 
 nonisolated enum KhmerGlyphOutlines {
@@ -26,16 +66,13 @@ nonisolated enum KhmerGlyphOutlines {
     /// underline. The saved appearance and on-screen drawing both use this, so they cannot differ.
     static func outlines(text: String, in rect: CGRect, style: TextBoxStyle) -> [CGPath] {
         let font = CTFontCreateWithName(style.fontName as CFString, style.fontSize, nil)
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.lineHeightMultiple = style.lineSpacing
-        paragraph.alignment = switch style.alignment {
-        case .left: .left
-        case .center: .center
-        case .right: .right
-        }
+        let paragraph = style.paragraphStyle()
         let framesetter = CTFramesetterCreateWithAttributedString(
             NSAttributedString(string: text, attributes: [.font: font, .paragraphStyle: paragraph]))
-        let frame = CTFramesetterCreateFrame(framesetter, CFRange(), CGPath(rect: CGRect(origin: .zero, size: rect.size), transform: nil), nil)
+        // Lay out in a tall column so no line is dropped, then hang it from the box's top inset.
+        let column = CGSize(width: max(1, rect.width - 2 * TextBoxStyle.horizontalInset), height: 100_000)
+        let frame = CTFramesetterCreateFrame(framesetter, CFRange(), CGPath(rect: CGRect(origin: .zero, size: column), transform: nil), nil)
+        let offset = CGPoint(x: rect.minX + TextBoxStyle.horizontalInset, y: rect.maxY - TextBoxStyle.verticalInset - column.height)
         let lines = CTFrameGetLines(frame) as! [CTLine]
         var origins = [CGPoint](repeating: .zero, count: lines.count)
         CTFrameGetLineOrigins(frame, CFRange(), &origins)
@@ -51,18 +88,30 @@ nonisolated enum KhmerGlyphOutlines {
                 CTRunGetPositions(run, CFRange(), &positions)
                 let runFont = (CTRunGetAttributes(run) as NSDictionary)[kCTFontAttributeName] as! CTFont
                 for (glyph, position) in zip(glyphs, positions) {
-                    var transform = shear.concatenating(CGAffineTransform(translationX: rect.minX + origin.x + position.x,
-                                                                          y: rect.minY + origin.y + position.y))
+                    var transform = shear.concatenating(CGAffineTransform(translationX: offset.x + origin.x + position.x,
+                                                                          y: offset.y + origin.y + position.y))
                     if let path = CTFontCreatePathForGlyph(runFont, glyph, &transform), !path.isEmpty { paths.append(path) }
                 }
             }
             if style.underline {
                 let width = CTLineGetTypographicBounds(line, nil, nil, nil)
-                paths.append(CGPath(rect: CGRect(x: rect.minX + origin.x, y: rect.minY + origin.y - style.fontSize * 0.15,
+                paths.append(CGPath(rect: CGRect(x: offset.x + origin.x, y: offset.y + origin.y - style.fontSize * 0.15,
                                                  width: width, height: max(0.6, style.fontSize * 0.06)), transform: nil))
             }
         }
         return paths
+    }
+
+    /// Height a box of `width` needs for `text` (Figma minimum 44 pt), so lines are never cut off.
+    static func fittedHeight(text: String, width: CGFloat, style: TextBoxStyle) -> CGFloat {
+        let font = CTFontCreateWithName(style.fontName as CFString, style.fontSize, nil)
+        let paragraph = style.paragraphStyle()
+        let sample = text.isEmpty || text.hasSuffix("\n") ? text + "ក" : text  // an empty last line still takes a line
+        let framesetter = CTFramesetterCreateWithAttributedString(
+            NSAttributedString(string: sample, attributes: [.font: font, .paragraphStyle: paragraph]))
+        let size = CTFramesetterSuggestFrameSizeWithConstraints(
+            framesetter, CFRange(), nil, CGSize(width: max(1, width - 2 * TextBoxStyle.horizontalInset), height: 100_000), nil)
+        return max(TextBoxStyle.minimumHeight, ceil(size.height + 2 * TextBoxStyle.verticalInset))
     }
 
     /// A PDF content stream that fills `outlines(text:in:style:)` in the style's colour.

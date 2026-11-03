@@ -25,6 +25,7 @@ final class DocumentSession: ObservableObject {
     @Published var workspace: Workspace = .read {
         didSet {
             guard workspace != .annotate, oldValue == .annotate else { return }
+            commitTextEditing()
             annotateTool = .select
             commentDraft = nil
             selectedAnnotationID = nil
@@ -73,16 +74,24 @@ final class DocumentSession: ObservableObject {
     /// Annotate: Slek's annotations per page (the PageRef, so they follow reorder, rotation and delete/undo).
     @Published private(set) var annotations: [PageRef.ID: [PageAnnotation]] = [:]
     /// Annotate Tools (Figma 125:135): Select (V), Add Khmer text (T), Highlight (H), Comment (C); Esc = Select.
-    @Published var annotateTool: AnnotateTool = .select
+    @Published var annotateTool: AnnotateTool = .select {
+        didSet { if annotateTool != oldValue, annotateTool != .text, textEditing != nil { commitTextEditing() } }
+    }
     /// The annotation selected on the page or in the comment list (drawn with the accent outline / selected pin).
     @Published var selectedAnnotationID: PageAnnotation.ID? {
         didSet { if selectedAnnotationID != oldValue { mirrorAnnotations() } }
     }
     /// A comment being written (new) or edited, shown as the Editing Comment Card.
     @Published var commentDraft: CommentDraft?
+    /// A Khmer text box being typed in (new or existing); drawn by the on-page editor, not by the page, until committed.
+    @Published var textEditing: TextBoxDraft? {
+        didSet { if textEditing?.id != oldValue?.id || (textEditing == nil) != (oldValue == nil) { mirrorAnnotations() } }
+    }
     private var savedAnnotations: [PageRef.ID: [PageAnnotation]] = [:]
 
-    var hasUnsavedChanges: Bool { pages != savedPages || annotations != savedAnnotations }
+    var hasUnsavedChanges: Bool {
+        pages != savedPages || annotations != savedAnnotations || !(textEditing?.text.isEmpty ?? true)
+    }
     var selectedPageIndices: [Int] { pages.indices.filter { selectedPageIDs.contains(pages[$0].id) } }
     /// The open organize dialog (20 Delete pages?, 42 Save work).
     @Published var organizeDialog: OrganizeDialog?
@@ -217,6 +226,7 @@ final class DocumentSession: ObservableObject {
         savedPages = []
         annotations = [:]
         savedAnnotations = [:]
+        textEditing = nil  // first: changing the tool would commit it
         annotateTool = .select
         selectedAnnotationID = nil
         commentDraft = nil
@@ -510,6 +520,7 @@ final class DocumentSession: ObservableObject {
     func saveWork(to url: URL) async throws {
         guard let id = pdfiumID else { throw PDFiumError.file }
         _ = id
+        commitTextEditing()  // text still being typed is part of the work
         try await PDFiumService.shared.writePDF(editedPageSources(), to: url)
         savedPages = pages
         savedAnnotations = annotations
@@ -517,12 +528,15 @@ final class DocumentSession: ObservableObject {
 
     // MARK: - Annotate (docs/plans/annotate.md)
 
-    /// Replaces page `pageID`'s annotations, mirrors them into the view and registers the undo.
-    func setAnnotations(_ list: [PageAnnotation], on pageID: PageRef.ID) {
+    /// Replaces page `pageID`'s annotations, mirrors them into the view and registers the undo
+    /// (not while dragging: `undoable: false` for the live steps, one undo for the whole drag).
+    func setAnnotations(_ list: [PageAnnotation], on pageID: PageRef.ID, undoable: Bool = true) {
         let old = annotations[pageID] ?? []
         guard old != list else { return }
-        undoManager?.registerUndo(withTarget: self) { session in
-            MainActor.assumeIsolated { session.setAnnotations(old, on: pageID) }
+        if undoable {
+            undoManager?.registerUndo(withTarget: self) { session in
+                MainActor.assumeIsolated { session.setAnnotations(old, on: pageID) }
+            }
         }
         annotations[pageID] = list.isEmpty ? nil : list
         if let selected = selectedAnnotationID, !list.contains(where: { $0.id == selected }),
@@ -538,9 +552,9 @@ final class DocumentSession: ObservableObject {
         setAnnotations((annotations[id] ?? []) + [annotation], on: id)
     }
 
-    func updateAnnotation(_ annotation: PageAnnotation) {
+    func updateAnnotation(_ annotation: PageAnnotation, undoable: Bool = true) {
         guard let pageID = annotations.first(where: { $0.value.contains { $0.id == annotation.id } })?.key else { return }
-        setAnnotations(annotations[pageID]!.map { $0.id == annotation.id ? annotation : $0 }, on: pageID)
+        setAnnotations(annotations[pageID]!.map { $0.id == annotation.id ? annotation : $0 }, on: pageID, undoable: undoable)
     }
 
     func removeAnnotation(id: PageAnnotation.ID) {
@@ -555,7 +569,7 @@ final class DocumentSession: ObservableObject {
         }
         for ref in pages {
             let page = originalPages[ref.source]
-            for annotation in annotations[ref.id] ?? [] {
+            for annotation in annotations[ref.id] ?? [] where annotation.id != textEditing?.id {
                 let drawn = SlekPDFAnnotation(annotation, selected: annotation.id == selectedAnnotationID)
                 page.addAnnotation(drawn)
                 // PDFKit gives notes a popup; Slek shows comments in its own panel (Annotate step 2).

@@ -34,6 +34,9 @@ enum PrintController {
     /// Opens the print sheet on the document's window; once the job is sent, shows the Printing… toast (D-26).
     @MainActor
     static func print(_ session: DocumentSession, language: AppLanguage) {
+        // Typed text is part of the print; the selection outline and handles are not.
+        session.commitTextEditing()
+        session.selectedAnnotationID = nil
         guard let document = session.document, let window = session.pdfView?.window ?? NSApp.keyWindow,
               let info = NSPrintInfo.shared.copy() as? NSPrintInfo,
               let operation = document.printOperation(for: info, scalingMode: .pageScaleToFit, autoRotate: true)

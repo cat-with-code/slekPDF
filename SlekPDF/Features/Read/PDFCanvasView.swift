@@ -33,6 +33,7 @@ struct PDFCanvasView: NSViewRepresentable {
 
     func updateNSView(_ view: PDFView, context: Context) {
         (view as? KhmerPDFView)?.language = language
+        (view as? KhmerPDFView)?.syncTextEditor()
         if view.document !== session.document {
             view.document = session.document
             DispatchQueue.main.async {
@@ -85,8 +86,11 @@ struct PDFCanvasView: NSViewRepresentable {
             // Redraw search highlights while scrolling.
             if let clip = view.documentView?.enclosingScrollView?.contentView {
                 clip.postsBoundsChangedNotifications = true
-                tokens.append(center.addObserver(forName: NSView.boundsDidChangeNotification, object: clip, queue: .main) { [weak self] _ in
-                    MainActor.assumeIsolated { self?.highlights?.needsDisplay = true }
+                tokens.append(center.addObserver(forName: NSView.boundsDidChangeNotification, object: clip, queue: .main) { [weak self, weak view] _ in
+                    MainActor.assumeIsolated {
+                        self?.highlights?.needsDisplay = true
+                        (view as? KhmerPDFView)?.syncTextEditor()
+                    }
                 })
             }
             tokens.append(center.addObserver(forName: .PDFViewScaleChanged, object: view, queue: .main) { [weak self, weak view] _ in
@@ -94,6 +98,7 @@ struct PDFCanvasView: NSViewRepresentable {
                     guard let view else { return }
                     self?.session.pdfViewDidChangeScale(view.scaleFactor)
                     self?.highlights?.needsDisplay = true
+                    (view as? KhmerPDFView)?.syncTextEditor()
                 }
             })
         }
@@ -185,21 +190,87 @@ final class KhmerPDFView: PDFView {
 
     override func mouseDown(with event: NSEvent) {
         guard let session = annotating, let hit = pagePoint(event) else { return super.mouseDown(with: event) }
+        session.commitTextEditing()  // a click outside the box being typed in ends typing
         window?.makeFirstResponder(self)
+        let annotation = slekAnnotation(on: hit.page, at: hit.point)
         switch session.annotateTool {
         case .comment:
             session.beginComment(onPageAt: hit.index, at: hit.point)
         case .highlight:
             super.mouseDown(with: event)
             finishHighlight()
+        case .text where annotation == nil:
+            session.beginTextBox(onPageAt: hit.index, at: hit.point)
         case .select, .text:
-            if let annotation = slekAnnotation(on: hit.page, at: hit.point) {
-                session.selectAnnotation(annotation.model.id, reveal: false)
-            } else {
+            guard let annotation else {
                 session.selectedAnnotationID = nil
-                super.mouseDown(with: event)
+                return super.mouseDown(with: event)
             }
+            guard case .textBox = annotation.model.content else {
+                return session.selectAnnotation(annotation.model.id, reveal: false)
+            }
+            if event.clickCount >= 2 { return session.beginEditingTextBox(annotation.model.id) }
+            let handle = annotation.handle(at: hit.point)
+            session.selectAnnotation(annotation.model.id, reveal: false)
+            dragTextBox(annotation.model, handle: handle, on: hit.page, from: hit.point)
         }
+    }
+
+    /// Drag to move; handles resize (the left/right edge sets the width; the height follows the text).
+    /// One undo for the whole drag.
+    private func dragTextBox(_ original: PageAnnotation, handle: SlekPDFAnnotation.Handle?, on page: PDFPage, from start: CGPoint) {
+        guard let session = annotating, let window else { return }
+        let limits = page.bounds(for: .mediaBox)
+        while let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
+            let point = convert(convert(next.locationInWindow, from: nil), to: page)
+            let dx = point.x - start.x, dy = point.y - start.y
+            var bounds = original.bounds
+            switch handle {
+            case .left?, .topLeft?, .bottomLeft?:
+                let minX = min(bounds.maxX - 40, max(limits.minX, bounds.minX + dx))
+                bounds = CGRect(x: minX, y: bounds.minY, width: bounds.maxX - minX, height: bounds.height)
+            case .right?, .topRight?, .bottomRight?:
+                bounds.size.width = max(40, min(limits.maxX - bounds.minX, bounds.width + dx))
+            case .top?, .bottom?, nil:
+                bounds.origin.x = min(max(limits.minX, bounds.minX + dx), limits.maxX - bounds.width)
+                bounds.origin.y = min(max(limits.minY, bounds.minY + dy), limits.maxY - bounds.height)
+            }
+            session.setTextBoxBounds(bounds, undoable: false)
+            if next.type == .leftMouseUp { break }
+        }
+        session.finishTextBoxDrag(from: original)
+    }
+
+    // MARK: Text box editor
+
+    private var editor: TextBoxEditor?
+    private var editorKey: (id: PageAnnotation.ID?, page: Int)?
+
+    /// Shows, moves or removes the on-page editor to match `session.textEditing` (also on scroll and zoom).
+    func syncTextEditor() {
+        guard let session, let draft = session.textEditing, let page = document?.page(at: draft.pageIndex) else {
+            if let editor {
+                editor.removeFromSuperview()
+                self.editor = nil
+                editorKey = nil
+                if window?.firstResponder == nil || window?.firstResponder === editor { window?.makeFirstResponder(self) }
+            }
+            return
+        }
+        if editor == nil || editorKey?.id != draft.id || editorKey?.page != draft.pageIndex {
+            editor?.removeFromSuperview()
+            let created = TextBoxEditor(text: draft.text)
+            created.setAccessibilityLabel(CopyCatalog.shared.string(.editAnAddedTextBox, language))
+            created.onChange = { [weak session] text in session?.typeInTextBox(text) }
+            created.onEnd = { [weak session] in session?.commitTextEditing() }
+            addSubview(created)
+            editor = created
+            editorKey = (draft.id, draft.pageIndex)
+            window?.makeFirstResponder(created)
+        }
+        guard let editor else { return }
+        editor.apply(draft.style, scale: scaleFactor)
+        editor.frame = convert(draft.bounds, from: page).integral
     }
 
     override func mouseUp(with event: NSEvent) {

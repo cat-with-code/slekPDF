@@ -235,7 +235,7 @@ private struct DocumentAndToolsCommands: Commands {
             // Figma shows the tool keys V, T, H and C. They are deliberately not menu key equivalents: a key
             // without a modifier would also fire while typing in a text field. The Annotate canvas handles them.
             Button(language(.menuSelect)) { session.chooseTool(.select) }.disabled(!session.hasDocument)
-            Button(language(.menuAddKhmerText)) {}.disabled(true)  // Khmer text boxes: Annotate step 3
+            Button(language(.menuAddKhmerText)) { session.chooseTool(.text) }.disabled(!session.hasDocument)
             Button(language(.menuHighlightText)) { session.chooseTool(.highlight) }.disabled(!session.hasDocument)
             Button(language(.menuAddComment)) { session.chooseTool(.comment) }.disabled(!session.hasDocument)
             Divider()

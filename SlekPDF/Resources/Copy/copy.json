@@ -1522,5 +1522,80 @@
     "km": "ចុចលើទំព័រ ត្រង់កន្លែងដែលមតិយោបល់ពាក់ព័ន្ធ។",
     "en": "Click the page where the comment belongs.",
     "note": "Not a Figma copy variable (Comment Card / Annotate states); draft Khmer — needs review"
+  },
+  "Bold": {
+    "km": "ដិត",
+    "en": "Bold",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "Italic": {
+    "km": "ទ្រេត",
+    "en": "Italic",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "Underline": {
+    "km": "គូសបន្ទាត់ក្រោម",
+    "en": "Underline",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "Align left": {
+    "km": "តម្រឹមឆ្វេង",
+    "en": "Align left",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "Align center": {
+    "km": "តម្រឹមកណ្ដាល",
+    "en": "Align center",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "Align right": {
+    "km": "តម្រឹមស្ដាំ",
+    "en": "Align right",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "Black": {
+    "km": "ខ្មៅ",
+    "en": "Black",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "Blue": {
+    "km": "ខៀវ",
+    "en": "Blue",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "Red": {
+    "km": "ក្រហម",
+    "en": "Red",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "Green": {
+    "km": "បៃតង",
+    "en": "Green",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "Orange": {
+    "km": "ទឹកក្រូច",
+    "en": "Orange",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "Delete text box": {
+    "km": "លុបប្រអប់អត្ថបទ",
+    "en": "Delete text box",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "Click the page where the text belongs": {
+    "km": "ចុចលើទំព័រ ត្រង់កន្លែងដែលអត្ថបទត្រូវដាក់។",
+    "en": "Click the page where the text belongs.",
+    "note": "Not a Figma copy variable (Text Properties tooltips / colour names / Annotate states); draft Khmer — needs review"
+  },
+  "X": {
+    "km": "X",
+    "en": "X",
+    "note": "Figma Text Properties Position fields show X / Y in both languages"
+  },
+  "Y": {
+    "km": "Y",
+    "en": "Y",
+    "note": "Figma Text Properties Position fields show X / Y in both languages"
   }
 }

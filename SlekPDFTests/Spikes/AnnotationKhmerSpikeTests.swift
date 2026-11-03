@@ -67,12 +67,13 @@ final class AnnotationKhmerSpikeTests: XCTestCase {
     private func referenceImage(style: TextBoxStyle) throws -> CGImage {
         let context = try bitmap()
         context.scaleBy(x: scale, y: scale)
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.lineHeightMultiple = style.lineSpacing
+        let paragraph = style.paragraphStyle()
         let font = CTFontCreateWithName(style.fontName as CFString, style.fontSize, nil)
         let string = NSAttributedString(string: text, attributes: [.font: font, .paragraphStyle: paragraph,
                                                                     .foregroundColor: NSColor(red: 0.11, green: 0.11, blue: 0.11, alpha: 1)])
-        let frame = CTFramesetterCreateFrame(CTFramesetterCreateWithAttributedString(string), CFRange(), CGPath(rect: rect, transform: nil), nil)
+        let frame = CTFramesetterCreateFrame(CTFramesetterCreateWithAttributedString(string), CFRange(),
+                                             CGPath(rect: CGRect(x: rect.minX + TextBoxStyle.horizontalInset, y: rect.maxY - TextBoxStyle.verticalInset - 100_000,
+                                                                 width: rect.width - 2 * TextBoxStyle.horizontalInset, height: 100_000), transform: nil), nil)
         CTFrameDraw(frame, context)
         return try XCTUnwrap(context.makeImage())
     }

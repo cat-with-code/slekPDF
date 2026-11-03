@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Figma Annotate Panel (157:188): Annotate Tools, (Added text properties — Annotate step 3), and the comment list.
+/// Figma Annotate Panel (157:188): Annotate Tools, Added text properties, and the comment list.
 struct AnnotateInspector: View {
     @EnvironmentObject private var session: DocumentSession
     @Environment(\.appLanguage) private var language
@@ -15,6 +15,8 @@ struct AnnotateInspector: View {
                         .dsTooltip(.hideInspector, shortcut: "⌥⌘I")
                 }
                 AnnotateToolsView()
+                DSDivider()
+                TextPropertiesPanel()
                 DSDivider()
                 comments
             }
@@ -45,7 +47,6 @@ struct AnnotateToolsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpace.s8) {
             tool(.addKhmerText, icon: .addText, tool: .text, command: .addTextTool)
-                .disabled(true)  // Khmer text boxes: Annotate step 3
             tool(.highlightText, icon: .highLight, tool: .highlight, command: .highlightTool)
             tool(.addComment, icon: .comment, tool: .comment, command: .commentTool)
             if let hint {
@@ -59,7 +60,8 @@ struct AnnotateToolsView: View {
         switch session.annotateTool {
         case .highlight: .selectKhmerTextOnThePageToHighlightIt
         case .comment: .clickThePageWhereTheCommentBelongs
-        case .select, .text: nil
+        case .text: .clickThePageWhereTheTextBelongs
+        case .select: nil
         }
     }
 
@@ -217,6 +219,140 @@ struct CommentCard: View {
     private func showMore() {
         guard let id = entry?.id, let view = moreAnchor.view, let menu = session.annotationMenu(for: id, language: language) else { return }
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: view.isFlipped ? view.bounds.maxY + 4 : -4), in: view)
+    }
+}
+
+/// Figma Text Properties Panel (123:292): bundled font, size, line spacing, bold/italic/underline, alignment,
+/// document colour and X/Y position of the box being typed in or the selected box. Nothing selected = disabled.
+struct TextPropertiesPanel: View {
+    @EnvironmentObject private var session: DocumentSession
+    @Environment(\.appLanguage) private var language
+    @State private var font = 0
+
+    var body: some View {
+        let target = session.textBoxTarget
+        let style = target?.style ?? TextBoxStyle()
+        let position = session.textBoxPosition()
+        VStack(alignment: .leading, spacing: DSSpace.s12) {
+            VStack(alignment: .leading, spacing: DSSpace.s4) {
+                DSLabel(.addedTextProperties, style: .heading).foregroundColor(DSColor.textPrimary)
+                DSLabel(.appliesToTheSelectedAddedTextBox, style: .caption).foregroundColor(DSColor.textSecondary)
+            }
+            Group {
+                // Only the bundled font: Khmer must render the same on every Mac and in the saved PDF.
+                DSDropdown(label: string(.font), selection: $font, options: [(value: 0, title: string(.notoSansKhmerBundled))])
+                HStack(alignment: .top, spacing: DSSpace.s8) {
+                    NumberField(label: .size, value: style.fontSize, unit: "pt", range: 6...96, decimals: 0) { value in
+                        session.changeTextBoxStyle { $0.fontSize = value }
+                    }
+                    NumberField(label: .lineSpacing, value: style.lineSpacing, unit: nil, range: 1...3, decimals: 1) { value in
+                        session.changeTextBoxStyle { $0.lineSpacing = value }
+                    }
+                }
+                DSLabel(.format, style: .labelSmall).foregroundColor(DSColor.textSecondary)
+                HStack(spacing: DSSpace.s2) {
+                    DSToggleIconButton(icon: .textBold, label: .bold, isOn: style.bold) { session.changeTextBoxStyle { $0.bold.toggle() } }
+                    DSToggleIconButton(icon: .textItalic, label: .italic, isOn: style.italic) { session.changeTextBoxStyle { $0.italic.toggle() } }
+                    DSToggleIconButton(icon: .textUnderline, label: .underline, isOn: style.underline) {
+                        session.changeTextBoxStyle { $0.underline.toggle() }
+                    }
+                    Rectangle().fill(DSColor.borderSubtle).frame(width: 1, height: 16)
+                    alignment(.left, icon: .alignTextLeft, label: .alignLeft, current: style.alignment)
+                    alignment(.center, icon: .alignTextCenter, label: .alignCenter, current: style.alignment)
+                    alignment(.right, icon: .alignTextRight, label: .alignRight, current: style.alignment)
+                }
+                DSLabel(.colour, style: .labelSmall).foregroundColor(DSColor.textSecondary)
+                HStack(spacing: DSSpace.s8) {
+                    ForEach(TextBoxStyle.Swatch.allCases, id: \.self) { swatch in
+                        DSColorSwatch(color: Color(.sRGB, red: swatch.rgb[0], green: swatch.rgb[1], blue: swatch.rgb[2]),
+                                      name: swatch.name, isSelected: target != nil && style.swatch == swatch) {
+                            session.changeTextBoxStyle { $0.color = swatch.rgb }
+                        }
+                    }
+                }
+                .padding(.leading, DSSpace.s2)
+                DSDivider()
+                DSLabel(.position, style: .labelSmall).foregroundColor(DSColor.textSecondary)
+                HStack(alignment: .top, spacing: DSSpace.s8) {
+                    NumberField(label: .x, value: position?.x ?? 0, unit: "pt", range: -10_000...10_000, decimals: 0) { session.setTextBoxPosition(x: $0) }
+                    NumberField(label: .y, value: position?.y ?? 0, unit: "pt", range: -10_000...10_000, decimals: 0) { session.setTextBoxPosition(y: $0) }
+                }
+            }
+            .disabled(target == nil)
+            DSLabel(.saveWorkKeepsAddedTextEditableOrig, style: .caption).foregroundColor(DSColor.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func string(_ key: CopyKey) -> String { CopyCatalog.shared.string(key, language) }
+
+    /// Alignment toggles behave as a radio group.
+    private func alignment(_ value: TextBoxStyle.Alignment, icon: DSIcon, label: CopyKey, current: TextBoxStyle.Alignment) -> some View {
+        DSToggleIconButton(icon: icon, label: label, isOn: current == value) { session.changeTextBoxStyle { $0.alignment = value } }
+    }
+}
+
+/// A Text Field showing "14 pt" / "1.6" (Khmer or Latin digits). A valid value applies after a short pause in typing,
+/// or at once with ↩, so typing "340" moves the box once (one undo), not to 3, then 34.
+private struct NumberField: View {
+    let label: CopyKey
+    let value: CGFloat
+    let unit: String?
+    let range: ClosedRange<CGFloat>
+    let decimals: Int
+    let apply: (CGFloat) -> Void
+    @State private var text = ""
+    @State private var pending: Task<Void, Never>?
+    @Environment(\.appLanguage) private var language
+
+    var body: some View {
+        DSTextField(label: label, text: $text, autofocus: false, onSubmit: {
+            pending?.cancel()
+            commit(text)
+            text = formatted(value)
+        })
+        .onAppear { text = formatted(value) }
+        .onChange(of: value) { newValue in if parsed(text) != newValue { text = formatted(newValue) } }
+        .onChange(of: text) { newText in
+            pending?.cancel()
+            pending = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                guard !Task.isCancelled else { return }
+                commit(newText)
+            }
+        }
+        .onDisappear { pending?.cancel() }
+    }
+
+    private func commit(_ text: String) {
+        guard let number = parsed(text), range.contains(number), number != value else { return }
+        apply(number)
+    }
+
+    private func formatted(_ number: CGFloat) -> String {
+        let digits = String(format: "%.\(decimals)f", Double(number))
+        return language.digits(digits) + (unit.map { " \($0)" } ?? "")
+    }
+
+    private func parsed(_ text: String) -> CGFloat? {
+        let latin = String(text.unicodeScalars.compactMap { scalar -> Character? in
+            if (0x17E0...0x17E9).contains(scalar.value) { return Character(String(scalar.value - 0x17E0)) }
+            return CharacterSet(charactersIn: "0123456789.-").contains(scalar) ? Character(scalar) : nil
+        })
+        guard let number = Double(latin) else { return nil }
+        return (CGFloat(number) * pow(10, CGFloat(decimals))).rounded() / pow(10, CGFloat(decimals))
+    }
+}
+
+private extension TextBoxStyle.Swatch {
+    var name: CopyKey {
+        switch self {
+        case .black: .black
+        case .blue: .blue
+        case .red: .red
+        case .green: .green
+        case .orange: .orange
+        }
     }
 }
 

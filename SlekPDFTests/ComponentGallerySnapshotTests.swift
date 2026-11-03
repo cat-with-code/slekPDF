@@ -101,7 +101,7 @@ final class ComponentGallerySnapshotTests: XCTestCase {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         FontRegistry.registerBundledFonts()
         let url = try XCTUnwrap(Bundle(for: ComponentGallerySnapshotTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
-        for (name, writing) in [("03-annotate", false), ("03-annotate-new-comment", true)] {
+        for (name, mode) in [("03-annotate", 0), ("03-annotate-new-comment", 1), ("03-annotate-text-box", 2)] {
             for language in AppLanguage.allCases {
                 let session = DocumentSession()
                 await session.open(url)
@@ -122,9 +122,15 @@ final class ComponentGallerySnapshotTests: XCTestCase {
                 session.addReply(to: second, text: "បាទ កែរួចហើយ។")
                 session.setResolved(second, true)
                 session.selectAnnotation(first)
-                if writing {
+                if mode == 1 {
                     session.annotateTool = .comment
                     session.beginComment(onPageAt: 0, at: CGPoint(x: 300, y: 300))
+                }
+                if mode == 2 {
+                    session.beginTextBox(onPageAt: 0, at: CGPoint(x: box.minX + 72, y: box.maxY - 340))
+                    session.typeInTextBox("ឯកសារនេះត្រូវបានពិនិត្យរួចហើយ")
+                    session.changeTextBoxStyle { $0.bold = true }
+                    session.commitTextEditing()
                 }
                 let state = AppState(defaults: UserDefaults(suiteName: "annotate-\(UUID())")!)
                 state.language = language

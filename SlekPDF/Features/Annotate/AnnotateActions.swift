@@ -16,6 +16,15 @@ struct CommentDraft: Equatable {
     var text = ""
 }
 
+/// A Khmer text box being typed in (Figma Added Text Box, Editing). `id` is set when editing an existing box.
+struct TextBoxDraft: Equatable {
+    var id: PageAnnotation.ID?
+    var pageIndex: Int
+    var bounds: CGRect
+    var text: String
+    var style: TextBoxStyle
+}
+
 /// One entry of the inspector's comment list.
 struct CommentEntry: Identifiable {
     let annotation: PageAnnotation
@@ -146,10 +155,14 @@ extension DocumentSession {
 
     // MARK: Canvas keys and menu
 
-    /// Single-key tools on the canvas (V, H, C — from Keyboard Shortcuts), Esc, and Delete for the selection.
-    /// Returns false for keys it does not handle. T (Add Khmer text) arrives with text boxes (Annotate step 3).
+    /// Single-key tools on the canvas (V, T, H, C — from Keyboard Shortcuts), Esc, Delete for the selection, and for a
+    /// selected text box ↩ (edit) and arrows (nudge). Returns false for keys it does not handle.
     func handleAnnotateKey(_ event: NSEvent) -> Bool {
         if event.keyCode == 53 {  // Esc
+            if textEditing != nil {  // ends typing; the box stays selected
+                commitTextEditing()
+                return true
+            }
             guard annotateTool != .select || selectedAnnotationID != nil || commentDraft != nil else { return false }
             annotateTool = .select
             selectedAnnotationID = nil
@@ -162,7 +175,26 @@ extension DocumentSession {
         }
         guard let shortcut = KeyShortcut(event: event) else { return false }
         let store = ShortcutStore.shared
-        let tools: [(ShortcutCommand, AnnotateTool)] = [(.selectTool, .select), (.highlightTool, .highlight), (.commentTool, .comment)]
+        if let box = selectedTextBox {
+            switch event.keyCode {
+            case 36, 76:  // ↩, enter: edit the text
+                beginEditingTextBox(box.id)
+                return true
+            case 123, 124, 125, 126:  // arrows nudge 1 pt (⇧ 10 pt)
+                let step: CGFloat = event.modifierFlags.contains(.shift) ? 10 : 1
+                let delta: CGPoint = switch event.keyCode {
+                case 123: CGPoint(x: -step, y: 0)
+                case 124: CGPoint(x: step, y: 0)
+                case 125: CGPoint(x: 0, y: -step)
+                default: CGPoint(x: 0, y: step)
+                }
+                setTextBoxBounds(box.bounds.offsetBy(dx: delta.x, dy: delta.y))
+                return true
+            default: break
+            }
+        }
+        let tools: [(ShortcutCommand, AnnotateTool)] = [(.selectTool, .select), (.addTextTool, .text),
+                                                        (.highlightTool, .highlight), (.commentTool, .comment)]
         guard let tool = tools.first(where: { store.shortcut($0.0) == shortcut })?.1 else { return false }
         annotateTool = tool
         return true
@@ -185,8 +217,143 @@ extension DocumentSession {
             menu.addItem(.separator())
             menu.addItem(MenuAction.item(copy.string(.deleteComment, language)) { [weak self] in self?.removeAnnotation(id: id) })
         case .textBox:
-            return nil
+            menu.addItem(MenuAction.item(copy.string(.edit, language)) { [weak self] in self?.beginEditingTextBox(id) })
+            menu.addItem(.separator())
+            menu.addItem(MenuAction.item(copy.string(.deleteTextBox, language)) { [weak self] in self?.removeAnnotation(id: id) })
         }
         return menu
+    }
+}
+
+// MARK: - Khmer text boxes (Figma Added Text Box 125:23, Text Properties Panel 123:292)
+
+extension DocumentSession {
+    /// Width of a new box (Figma Added Text Box: 240 pt).
+    static let newTextBoxWidth: CGFloat = 240
+
+    /// The selected text box, if the selection is one.
+    var selectedTextBox: PageAnnotation? {
+        guard let id = selectedAnnotationID, let annotation = annotation(id), case .textBox = annotation.content else { return nil }
+        return annotation
+    }
+
+    /// What Text Properties edits: the box being typed in, else the selected box. Nil = controls disabled.
+    var textBoxTarget: (bounds: CGRect, style: TextBoxStyle, pageIndex: Int)? {
+        if let draft = textEditing { return (draft.bounds, draft.style, draft.pageIndex) }
+        guard let box = selectedTextBox, case let .textBox(_, style) = box.content else { return nil }
+        return (box.bounds, style, pageIndex(of: box.id) ?? 0)
+    }
+
+    /// Add Khmer text: a new box with its top-left corner at `point`, ready for typing.
+    func beginTextBox(onPageAt index: Int, at point: CGPoint) {
+        guard let page = document?.page(at: index) else { return }
+        commitTextEditing()
+        let box = page.bounds(for: .mediaBox)
+        let size = CGSize(width: min(Self.newTextBoxWidth, box.width), height: TextBoxStyle.minimumHeight)
+        let origin = CGPoint(x: min(max(point.x, box.minX), box.maxX - size.width),
+                             y: min(max(point.y - size.height, box.minY), box.maxY - size.height))
+        selectedAnnotationID = nil
+        commentDraft = nil
+        textEditing = TextBoxDraft(pageIndex: index, bounds: CGRect(origin: origin, size: size), text: "", style: TextBoxStyle())
+    }
+
+    func beginEditingTextBox(_ id: PageAnnotation.ID) {
+        guard let annotation = annotation(id), case let .textBox(text, style) = annotation.content, let index = pageIndex(of: id) else { return }
+        commitTextEditing()
+        selectedAnnotationID = id
+        textEditing = TextBoxDraft(id: id, pageIndex: index, bounds: annotation.bounds, text: text, style: style)
+    }
+
+    /// Typing in the on-page editor: the box grows with the text.
+    func typeInTextBox(_ text: String) {
+        guard var draft = textEditing, draft.text != text else { return }
+        draft.text = text
+        draft.bounds = Self.fitted(draft.bounds, text: text, style: draft.style)
+        textEditing = draft
+    }
+
+    /// Ends typing (Esc, a click elsewhere, another tool, Save work): one undoable change. An emptied box is removed;
+    /// a new empty box is dropped.
+    func commitTextEditing() {
+        guard let draft = textEditing else { return }
+        textEditing = nil
+        let isBlank = draft.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let bounds = Self.fitted(draft.bounds, text: draft.text, style: draft.style)
+        if let id = draft.id {
+            guard !isBlank else { return removeAnnotation(id: id) }
+            guard var annotation = annotation(id) else { return }
+            annotation.bounds = bounds
+            annotation.content = .textBox(text: draft.text, style: draft.style)
+            updateAnnotation(annotation)
+            selectedAnnotationID = id
+        } else {
+            guard !isBlank else { return }
+            let annotation = PageAnnotation(bounds: bounds, content: .textBox(text: draft.text, style: draft.style))
+            addAnnotation(annotation, toPageAt: draft.pageIndex)
+            selectedAnnotationID = annotation.id
+        }
+        if annotateTool == .text { annotateTool = .select }
+    }
+
+    /// Text Properties: changes the style of the box being typed in or the selected box (undoable; height refits).
+    func changeTextBoxStyle(_ change: (inout TextBoxStyle) -> Void) {
+        if var draft = textEditing {
+            change(&draft.style)
+            draft.bounds = Self.fitted(draft.bounds, text: draft.text, style: draft.style)
+            textEditing = draft
+            return
+        }
+        guard var box = selectedTextBox, case let .textBox(text, style) = box.content else { return }
+        var changed = style
+        change(&changed)
+        guard changed != style else { return }
+        box.content = .textBox(text: text, style: changed)
+        box.bounds = Self.fitted(box.bounds, text: text, style: changed)
+        updateAnnotation(box)
+    }
+
+    /// Moves or resizes the target box; the height always fits the text. `undoable: false` for live drag steps.
+    func setTextBoxBounds(_ bounds: CGRect, undoable: Bool = true) {
+        if var draft = textEditing {
+            draft.bounds = Self.fitted(bounds, text: draft.text, style: draft.style)
+            textEditing = draft
+            return
+        }
+        guard var box = selectedTextBox, case let .textBox(text, style) = box.content else { return }
+        let fitted = Self.fitted(bounds, text: text, style: style)
+        guard fitted != box.bounds else { return }
+        box.bounds = fitted
+        updateAnnotation(box, undoable: undoable)
+    }
+
+    /// End of a drag: the live steps are replaced by one undoable change from `original`.
+    func finishTextBoxDrag(from original: PageAnnotation) {
+        guard let final = annotation(original.id), final != original else { return }
+        updateAnnotation(original, undoable: false)
+        updateAnnotation(final)
+    }
+
+    /// Text Properties X / Y: points from the page's top-left corner, as shown in the panel.
+    func setTextBoxPosition(x: CGFloat? = nil, y: CGFloat? = nil) {
+        guard let target = textBoxTarget, let page = document?.page(at: target.pageIndex) else { return }
+        let box = page.bounds(for: .mediaBox)
+        var bounds = target.bounds
+        if let x { bounds.origin.x = box.minX + x }
+        if let y { bounds.origin.y = box.maxY - y - bounds.height }
+        setTextBoxBounds(bounds)
+    }
+
+    /// Position shown in Text Properties (from the page's top-left corner).
+    func textBoxPosition() -> CGPoint? {
+        guard let target = textBoxTarget, let page = document?.page(at: target.pageIndex) else { return nil }
+        let box = page.bounds(for: .mediaBox)
+        return CGPoint(x: target.bounds.minX - box.minX, y: box.maxY - target.bounds.maxY)
+    }
+
+    /// Keeps the top edge and width; the height follows the text.
+    static func fitted(_ bounds: CGRect, text: String, style: TextBoxStyle) -> CGRect {
+        let width = max(40, bounds.width)
+        let height = KhmerGlyphOutlines.fittedHeight(text: text, width: width, style: style)
+        return CGRect(x: bounds.minX, y: bounds.maxY - height, width: width, height: height)
     }
 }

@@ -7,7 +7,7 @@ import SwiftUI
 /// Items the app owns are SwiftUI buttons whose titles come from the `menu: …` copy keys, so they follow the
 /// live Khmer/English switch. Items macOS owns (Undo, Cut/Copy/Paste, Select All, Dictation, the Window menu)
 /// stay native so the responder chain keeps working; `MainMenuLocalizer` gives them and the menu titles the
-/// same copy. Items for screens that are not built yet are shown, in Figma's order, but disabled.
+/// same copy. Every item opens its screen (Check for updates… stays disabled: no verified update channel).
 struct AppCommands: Commands {
     @ObservedObject var appState: AppState
     @ObservedObject var recents: RecentDocuments
@@ -118,7 +118,7 @@ private struct FileMenuCommands: Commands {
             .disabled(!session.isAvailable)
         }
         CommandGroup(replacing: .saveItem) {
-            // 42/43 Save work; Save a copy and 05 Export are not built yet.
+            // 42/43 Save work, Save a copy…, 05–09 Export.
             Button(language(.menuSaveWork)) { session?.requestSaveWork(language) }.shortcut(.saveWork).disabled(!session.hasDocument)
             Button(language(.menuSaveACopy)) { session?.requestSaveACopy(language) }.shortcut(.saveACopy).disabled(!session.hasDocument)
             Button(language(.menuExport)) { session.openExport(nil) }.shortcut(.export).disabled(!session.hasDocument)
@@ -216,7 +216,7 @@ private struct EditAndViewCommands: Commands {
     }
 }
 
-/// Document menu (154:489) and Tools menu (154:539). Page tools, annotation and OCR are not built yet.
+/// Document menu (154:489) and Tools menu (154:539): page tools, Annotate tools, Khmer OCR and Export.
 private struct DocumentAndToolsCommands: Commands {
     let language: AppLanguage
     let session: DocumentSession?

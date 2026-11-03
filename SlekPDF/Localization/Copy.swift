@@ -67,8 +67,10 @@ extension EnvironmentValues {
 
 extension AppLanguage {
     /// Numbers as the prototype shows them: Khmer digits (០–៩) in the Khmer interface.
-    func number(_ value: Int) -> String {
-        let latin = String(value)
+    func number(_ value: Int) -> String { digits(String(value)) }
+
+    /// `text` with its ASCII digits in the language's digits (times such as 10:24).
+    func digits(_ latin: String) -> String {
         guard self == .km else { return latin }
         return String(latin.unicodeScalars.map { scalar in
             guard let digit = Int(String(scalar)) else { return Character(scalar) }

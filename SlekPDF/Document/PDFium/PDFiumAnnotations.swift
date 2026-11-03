@@ -174,8 +174,8 @@ nonisolated extension PDFiumDocument {
                                           x3: Float(line.minX), y3: Float(line.minY), x4: Float(line.maxX), y4: Float(line.minY))
                 ok = ok && FPDFAnnot_AppendAttachmentPoints(annot, &quad) != 0
             }
-            // Annotation/Highlight (#E3F66B).
-            ok = ok && FPDFAnnot_SetColor(annot, FPDFANNOT_COLORTYPE_Color, 0xE3, 0xF6, 0x6B, 255) != 0
+            // Annotation/Highlight (#E3F66B) at 55 % (Figma Highlight 125:26).
+            ok = ok && FPDFAnnot_SetColor(annot, FPDFANNOT_COLORTYPE_Color, 0xE3, 0xF6, 0x6B, 140) != 0
             set("Contents", info.text)
             set(SlekKey.highlight, try json(info))
         case let .comment(info):

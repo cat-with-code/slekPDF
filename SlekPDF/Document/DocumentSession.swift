@@ -22,7 +22,14 @@ final class DocumentSession: ObservableObject {
     /// Called after a successful open (DocumentWindow records it in Recent documents).
     var onOpened: ((URL) -> Void)?
     @Published var openError: OpenError?
-    @Published var workspace: Workspace = .read
+    @Published var workspace: Workspace = .read {
+        didSet {
+            guard workspace != .annotate, oldValue == .annotate else { return }
+            annotateTool = .select
+            commentDraft = nil
+            selectedAnnotationID = nil
+        }
+    }
     @Published var isSidebarVisible = true
     @Published var isCompactSidebarShown = false
     @Published var isInspectorVisible = true
@@ -65,6 +72,14 @@ final class DocumentSession: ObservableObject {
 
     /// Annotate: Slek's annotations per page (the PageRef, so they follow reorder, rotation and delete/undo).
     @Published private(set) var annotations: [PageRef.ID: [PageAnnotation]] = [:]
+    /// Annotate Tools (Figma 125:135): Select (V), Add Khmer text (T), Highlight (H), Comment (C); Esc = Select.
+    @Published var annotateTool: AnnotateTool = .select
+    /// The annotation selected on the page or in the comment list (drawn with the accent outline / selected pin).
+    @Published var selectedAnnotationID: PageAnnotation.ID? {
+        didSet { if selectedAnnotationID != oldValue { mirrorAnnotations() } }
+    }
+    /// A comment being written (new) or edited, shown as the Editing Comment Card.
+    @Published var commentDraft: CommentDraft?
     private var savedAnnotations: [PageRef.ID: [PageAnnotation]] = [:]
 
     var hasUnsavedChanges: Bool { pages != savedPages || annotations != savedAnnotations }
@@ -202,6 +217,9 @@ final class DocumentSession: ObservableObject {
         savedPages = []
         annotations = [:]
         savedAnnotations = [:]
+        annotateTool = .select
+        selectedAnnotationID = nil
+        commentDraft = nil
         selectedPageIDs = []
         originalPages = []
         originalRotations = []
@@ -507,6 +525,10 @@ final class DocumentSession: ObservableObject {
             MainActor.assumeIsolated { session.setAnnotations(old, on: pageID) }
         }
         annotations[pageID] = list.isEmpty ? nil : list
+        if let selected = selectedAnnotationID, !list.contains(where: { $0.id == selected }),
+           !annotations.values.contains(where: { $0.contains { $0.id == selected } }) {
+            selectedAnnotationID = nil
+        }
         mirrorAnnotations()
     }
 
@@ -534,7 +556,7 @@ final class DocumentSession: ObservableObject {
         for ref in pages {
             let page = originalPages[ref.source]
             for annotation in annotations[ref.id] ?? [] {
-                let drawn = SlekPDFAnnotation(annotation)
+                let drawn = SlekPDFAnnotation(annotation, selected: annotation.id == selectedAnnotationID)
                 page.addAnnotation(drawn)
                 // PDFKit gives notes a popup; Slek shows comments in its own panel (Annotate step 2).
                 if let popup = drawn.popup {

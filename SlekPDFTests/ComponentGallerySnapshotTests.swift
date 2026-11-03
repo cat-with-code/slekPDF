@@ -91,6 +91,55 @@ final class ComponentGallerySnapshotTests: XCTestCase {
         }
     }
 
+    /// Prototype 03 Annotate: a highlight, comments (selected, default, resolved with a reply) and a new comment
+    /// being written, in Khmer and English.
+    func testRenderAnnotate() async throws {
+        guard ProcessInfo.processInfo.environment["SNAPSHOT_DIR"] != nil else {
+            throw XCTSkip("Set SNAPSHOT_DIR to write snapshots")
+        }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("shell-snapshots")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        FontRegistry.registerBundledFonts()
+        let url = try XCTUnwrap(Bundle(for: ComponentGallerySnapshotTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
+        for (name, writing) in [("03-annotate", false), ("03-annotate-new-comment", true)] {
+            for language in AppLanguage.allCases {
+                let session = DocumentSession()
+                await session.open(url)
+                session.workspace = .annotate
+                let page = try XCTUnwrap(session.document?.page(at: 0))
+                let box = page.bounds(for: .mediaBox)
+                let line = try XCTUnwrap(page.selection(for: CGRect(x: box.minX, y: box.maxY - 160, width: box.width, height: 60)))
+                await session.highlight(line)
+                let highlight = try XCTUnwrap(session.annotations[session.pages[0].id]?.first)
+                session.beginComment(onHighlight: highlight.id)
+                session.commentDraft?.text = "សូមពិនិត្យអក្ខរាវិរុទ្ធនៃឈ្មោះខ្មែរនេះ។"
+                session.saveCommentDraft()
+                let first = try XCTUnwrap(session.selectedAnnotationID)
+                session.beginComment(onPageAt: 1, at: CGPoint(x: 80, y: 400))
+                session.commentDraft?.text = "Check the spelling of this Khmer name."
+                session.saveCommentDraft()
+                let second = try XCTUnwrap(session.selectedAnnotationID)
+                session.addReply(to: second, text: "បាទ កែរួចហើយ។")
+                session.setResolved(second, true)
+                session.selectAnnotation(first)
+                if writing {
+                    session.annotateTool = .comment
+                    session.beginComment(onPageAt: 0, at: CGPoint(x: 300, y: 300))
+                }
+                let state = AppState(defaults: UserDefaults(suiteName: "annotate-\(UUID())")!)
+                state.language = language
+                let view = MainWindowView()
+                    .environmentObject(state).environmentObject(session)
+                    .environmentObject(RecentDocuments(defaults: UserDefaults(suiteName: "annotate-recents-\(UUID())")!))
+                    .environmentObject(session.toasts)
+                    .environment(\.appLanguage, language)
+                try render(view, size: ChromeMetrics.defaultWindowSize, appearance: .aqua,
+                           to: dir.appendingPathComponent("\(name)-\(language.rawValue)-light.png"))
+                await session.close()
+            }
+        }
+    }
+
     private func render(_ view: some View, size: CGSize, appearance: NSAppearance.Name, to url: URL) throws {
         let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height))
         host.frame = CGRect(origin: .zero, size: size)

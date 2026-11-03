@@ -36,6 +36,14 @@ private extension Optional where Wrapped == DocumentSession {
     var canShowPanel: Bool { self != nil && self?.openError == nil }
 
     func show(_ panel: AppPanel) { self?.panel = panel }
+
+    /// Tools menu: switches to Annotate with `tool` active; the canvas takes focus for V/H/C/Esc.
+    func chooseTool(_ tool: AnnotateTool) {
+        guard let session = self else { return }
+        session.workspace = .annotate
+        session.annotateTool = tool
+        session.pdfView?.window?.makeFirstResponder(session.pdfView)
+    }
 }
 
 /// Slek PDF menu (154:333): About · Developer | Preferences… | Quit. Services and Hide are left out as designed.
@@ -225,11 +233,11 @@ private struct DocumentAndToolsCommands: Commands {
         }
         CommandMenu(language(.menuTools)) {
             // Figma shows the tool keys V, T, H and C. They are deliberately not menu key equivalents: a key
-            // without a modifier would also fire while typing in a text field. The Annotate canvas will handle them.
-            Button(language(.menuSelect)) {}.disabled(true)
-            Button(language(.menuAddKhmerText)) {}.disabled(true)
-            Button(language(.menuHighlightText)) {}.disabled(true)
-            Button(language(.menuAddComment)) {}.disabled(true)
+            // without a modifier would also fire while typing in a text field. The Annotate canvas handles them.
+            Button(language(.menuSelect)) { session.chooseTool(.select) }.disabled(!session.hasDocument)
+            Button(language(.menuAddKhmerText)) {}.disabled(true)  // Khmer text boxes: Annotate step 3
+            Button(language(.menuHighlightText)) { session.chooseTool(.highlight) }.disabled(!session.hasDocument)
+            Button(language(.menuAddComment)) { session.chooseTool(.comment) }.disabled(!session.hasDocument)
             Divider()
             Button(language(.menuRecognizeText)) {}.shortcut(.recognizeText).disabled(true)
             Button(language(.menuReviewOCR)) {}.shortcut(.reviewOCR).disabled(true)

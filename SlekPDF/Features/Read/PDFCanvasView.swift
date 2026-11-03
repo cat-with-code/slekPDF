@@ -6,6 +6,7 @@ import SwiftUI
 /// copy will be routed through PDFium before release.
 struct PDFCanvasView: NSViewRepresentable {
     @ObservedObject var session: DocumentSession
+    @Environment(\.appLanguage) private var language
     /// Space above the first page for the floating page navigation (12 pt + 36 pt card + 12 pt).
     static let topInset: CGFloat = 60
 
@@ -14,6 +15,7 @@ struct PDFCanvasView: NSViewRepresentable {
     func makeNSView(context: Context) -> PDFView {
         let view = KhmerPDFView()
         view.copyHandler = { [weak session] selection in session?.copy(selection) }
+        view.session = session
         view.displayMode = .singlePageContinuous
         view.displaysPageBreaks = true
         view.pageBreakMargins = NSEdgeInsets(top: 24, left: 24, bottom: 24, right: 24)
@@ -30,6 +32,7 @@ struct PDFCanvasView: NSViewRepresentable {
     }
 
     func updateNSView(_ view: PDFView, context: Context) {
+        (view as? KhmerPDFView)?.language = language
         if view.document !== session.document {
             view.document = session.document
             DispatchQueue.main.async {
@@ -157,9 +160,70 @@ final class SearchHighlightView: NSView {
 /// PDFKit's drawing-order text.
 final class KhmerPDFView: PDFView {
     var copyHandler: ((PDFSelection) -> Void)?
+    /// Annotate (Figma 03): the canvas handles the tools' clicks, single-key tools and the annotation menu.
+    weak var session: DocumentSession?
+    var language: AppLanguage = .km
 
     override func copy(_ sender: Any?) {
         guard let selection = currentSelection, let copyHandler else { return super.copy(sender) }
         copyHandler(selection)
+    }
+
+    private var annotating: DocumentSession? { session?.workspace == .annotate ? session : nil }
+
+    /// The page under `event` and the point on it (page space).
+    private func pagePoint(_ event: NSEvent) -> (index: Int, page: PDFPage, point: CGPoint)? {
+        let location = convert(event.locationInWindow, from: nil)
+        guard let document, let page = page(for: location, nearest: false) else { return nil }
+        return (document.index(for: page), page, convert(location, to: page))
+    }
+
+    /// Slek's annotation under `point`, topmost first.
+    private func slekAnnotation(on page: PDFPage, at point: CGPoint) -> SlekPDFAnnotation? {
+        page.annotations.reversed().lazy.compactMap { $0 as? SlekPDFAnnotation }.first { $0.contains(point) }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard let session = annotating, let hit = pagePoint(event) else { return super.mouseDown(with: event) }
+        window?.makeFirstResponder(self)
+        switch session.annotateTool {
+        case .comment:
+            session.beginComment(onPageAt: hit.index, at: hit.point)
+        case .highlight:
+            super.mouseDown(with: event)
+            finishHighlight()
+        case .select, .text:
+            if let annotation = slekAnnotation(on: hit.page, at: hit.point) {
+                session.selectAnnotation(annotation.model.id, reveal: false)
+            } else {
+                session.selectedAnnotationID = nil
+                super.mouseDown(with: event)
+            }
+        }
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        super.mouseUp(with: event)
+        if annotating?.annotateTool == .highlight { finishHighlight() }
+    }
+
+    /// Highlight tool: the text just selected becomes a highlight.
+    private func finishHighlight() {
+        guard let session = annotating, let selection = currentSelection,
+              !(selection.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        clearSelection()
+        Task { await session.highlight(selection) }
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if let session = annotating, session.handleAnnotateKey(event) { return }
+        super.keyDown(with: event)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        guard let session = annotating, let hit = pagePoint(event), let annotation = slekAnnotation(on: hit.page, at: hit.point),
+              let menu = session.annotationMenu(for: annotation.model.id, language: language) else { return super.menu(for: event) }
+        session.selectAnnotation(annotation.model.id, reveal: false)
+        return menu
     }
 }

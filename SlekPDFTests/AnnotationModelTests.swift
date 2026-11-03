@@ -145,7 +145,7 @@ final class AnnotationModelTests: XCTestCase {
 
     func testPrintOptionsFilterSlekAnnotations() async throws {
         let session = try await open(fixture())
-        let drawn = samples(on: session).map(SlekPDFAnnotation.init)
+        let drawn = samples(on: session).map { SlekPDFAnnotation($0) }
         let options = PrintOptions()
         XCTAssertEqual(drawn.map(options.prints), [true, true, false])
         options.addedText = false

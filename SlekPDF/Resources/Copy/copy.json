@@ -1408,5 +1408,119 @@
   "Show in Finder": {
     "km": "បង្ហាញក្នុង Finder",
     "en": "Show in Finder"
+  },
+  "Added text properties": {
+    "km": "លក្ខណៈអត្ថបទដែលបានបន្ថែម",
+    "en": "Added text properties"
+  },
+  "Applies to the selected added text box": {
+    "km": "អនុវត្តចំពោះប្រអប់អត្ថបទដែលបានជ្រើស។",
+    "en": "Applies to the selected added text box."
+  },
+  "Font": {
+    "km": "ពុម្ពអក្សរ",
+    "en": "Font"
+  },
+  "Noto Sans Khmer (bundled)": {
+    "km": "Noto Sans Khmer (ភ្ជាប់មកជាមួយ)",
+    "en": "Noto Sans Khmer (bundled)"
+  },
+  "Size": {
+    "km": "ទំហំ",
+    "en": "Size"
+  },
+  "Line spacing": {
+    "km": "គម្លាតបន្ទាត់",
+    "en": "Line spacing"
+  },
+  "Format": {
+    "km": "ទម្រង់",
+    "en": "Format"
+  },
+  "Colour": {
+    "km": "ពណ៌",
+    "en": "Colour"
+  },
+  "Position": {
+    "km": "ទីតាំង",
+    "en": "Position"
+  },
+  "Save work keeps added text editable Orig": {
+    "km": "ការរក្សាទុកការងារ ធ្វើឲ្យអត្ថបទដែលបានបន្ថែមនៅតែអាចកែបាន។ ការជំនួសអត្ថបទដើមក្នុង PDF ជាមុខងារនាពេលក្រោយ។",
+    "en": "Save work keeps added text editable. Original PDF text replacement is a later feature."
+  },
+  "Reply": {
+    "km": "ឆ្លើយតប",
+    "en": "Reply"
+  },
+  "Resolve": {
+    "km": "ដោះស្រាយ",
+    "en": "Resolve"
+  },
+  "You": {
+    "km": "អ្នក",
+    "en": "You"
+  },
+  "More actions": {
+    "km": "សកម្មភាពផ្សេងទៀត",
+    "en": "More actions"
+  },
+  "Select tool": {
+    "km": "ឧបករណ៍ជ្រើស",
+    "en": "Select tool"
+  },
+  "Edit an added text box": {
+    "km": "កែប្រអប់អត្ថបទដែលបានបន្ថែម",
+    "en": "Edit an added text box"
+  },
+  "fmt: Comments · N": {
+    "km": "មតិយោបល់ · {0}",
+    "en": "Comments · {0}",
+    "note": "Template derived from Figma Copy/Comments · 2"
+  },
+  "fmt: Page N · time": {
+    "km": "ទំព័រ {0} · {1}",
+    "en": "Page {0} · {1}",
+    "note": "Template derived from Figma Copy/Page 1 · 10:24"
+  },
+  "Reopen": {
+    "km": "បើកឡើងវិញ",
+    "en": "Reopen",
+    "note": "Not a Figma copy variable (Comment Card / Annotate states); draft Khmer — needs review"
+  },
+  "Resolved": {
+    "km": "បានដោះស្រាយ",
+    "en": "Resolved",
+    "note": "Not a Figma copy variable (Comment Card / Annotate states); draft Khmer — needs review"
+  },
+  "Remove highlight": {
+    "km": "ដកការបន្លិចចេញ",
+    "en": "Remove highlight",
+    "note": "Not a Figma copy variable (Comment Card / Annotate states); draft Khmer — needs review"
+  },
+  "Delete comment": {
+    "km": "លុបមតិយោបល់",
+    "en": "Delete comment",
+    "note": "Not a Figma copy variable (Comment Card / Annotate states); draft Khmer — needs review"
+  },
+  "Write a comment…": {
+    "km": "សរសេរមតិយោបល់…",
+    "en": "Write a comment…",
+    "note": "Not a Figma copy variable (Comment Card / Annotate states); draft Khmer — needs review"
+  },
+  "Reply…": {
+    "km": "ឆ្លើយតប…",
+    "en": "Reply…",
+    "note": "Not a Figma copy variable (Comment Card / Annotate states); draft Khmer — needs review"
+  },
+  "Select Khmer text on the page to highlight it": {
+    "km": "ជ្រើសអត្ថបទខ្មែរនៅលើទំព័រ ដើម្បីបន្លិចវា។",
+    "en": "Select Khmer text on the page to highlight it.",
+    "note": "Not a Figma copy variable (Comment Card / Annotate states); draft Khmer — needs review"
+  },
+  "Click the page where the comment belongs": {
+    "km": "ចុចលើទំព័រ ត្រង់កន្លែងដែលមតិយោបល់ពាក់ព័ន្ធ។",
+    "en": "Click the page where the comment belongs.",
+    "note": "Not a Figma copy variable (Comment Card / Annotate states); draft Khmer — needs review"
   }
 }

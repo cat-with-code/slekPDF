@@ -42,7 +42,15 @@ The single-key tools (V/T/H/C/Esc) are handled by the canvas and are inactive wh
    Test: a text box with "ឯកសារនេះត្រូវបានពិនិត្យរួចហើយ" goes through save → reopen. All properties must restore,
    PDFium must extract the exact Unicode, and an independent renderer must draw it correctly.
    If the independent render fails, stop and report.
-2. Highlights and comments (inspector list, pins, Reply/Resolve).
+2. ✅ Highlights and comments (AnnotateInteractionTests; snapshot 03-annotate*). Highlight tool: drag-select text →
+   Highlight (one rect per line, text via PDFium). Comment tool: click → Editing card → pin. Cards: Default / Selected /
+   Editing / Resolved, Reply, More (Edit, Resolve/Reopen, Delete). Canvas: V/H/C/Esc, ⌫ deletes the selection,
+   right-click menu. Tools menu items work. Open points:
+   - Comment pins are drawn in page space (24 pt, scale with zoom); Figma's pin is a fixed 28 px.
+   - No crosshair cursor for the Comment tool (PDFView's document view owns the cursor rects).
+   - Copy without Figma variables (Reopen, Resolved, Remove highlight, Delete comment, Write a comment…, Reply…,
+     two tool hints) uses draft Khmer — needs review.
+   - Snapshot shows thin vertical lines at the ends of outlined full-width DSButtons (also in 02 Organize): check live.
 3. Text boxes (overlay editing, Text Properties panel).
 
 Khmer typing in text boxes can't be exercised from tests; report it as untested until it is tried by hand.

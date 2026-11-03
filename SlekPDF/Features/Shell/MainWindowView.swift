@@ -73,7 +73,11 @@ struct MainWindowView: View {
                         DSDivider(axis: .vertical)
                         if session.isInspectorVisible {
                             Group {
-                                if session.workspace == .organizePages { OrganizeInspector() } else { ReadInspectorView() }
+                                switch session.workspace {
+                                case .organizePages: OrganizeInspector()
+                                case .annotate: AnnotateInspector()  // Prototype 03
+                                default: ReadInspectorView()
+                                }
                             }
                                 .frame(width: sizeClass.inspectorWidth)
                                 .transition(panelTransition(edge: .trailing))

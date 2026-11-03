@@ -96,11 +96,14 @@ struct DSAvatar: View {
 
     let initials: String
     var size: Size = .xl
+    /// Accent/Subtle with a Text/Accent initial (Comment Card avatar, 122:140); otherwise Accent/Default with white.
+    var subtle = false
 
     var body: some View {
-        Circle().fill(DSColor.accentDefault)
+        Circle().fill(subtle ? DSColor.accentSubtle : DSColor.accentDefault)
             .frame(width: size.rawValue, height: size.rawValue)
-            .overlay(Text(initials).dsText(size == .xl ? .display : .label).foregroundColor(DSColor.textOnAccent))
+            .overlay(Text(initials).dsText(size == .xl ? .display : size == .xs ? .labelSmall : .label)
+                .foregroundColor(subtle ? DSColor.textAccent : DSColor.textOnAccent))
             .accessibilityHidden(true)
     }
 }
@@ -196,11 +199,14 @@ struct DSTextArea: View {
     @Binding var text: String
     var placeholder: String = ""
     var helper: String?
+    /// Focus the field when it appears (e.g. a new comment).
+    var autofocus = false
     @FocusState private var isFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpace.s4) {
-            Text(label).dsText(.labelSmall).foregroundColor(DSColor.textSecondary)
+            // An empty label shows the field alone (Comment Card, Editing).
+            if !label.isEmpty { Text(label).dsText(.labelSmall).foregroundColor(DSColor.textSecondary) }
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $text)
                     .scrollContentBackground(.hidden)
@@ -229,5 +235,7 @@ struct DSTextArea: View {
                 Text(helper).dsText(.caption).foregroundColor(DSColor.textTertiary)
             }
         }
+        .onAppear { if autofocus { isFocused = true } }
+        .accessibilityLabel(label.isEmpty ? placeholder : label)
     }
 }

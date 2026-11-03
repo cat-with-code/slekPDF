@@ -33,14 +33,33 @@ final class PDFiumService {
         pages[id] = nil
     }
 
-    /// Saved work (decision: an editable PDF): the open document's pages in `pages` order with extra rotation,
-    /// written as a new file. The source file is only read.
-    func saveWork(_ id: DocumentID, pages: [(source: Int, quarterTurns: Int)], to url: URL) throws {
-        guard let source = documents[id] else { throw PDFiumError.file }
+    /// A page for a new PDF: from an open document (with extra rotation) or from another PDF file.
+    enum PageSource: Sendable {
+        case open(DocumentID, page: Int, quarterTurns: Int)
+        case file(URL, page: Int)
+    }
+
+    /// Writes `pages` in order as a new PDF (saved work, merge, split). Pages are imported, never redrawn;
+    /// source files are only read.
+    func writePDF(_ pages: [PageSource], to url: URL) throws {
         let output = PDFiumDocument()
-        for page in pages { try output.appendPage(from: source, index: page.source, quarterTurns: page.quarterTurns) }
+        var files: [URL: PDFiumDocument] = [:]
+        for page in pages {
+            switch page {
+            case let .open(id, index, turns):
+                guard let source = documents[id] else { throw PDFiumError.file }
+                try output.appendPage(from: source, index: index, quarterTurns: turns)
+            case let .file(fileURL, index):
+                let source = try files[fileURL] ?? PDFiumDocument(url: fileURL)
+                files[fileURL] = source
+                try output.appendPage(from: source, index: index, quarterTurns: 0)
+            }
+        }
         try output.save(to: url, incremental: false)
     }
+
+    /// Page count of a PDF file that is not open (Merge PDFs list).
+    func pageCount(of url: URL) -> Int? { try? PDFiumDocument(url: url).pageCount }
 
     /// Rebuilt (readable) text per page, cached: used by copy and search.
     private var pages: [DocumentID: [Int: (text: KhmerTextRebuilder.Result, chars: [PDFiumChar])]] = [:]

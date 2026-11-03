@@ -12,6 +12,8 @@ struct DSDialog<Content: View>: View {
     var confirmDisabled = false
     /// Destructive for irreversible actions (Figma Button: Destructive, e.g. "Delete pages").
     var confirmStyle: DSButton.Style = .primary
+    /// A plain third choice on the left (e.g. "Don’t save").
+    var secondary: (title: CopyKey, action: () -> Void)?
     let onCancel: () -> Void
     let onConfirm: () -> Void
     @ViewBuilder var content: Content
@@ -28,6 +30,7 @@ struct DSDialog<Content: View>: View {
                 }
             }
             HStack(spacing: DSSpace.s8) {
+                if let secondary { DSButton(secondary.title, style: .plain, action: secondary.action) }
                 Spacer()
                 DSButton(cancel, action: onCancel).keyboardShortcut(.cancelAction)
                 DSButton(confirm, style: confirmStyle, action: onConfirm)
@@ -47,8 +50,9 @@ struct DSDialog<Content: View>: View {
 
 extension DSDialog where Content == EmptyView {
     init(icon: DSIcon, iconColor: Color = DSColor.textSecondary, title: String, message: String, cancel: CopyKey, confirm: CopyKey,
+         confirmStyle: DSButton.Style = .primary, secondary: (title: CopyKey, action: () -> Void)? = nil,
          onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void) {
         self.init(icon: icon, iconColor: iconColor, title: title, message: message, cancel: cancel, confirm: confirm,
-                  onCancel: onCancel, onConfirm: onConfirm) { EmptyView() }
+                  confirmStyle: confirmStyle, secondary: secondary, onCancel: onCancel, onConfirm: onConfirm) { EmptyView() }
     }
 }

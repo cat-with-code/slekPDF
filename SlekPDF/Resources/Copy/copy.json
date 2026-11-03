@@ -1319,5 +1319,94 @@
     "km": "បានរក្សាទុកការងារ · {0}",
     "en": "Work saved · {0}",
     "note": "Template derived from Figma example copy Copy/Work saved · Monthly report — work"
+  },
+  "Save changes before closing?": {
+    "km": "រក្សាទុកការផ្លាស់ប្ដូរ មុនពេលបិទ?",
+    "en": "Save changes before closing?"
+  },
+  "fmt: Added work in file will be lost": {
+    "km": "អត្ថបទ និងមតិយោបល់ដែលអ្នកបានបន្ថែមក្នុង “{0}” នឹងបាត់ ប្រសិនបើអ្នកមិនរក្សាទុក។ ឯកសារ PDF ដើមមិនរងផលប៉ះពាល់ទេ។",
+    "en": "Your added text and comments in “{0}” will be lost if you don’t save. The original PDF is not affected.",
+    "note": "Template derived from Figma example copy Copy/Your added text and comments in “Monthly report.pdf”…"
+  },
+  "Don’t save": {
+    "km": "មិនរក្សាទុក",
+    "en": "Don’t save"
+  },
+  "Merge PDFs": {
+    "km": "បញ្ចូល PDF",
+    "en": "Merge PDFs"
+  },
+  "Files are combined in this order into a ": {
+    "km": "ឯកសារត្រូវបានបញ្ចូលតាមលំដាប់នេះទៅក្នុង PDF ថ្មី។ ឯកសារដើមមិនផ្លាស់ប្ដូរទេ។",
+    "en": "Files are combined in this order into a new PDF. The originals are not changed."
+  },
+  "fmt: N pages · size": {
+    "km": "{0} ទំព័រ · {1}",
+    "en": "{0} pages · {1}",
+    "en_one": "{0} page · {1}",
+    "note": "Template derived from Figma example copy Copy/12 pages · 2.4 MB"
+  },
+  "Password needed": {
+    "km": "ត្រូវការពាក្យសម្ងាត់",
+    "en": "Password needed"
+  },
+  "Add files…": {
+    "km": "បន្ថែមឯកសារ…",
+    "en": "Add files…"
+  },
+  "fmt: N files · M pages in total": {
+    "km": "{0} ឯកសារ · សរុប {1} ទំព័រ",
+    "en": "{0} files · {1} pages in total",
+    "en_one": "{0} file · {1} pages in total",
+    "note": "Template derived from Figma example copy Copy/3 files · 18 pages in total"
+  },
+  "New file name": {
+    "km": "ឈ្មោះឯកសារថ្មី",
+    "en": "New file name"
+  },
+  "Merged document pdf": {
+    "km": "ឯកសារបញ្ចូលគ្នា.pdf",
+    "en": "Merged document.pdf"
+  },
+  "Split into PDFs": {
+    "km": "បំបែកជា PDF",
+    "en": "Split into PDFs"
+  },
+  "Create a new PDF for each part The origi": {
+    "km": "បង្កើត PDF ថ្មីសម្រាប់ផ្នែកនីមួយៗ។ ឯកសារដើមនៅដដែល។",
+    "en": "Create a new PDF for each part. The original file stays unchanged."
+  },
+  "fmt: Every page · N PDFs": {
+    "km": "គ្រប់ទំព័រ · {0} PDF",
+    "en": "Every page · {0} PDFs",
+    "en_one": "Every page · {0} PDF",
+    "note": "Template derived from Figma example copy Copy/Every page · 3 PDFs"
+  },
+  "fmt: Every N pages · M PDFs": {
+    "km": "រៀងរាល់ {0} ទំព័រ · {1} PDF",
+    "en": "Every {0} pages · {1} PDFs",
+    "note": "Template derived from Figma example copy Copy/Every 2 pages · 2 PDFs"
+  },
+  "By page ranges": {
+    "km": "តាមជួរទំព័រ",
+    "en": "By page ranges"
+  },
+  "Page ranges": {
+    "km": "ជួរទំព័រ",
+    "en": "Page ranges"
+  },
+  "1–2, 3": {
+    "km": "១–២, ៣",
+    "en": "1–2, 3"
+  },
+  "fmt: New PDF saved to folder": {
+    "km": "បានរក្សាទុក PDF ថ្មីក្នុង {0}",
+    "en": "New PDF saved to {0}",
+    "note": "Template derived from Figma example copy Copy/New PDF saved to Documents"
+  },
+  "Show in Finder": {
+    "km": "បង្ហាញក្នុង Finder",
+    "en": "Show in Finder"
   }
 }

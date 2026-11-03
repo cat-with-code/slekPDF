@@ -35,6 +35,19 @@ struct SlekPDFApp: App {
 
 /// Receives files opened from Finder; windows pick them up from `ExternalOpenRequests`.
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Quitting with unsaved page changes asks 16 Save changes before closing? in that window first.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        MainActor.assumeIsolated {
+            guard let session = DocumentSession.all.allObjects.first(where: { $0.hasUnsavedChanges && !$0.discardChanges }) else {
+                return .terminateNow
+            }
+            session.window?.makeKeyAndOrderFront(nil)
+            session.quitAfterClose = true
+            session.window?.performClose(nil)
+            return .terminateCancel
+        }
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
         ExternalOpenRequests.shared.add(urls.filter { $0.pathExtension.lowercased() == "pdf" })
     }

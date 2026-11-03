@@ -98,8 +98,7 @@ private struct FileMenuCommands: Commands {
             Button(language(.menuExport)) {}.shortcut(.export).disabled(true)
         }
         CommandGroup(replacing: .printItem) {
-            // 19 Merge PDFs is not built yet.
-            Button(language(.menuMergePDFs)) {}.shortcut(.mergePDFs).disabled(true)
+            Button(language(.menuMergePDFs)) { session?.organizeDialog = .merge }.shortcut(.mergePDFs).disabled(!session.hasDocument)  // 19
             Button(language(.menuPrint)) { session.map { PrintController.print($0, language: language) } }  // D-25
                 .shortcut(.print)
                 .disabled(!session.hasDocument)
@@ -219,8 +218,10 @@ private struct DocumentAndToolsCommands: Commands {
                           || (session?.selectedPageIDs.count ?? 0) >= (session?.pageCount ?? 0))
             Divider()
             Button(language(.menuInsertPagesFromFile)) {}.shortcut(.insertPages).disabled(true)
-            Button(language(.menuSplitIntoPDFs)) {}.shortcut(.splitIntoPDFs).disabled(true)
-            Button(language(.menuMergePDFs)) {}.shortcut(.mergePDFs).disabled(true)
+            Button(language(.menuSplitIntoPDFs)) { session?.organizeDialog = .split }  // 21
+                .shortcut(.splitIntoPDFs)
+                .disabled(!hasDocument || (session?.pageCount ?? 0) < 2)
+            Button(language(.menuMergePDFs)) { session?.organizeDialog = .merge }.shortcut(.mergePDFs).disabled(!hasDocument)  // 19
         }
         CommandMenu(language(.menuTools)) {
             // Figma shows the tool keys V, T, H and C. They are deliberately not menu key equivalents: a key

@@ -69,7 +69,8 @@ final class ComponentGallerySnapshotTests: XCTestCase {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         FontRegistry.registerBundledFonts()
         let url = try XCTUnwrap(Bundle(for: ComponentGallerySnapshotTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
-        for (name, dialog) in [("02-organize", nil), ("20-delete", DocumentSession.OrganizeDialog.deletePages), ("42-save-work", .saveWork)] {
+        for (name, dialog) in [("02-organize", nil), ("20-delete", DocumentSession.OrganizeDialog.deletePages), ("42-save-work", .saveWork),
+                               ("19-merge", .merge), ("21-split", .split), ("16-close", .closeConfirm)] {
             for language in AppLanguage.allCases {
                 let session = DocumentSession()
                 await session.open(url)

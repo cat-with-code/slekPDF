@@ -21,6 +21,7 @@ struct DocumentWindow: View {
                 Task { await session.open(url) }
             }
             .focusedSceneObject(session)
+            .background(WindowCloseGuard(session: session))  // 16 Save changes before closing?
             .fileImporter(isPresented: $session.isImporterPresented, allowedContentTypes: [.pdf]) { result in
                 guard case let .success(url) = result else { return }
                 Task { await session.open(url) }

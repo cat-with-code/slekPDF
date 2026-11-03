@@ -168,10 +168,11 @@ struct OrganizeInspector: View {
                     .disabled(session.selectedPageIDs.isEmpty)
                 DSButton(.deleteSelectedPages, icon: .delete, style: .destructive, fullWidth: true) { session.requestDeletePages(language) }
                     .disabled(session.selectedPageIDs.isEmpty || session.selectedPageIDs.count >= session.pages.count)
-                DSButton(.splitIntoPDFs, icon: .split, fullWidth: true).disabled(true)  // 21 Split into PDFs: next
+                DSButton(.splitIntoPDFs, icon: .split, fullWidth: true) { session.organizeDialog = .split }  // 21
+                    .disabled(session.pageCount < 2)
                 DSDivider()
                 header(.combineDocuments, .reviewFileOrderBeforeMergingUndoPa)
-                DSButton(.mergePDFs, icon: .merge, fullWidth: true).disabled(true)  // 19 Merge PDFs: next
+                DSButton(.mergePDFs, icon: .merge, fullWidth: true) { session.organizeDialog = .merge }  // 19
                 DSDivider()
                 header(.save, .aNewCopyIsSavedSourceFilesArePr)
                 // Export (05–09) is not built yet; Save work (⌘S, toolbar) keeps the page changes meanwhile.
@@ -232,7 +233,13 @@ extension DocumentSession {
             try await saveWork(to: url)
             workURL = url
             toasts.show(.success, CopyCatalog.shared.format(.fmtWorkSavedName, language, url.deletingPathExtension().lastPathComponent))
+            if closeAfterSave {
+                closeAfterSave = false
+                closeWindowAfterDecision()
+            }
         } catch {
+            closeAfterSave = false
+            quitAfterClose = false
             toasts.show(.error, error.localizedDescription)
         }
     }
@@ -251,6 +258,9 @@ struct OrganizeDialogView: View {
         switch dialog {
         case .deletePages: deletePages
         case .saveWork: saveWork
+        case .merge: MergeSheet()
+        case .split: SplitSheet()
+        case .closeConfirm: CloseConfirmDialog()
         }
     }
 
@@ -273,7 +283,11 @@ struct OrganizeDialogView: View {
     private var saveWork: some View {
         DSDialog(icon: .save, title: language(.saveWork), message: language(.keepYourAddedTextCommentsAndPage),
                  cancel: .cancel, confirm: .save, confirmDisabled: name.trimmingCharacters(in: .whitespaces).isEmpty,
-                 onCancel: { session.organizeDialog = nil }, onConfirm: save) {
+                 onCancel: {
+                     session.organizeDialog = nil
+                     session.closeAfterSave = false
+                     session.quitAfterClose = false
+                 }, onConfirm: save) {
             DSTextField(label: .name, text: $name, helperText: CopyCatalog.shared.format(.fmtSavedInFolder, language, folderName), onSubmit: save)
                 .padding(.top, DSSpace.s6)
         }
@@ -287,20 +301,15 @@ struct OrganizeDialogView: View {
     private func save() {
         let fileName = name.trimmingCharacters(in: .whitespaces) + ".pdf"
         session.organizeDialog = nil
-        if let folder = appState.exportFolder, folder.startAccessingSecurityScopedResource() {
-            let url = folder.appendingPathComponent(fileName)
-            Task {
-                await session.finishSaveWork(to: url, language)
-                folder.stopAccessingSecurityScopedResource()
-            }
+        guard let destination = SaveDestination.file(named: fileName, appState) else {
+            session.closeAfterSave = false
+            session.quitAfterClose = false
             return
         }
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = fileName
-        panel.allowedContentTypes = [.pdf]
-        panel.directoryURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        Task { await session.finishSaveWork(to: url, language) }
+        Task {
+            await session.finishSaveWork(to: destination.url, language)
+            destination.release()
+        }
     }
 
     /// "2 and 3" / "២ និង ៣".

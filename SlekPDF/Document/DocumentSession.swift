@@ -72,7 +72,25 @@ final class DocumentSession: ObservableObject {
     /// "Don’t ask again this session" in 20 Delete pages?
     var skipDeleteConfirmation = false
 
-    enum OrganizeDialog: Equatable { case deletePages, saveWork }
+    enum OrganizeDialog: Equatable { case deletePages, saveWork, merge, split, closeConfirm }
+
+    /// Every open session, for the quit check (Save changes before closing?).
+    static let all = NSHashTable<DocumentSession>.weakObjects()
+    weak var window: NSWindow?
+    /// Set by "Save" in 16 Save changes before closing?: close the window once the work is saved.
+    var closeAfterSave = false
+    /// Set by "Don’t save": the window may close with unsaved changes.
+    var discardChanges = false
+    /// The close was part of quitting the app: quit again once this window is closed.
+    var quitAfterClose = false
+
+    init() { Self.all.add(self) }
+
+    /// The edited document's pages for PDFium (current order and rotation).
+    func editedPageSources(_ indices: [Int]? = nil) -> [PDFiumService.PageSource] {
+        guard let id = pdfiumID else { return [] }
+        return (indices ?? Array(pages.indices)).map { .open(id, page: pages[$0].source, quarterTurns: pages[$0].quarterTurns) }
+    }
 
     /// True while an in-window dialog (password, can't open) or panel is shown; blocks toolbar, menus and drops.
     var isModalPresented: Bool { openError != nil || panel != nil || organizeDialog != nil }
@@ -449,8 +467,8 @@ final class DocumentSession: ObservableObject {
     /// Writes saved work (an editable PDF) to `url`; the source file stays unchanged.
     func saveWork(to url: URL) async throws {
         guard let id = pdfiumID else { throw PDFiumError.file }
-        let order = pages.map { (source: $0.source, quarterTurns: $0.quarterTurns) }
-        try await PDFiumService.shared.saveWork(id, pages: order, to: url)
+        _ = id
+        try await PDFiumService.shared.writePDF(editedPageSources(), to: url)
         savedPages = pages
     }
 

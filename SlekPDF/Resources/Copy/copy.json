@@ -1189,5 +1189,33 @@
   "fmt: Shortcut added command keys": {
     "km": "បានបន្ថែមផ្លូវកាត់ · {1} {0}",
     "en": "Shortcut added · {1} {0}"
+  },
+  "Document and annotations": {
+    "km": "ឯកសារ និងចំណារពន្យល់",
+    "en": "Document and annotations"
+  },
+  "Document only": {
+    "km": "ឯកសារតែប៉ុណ្ណោះ",
+    "en": "Document only"
+  },
+  "Added Khmer text": {
+    "km": "អត្ថបទខ្មែរដែលបានបន្ថែម",
+    "en": "Added Khmer text"
+  },
+  "Highlights": {
+    "km": "ការបន្លិច",
+    "en": "Highlights"
+  },
+  "Comments (summary page at the end)": {
+    "km": "មតិយោបល់ (ទំព័រសង្ខេបនៅចុងក្រោយ)",
+    "en": "Comments (summary page at the end)"
+  },
+  "Khmer fonts are embedded so clusters pri": {
+    "km": "ពុម្ពអក្សរខ្មែរត្រូវបានបង្កប់ ដើម្បីបោះពុម្ពបានត្រឹមត្រូវ។ ឯកសារ PDF ដើមមិនផ្លាស់ប្ដូរទេ។",
+    "en": "Khmer fonts are embedded so clusters print correctly. The source PDF is not changed."
+  },
+  "fmt: Printing N pages to printer": {
+    "km": "កំពុងបោះពុម្ព {0} ទំព័រ ទៅ{1}…",
+    "en": "Printing {0} pages to {1}…"
   }
 }

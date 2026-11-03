@@ -43,6 +43,9 @@ final class DocumentSession: ObservableObject {
     /// An About/Help/Developer/Release Notes/Report/Feedback panel over the window (Slek PDF and Help menus).
     @Published var panel: AppPanel?
 
+    /// This window's toasts (also used by actions started from the menu bar, such as Print).
+    let toasts = ToastCenter()
+
     /// True while an in-window dialog (password, can't open) or panel is shown; blocks toolbar, menus and drops.
     var isModalPresented: Bool { openError != nil || panel != nil }
 

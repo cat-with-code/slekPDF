@@ -98,9 +98,11 @@ private struct FileMenuCommands: Commands {
             Button(language(.menuExport)) {}.shortcut(.export).disabled(true)
         }
         CommandGroup(replacing: .printItem) {
-            // 19 Merge PDFs and 25 Print are not built yet.
+            // 19 Merge PDFs is not built yet.
             Button(language(.menuMergePDFs)) {}.shortcut(.mergePDFs).disabled(true)
-            Button(language(.menuPrint)) {}.shortcut(.print).disabled(true)
+            Button(language(.menuPrint)) { session.map { PrintController.print($0, language: language) } }  // D-25
+                .shortcut(.print)
+                .disabled(!session.hasDocument)
             Divider()
             // Closes whatever window is in front (document, About panel), like the standard item.
             Button(language(.menuClose)) { NSApp.keyWindow?.performClose(nil) }

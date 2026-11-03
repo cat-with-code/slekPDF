@@ -278,4 +278,11 @@ enum CopyKey: String, CaseIterable {
     case fmtShortcutIsFree = "fmt: Shortcut is free"
     case fmtShortcutIsAlreadyUsedByCommand = "fmt: Shortcut is already used by command"
     case fmtShortcutAddedCommandKeys = "fmt: Shortcut added command keys"
+    case documentAndAnnotations = "Document and annotations"
+    case documentOnly = "Document only"
+    case addedKhmerText = "Added Khmer text"
+    case highlights = "Highlights"
+    case commentsSummaryPageAtTheEnd = "Comments (summary page at the end)"
+    case khmerFontsAreEmbeddedSoClustersPri = "Khmer fonts are embedded so clusters pri"
+    case fmtPrintingNPagesToPrinter = "fmt: Printing N pages to printer"
 }

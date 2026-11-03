@@ -4,13 +4,12 @@ import UniformTypeIdentifiers
 /// One document window: owns its `DocumentSession`, the Open panel and drag & drop.
 struct DocumentWindow: View {
     @StateObject private var session = DocumentSession()
-    @StateObject private var toasts = ToastCenter()
     @EnvironmentObject private var recents: RecentDocuments
 
     var body: some View {
         MainWindowView()
             .environmentObject(session)
-            .environmentObject(toasts)
+            .environmentObject(session.toasts)
             .navigationTitle(session.fileName ?? "Slek PDF")
             .onAppear { session.onOpened = { [weak recents = recents] url in recents?.add(url) } }
             // Release PDFium and the file's sandbox access when the window closes.

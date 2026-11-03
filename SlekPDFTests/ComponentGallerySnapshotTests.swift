@@ -21,6 +21,9 @@ final class ComponentGallerySnapshotTests: XCTestCase {
                     .environment(\.appLanguage, language)
                 try render(view, size: CGSize(width: 1100, height: 520), appearance: appearance,
                            to: dir.appendingPathComponent("components-feedback-\(language.rawValue)-\(label).png"))
+                try render(PrintAccessoryView(options: PrintOptions()).environment(\.appLanguage, language).background(DSColor.backgroundWindow),
+                           size: CGSize(width: 420, height: 300), appearance: appearance,
+                           to: dir.appendingPathComponent("print-accessory-\(language.rawValue)-\(label).png"))
                 try render(ControlsGallery().environment(\.appLanguage, language), size: CGSize(width: 900, height: 300), appearance: appearance,
                            to: dir.appendingPathComponent("components-controls-\(language.rawValue)-\(label).png"))
             }

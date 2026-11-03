@@ -34,6 +34,7 @@ Reference renders: `Tools/render_snapshots.sh` → compare with "KM · 01 Read" 
 | D-30 Slek PDF Help | Built — topics, search, Getting started article; the other four topics have no article in Figma yet (disabled) |
 | D-31 Developer · D-32 Release Notes | Built |
 | D-10 Preferences · D-10k Keyboard Shortcuts · D-10l/m/n Add custom shortcut · D-10o Shortcut added | Built — `PreferencesPanel`; shortcuts are stored in `ShortcutStore` and every menu reads its keys from there |
+| 25 Print · 26 Printing… | Built — macOS print sheet with the Slek PDF section (Print: Document and annotations / Document only, include added text, highlights; comments summary disabled until comments exist), then the Printing… toast |
 | D-33/33a Report a Problem · D-34/34a Send Feedback | Built — opens a prefilled email (Mail compose service), then the "opened in Mail" toast |
 
 Snapshots of each in Khmer/English × light/dark: `Tools/render_snapshots.sh` → `build/snapshots/<screen>-<lang>-<theme>.png`.

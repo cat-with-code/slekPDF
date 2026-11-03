@@ -33,6 +33,7 @@ struct TitleBarView: View {
 struct ToolbarView: View {
     let sizeClass: WindowSizeClass
     @EnvironmentObject private var session: DocumentSession
+    @Environment(\.appLanguage) private var language
 
     var body: some View {
         let hasDocument = session.document != nil
@@ -50,7 +51,9 @@ struct ToolbarView: View {
             DSButton(.undo, icon: .undo, style: .plain).disabled(true)  // nothing to undo before Organize/Annotate
             DSButton(.redo, icon: .redo, style: .plain).disabled(true)
             Spacer()
-            DSButton(.print, icon: .printer, style: .plain).disabled(true)  // 25 Print
+            DSButton(.print, icon: .printer, style: .plain) { PrintController.print(session, language: language) }  // D-25
+                .dsTooltip(.print, shortcut: ShortcutStore.shared.shortcut(.print)?.display)
+                .disabled(!hasDocument || session.isModalPresented)
             DSButton(.preferences, icon: .setting, style: .plain) { session.panel = .preferences(.general) }  // D-10
                 .dsTooltip(.preferences, shortcut: ShortcutStore.shared.shortcut(.preferences)?.display)
                 .disabled(session.isModalPresented)

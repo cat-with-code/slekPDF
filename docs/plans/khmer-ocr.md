@@ -38,3 +38,13 @@ Uncertain Region 129:14 (Default dashed #A25913 on #F3C498 / Active #3A1EF1 on #
    - Region fills are 45 % translucent (Figma shows them solid over placeholder bars) so the real text stays readable.
    - The canvas shows one page fitted to the column; the page pill's zoom buttons do nothing here yet.
    - Draft Khmer: “No uncertain regions on the recognized pages.”
+
+## Backlog (parked 3 Nov 2026, in this order)
+
+1. Small-box fixes: lone ។ / ៖ / ) boxes are read as digits by the English check (9, 3, ២) — keep KhmerOCR's reading
+   for 1–2 character boxes in Khmer lines; re-read unsure boxes at another scale or margin; drop text boxes inside the
+   detector's figure regions (pictures).
+2. Limon / ABC → Unicode converter (own table; existing converters are LGPL or unlicensed): exact text for legacy-font
+   PDFs without OCR.
+3. Fine-tune KhmerOCR on fonts it misreads (Muol titles, Roman numerals in Khmer lines); measure real PDFs first.
+4. Spelling hints in Review (needs a licence-compatible Khmer word list and a Figma design).

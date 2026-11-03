@@ -235,14 +235,19 @@ struct TextPropertiesPanel: View {
         let target = session.textBoxTarget
         let style = target?.style ?? TextBoxStyle()
         let position = session.textBoxPosition()
+        // Figma Text Properties, Selection=PDF text line (555:842) / No PDF line selected (555:878).
+        let pdfLine = session.textTargetIsPDFLine || (target == nil && session.annotateTool == .editText)
         VStack(alignment: .leading, spacing: DSSpace.s12) {
             VStack(alignment: .leading, spacing: DSSpace.s4) {
-                DSLabel(.addedTextProperties, style: .heading).foregroundColor(DSColor.textPrimary)
-                DSLabel(.appliesToTheSelectedAddedTextBox, style: .caption).foregroundColor(DSColor.textSecondary)
+                DSLabel(pdfLine ? .pdfTextProperties : .addedTextProperties, style: .heading).foregroundColor(DSColor.textPrimary)
+                DSLabel(pdfLine ? (target == nil ? .clickALineOfTextOnThePageToEdit : .appliesToTheSelectedLineOfPDFText)
+                            : .appliesToTheSelectedAddedTextBox, style: .caption)
+                    .foregroundColor(DSColor.textSecondary).fixedSize(horizontal: false, vertical: true)
             }
             Group {
-                // Only the bundled font: Khmer must render the same on every Mac and in the saved PDF.
-                DSDropdown(label: string(.font), selection: $font, options: [(value: 0, title: string(.notoSansKhmerBundled))])
+                // Added text: only the bundled font (Khmer renders the same on every Mac). An edited PDF line keeps the
+                // line's own font when this Mac has it.
+                DSDropdown(label: string(.font), selection: $font, options: [(value: 0, title: fontTitle(style))])
                 HStack(alignment: .top, spacing: DSSpace.s8) {
                     NumberField(label: .size, value: style.fontSize, unit: "pt", range: 6...96, decimals: 0) { value in
                         session.changeTextBoxStyle { $0.fontSize = value }
@@ -274,16 +279,28 @@ struct TextPropertiesPanel: View {
                 }
                 .padding(.leading, DSSpace.s2)
                 DSDivider()
-                DSLabel(.position, style: .labelSmall).foregroundColor(DSColor.textSecondary)
-                HStack(alignment: .top, spacing: DSSpace.s8) {
-                    NumberField(label: .x, value: position?.x ?? 0, unit: "pt", range: -10_000...10_000, decimals: 0) { session.setTextBoxPosition(x: $0) }
-                    NumberField(label: .y, value: position?.y ?? 0, unit: "pt", range: -10_000...10_000, decimals: 0) { session.setTextBoxPosition(y: $0) }
+                if pdfLine {
+                    // An edited line keeps its place: no Position.
+                    DSButton(.restoreOriginalText, icon: .undo, fullWidth: true) { session.restoreOriginalText() }
+                } else {
+                    DSLabel(.position, style: .labelSmall).foregroundColor(DSColor.textSecondary)
+                    HStack(alignment: .top, spacing: DSSpace.s8) {
+                        NumberField(label: .x, value: position?.x ?? 0, unit: "pt", range: -10_000...10_000, decimals: 0) { session.setTextBoxPosition(x: $0) }
+                        NumberField(label: .y, value: position?.y ?? 0, unit: "pt", range: -10_000...10_000, decimals: 0) { session.setTextBoxPosition(y: $0) }
+                    }
                 }
             }
             .disabled(target == nil)
-            DSLabel(.saveWorkKeepsAddedTextEditableOrig, style: .caption).foregroundColor(DSColor.textTertiary)
-                .fixedSize(horizontal: false, vertical: true)
+            if !pdfLine {
+                DSLabel(.saveWorkKeepsAddedTextEditable, style: .caption).foregroundColor(DSColor.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+    }
+
+    private func fontTitle(_ style: TextBoxStyle) -> String {
+        guard let name = style.font else { return string(.notoSansKhmerBundled) }
+        return CTFontCopyDisplayName(CTFontCreateWithName(name as CFString, 12, nil)) as String
     }
 
     private func string(_ key: CopyKey) -> String { CopyCatalog.shared.string(key, language) }

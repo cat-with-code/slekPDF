@@ -71,6 +71,16 @@ nonisolated enum KhmerTextRebuilder {
         /// Median font size and baseline (page y) of the segment's characters.
         var fontSize: CGFloat = 0
         var baseline: CGFloat = 0
+        /// PDFium index of the segment's first character (its font and colour).
+        var charIndex = -1
+        /// Letters next to each other within a word: the first letter and the distance to the next one's origin
+        /// (an edited line measures the original's letter spacing from these).
+        var letterSteps: [LetterStep] = []
+    }
+
+    struct LetterStep: Equatable, Sendable {
+        let scalar: Unicode.Scalar
+        let distance: CGFloat
     }
 
     /// Each line split where the gap between characters is wider than about one em (columns, not word spaces).
@@ -104,9 +114,20 @@ nonisolated enum KhmerTextRebuilder {
                 let sizes = real.map(\.fontSize).sorted(), baselines = real.map(\.origin.y).sorted()
                 return Segment(text: text, box: boxes.dropFirst().reduce(first) { $0.union($1) },
                                fontSize: CGFloat(sizes.isEmpty ? 0 : sizes[sizes.count / 2]),
-                               baseline: baselines.isEmpty ? first.minY : baselines[baselines.count / 2])
+                               baseline: baselines.isEmpty ? first.minY : baselines[baselines.count / 2],
+                               charIndex: real.first?.index ?? -1, letterSteps: letterSteps(real))
             }
             return segments.isEmpty ? nil : segments
+        }
+    }
+
+    /// Pairs of Latin letters or digits that follow each other on the line (not across a space).
+    private static func letterSteps(_ chars: [PDFiumChar]) -> [LetterStep] {
+        func isPlain(_ s: Unicode.Scalar) -> Bool { s.isASCII && (s.properties.isAlphabetic || s.properties.numericType != nil) }
+        let sorted = chars.sorted { $0.origin.x < $1.origin.x }
+        return zip(sorted, sorted.dropFirst()).compactMap { a, b in
+            guard isPlain(a.scalar), isPlain(b.scalar), b.origin.x > a.origin.x else { return nil }
+            return LetterStep(scalar: a.scalar, distance: b.origin.x - a.origin.x)
         }
     }
 

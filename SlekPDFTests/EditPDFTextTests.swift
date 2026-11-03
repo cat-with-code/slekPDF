@@ -151,6 +151,95 @@ final class EditPDFTextTests: XCTestCase {
         await session.close()
     }
 
+    func testAnEditKeepsTheLinesColourAndItsFontWhenThisMacHasIt() async throws {
+        // A line of grey Helvetica.
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("grey-\(UUID()).pdf")
+        var box = CGRect(x: 0, y: 0, width: 400, height: 200)
+        let context = try XCTUnwrap(CGContext(url as CFURL, mediaBox: &box, nil))
+        context.beginPDFPage(nil)
+        let grey = CGColor(srgbRed: 0.4, green: 0.4, blue: 0.4, alpha: 1)
+        let text = NSAttributedString(string: "Phnom Penh, Cambodia", attributes: [.font: CTFontCreateWithName("Helvetica" as CFString, 14, nil),
+                                                                                  .foregroundColor: grey])
+        context.textPosition = CGPoint(x: 40, y: 120)
+        CTLineDraw(CTLineCreateWithAttributedString(text), context)
+        context.endPDFPage()
+        context.closePDF()
+        let session = try await open(url)
+        let line = try await firstLatinLine(session)
+        await session.beginEditingLine(onPageAt: 0, at: CGPoint(x: line.box.midX, y: line.box.midY))
+        let style = try XCTUnwrap(session.textEditing?.style)
+        XCTAssertEqual(style.font, "Helvetica")
+        for (channel, expected) in zip(style.color, [0.4, 0.4, 0.4]) { XCTAssertEqual(channel, expected, accuracy: 0.02) }
+        XCTAssertEqual(style.fontSize, 14, accuracy: 1.5, "sized like the original")
+        session.commitTextEditing()
+        await session.close()
+    }
+
+    func testOnlyInstalledFontsThatCanWriteTheTextAreUsed() {
+        XCTAssertEqual(DocumentSession.installedFont("Helvetica", for: "Phnom Penh"), "Helvetica")
+        XCTAssertNil(DocumentSession.installedFont("NotAFontOnThisMac-Regular", for: "Phnom Penh"), "missing → bundled font")
+        XCTAssertNil(DocumentSession.installedFont("Helvetica", for: "ភ្នំពេញ"), "no Khmer letters → bundled Noto Sans Khmer")
+        XCTAssertNil(DocumentSession.installedFont(nil, for: "x"))
+    }
+
+    private func firstLatinLine(_ session: DocumentSession) async throws -> EditableLine {
+        let found = await session.editableLines(onPageAt: 0)
+        return try XCTUnwrap(found?.first)
+    }
+
+    /// An edited line of a real PDF (tmp/RealDocuments/cv.pdf, never committed): tmp/edit-real.png, top = before.
+    func testRenderAnEditOnARealPDF() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("RealDocuments/cv.pdf")
+        guard ProcessInfo.processInfo.environment["SNAPSHOT_DIR"] != nil, FileManager.default.fileExists(atPath: url.path) else {
+            throw XCTSkip("Set SNAPSHOT_DIR and copy a PDF to tmp/RealDocuments/cv.pdf")
+        }
+        let session = try await open(url)
+        let found = await session.editableLines(onPageAt: 0)
+        let lines = try XCTUnwrap(found)
+        let page = try XCTUnwrap(session.document?.page(at: 0))
+        let area = CGRect(x: 20, y: page.bounds(for: .mediaBox).maxY - 140, width: 420, height: 130)
+        func picture() -> NSImage {
+            let image = NSImage(size: NSSize(width: area.width * 3, height: area.height * 3))
+            image.lockFocus()
+            let context = NSGraphicsContext.current!.cgContext
+            context.setFillColor(.white)
+            context.fill(CGRect(origin: .zero, size: image.size))
+            context.scaleBy(x: 3, y: 3)
+            context.translateBy(x: -area.minX, y: -area.minY)
+            page.draw(with: .mediaBox, to: context)
+            image.unlockFocus()
+            return image
+        }
+        let before = picture()
+        var report = ""
+        let pdf = try PDFiumDocument(url: url)
+        let chars = try pdf.characters(onPage: 0)
+        for char in chars.prefix(40) where !char.isGenerated {
+            let style = try pdf.textStyle(onPage: 0, charIndex: char.index)
+            report += "\(char.index) \(String(char.scalar)) \(style.font ?? "-") \(style.color ?? [])\n"
+        }
+        for line in lines.filter({ area.contains(CGPoint(x: $0.box.midX, y: $0.box.midY)) }).prefix(4) {
+            await session.beginEditingLine(onPageAt: 0, at: CGPoint(x: line.box.midX, y: line.box.midY))
+            let style = session.textEditing?.style
+            report += "\(line.text) | pdf font \(line.font ?? "-") → \(style?.fontName ?? "-") | colour \(style?.color ?? []) | size \(style?.fontSize ?? 0) | pdfium size \(line.fontSize) | box \(line.box) | our width \(style.map { KhmerGlyphOutlines.lineWidth(text: line.text, style: $0) } ?? 0)\n"
+            session.typeInTextBox(line.text + "!")
+            session.commitTextEditing()
+        }
+        session.selectedAnnotationID = nil
+        let after = picture()
+        let both = NSImage(size: NSSize(width: before.size.width, height: before.size.height * 2 + 10))
+        both.lockFocus()
+        NSColor.systemRed.setFill()
+        NSRect(origin: .zero, size: both.size).fill()
+        after.draw(at: .zero, from: .zero, operation: .copy, fraction: 1)
+        before.draw(at: NSPoint(x: 0, y: before.size.height + 10), from: .zero, operation: .copy, fraction: 1)
+        both.unlockFocus()
+        let png = NSBitmapImageRep(data: both.tiffRepresentation!)!.representation(using: .png, properties: [:])!
+        try png.write(to: FileManager.default.temporaryDirectory.appendingPathComponent("edit-real.png"))
+        try report.write(to: FileManager.default.temporaryDirectory.appendingPathComponent("edit-real.txt"), atomically: true, encoding: .utf8)
+        await session.close()
+    }
+
     /// Before/after picture of an edited line (tmp/edit-pdf-text.png), for checking placement by eye. Snapshot runs only.
     func testRenderAnEditedLine() async throws {
         guard ProcessInfo.processInfo.environment["SNAPSHOT_DIR"] != nil else { throw XCTSkip("Set SNAPSHOT_DIR to write snapshots") }

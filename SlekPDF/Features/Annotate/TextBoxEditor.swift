@@ -53,13 +53,14 @@ final class TextBoxEditor: NSTextView, NSTextViewDelegate {
         self.scale = scale
         self.insets = insets
         let size = style.fontSize * scale
-        let font = NSFont(name: style.fontName, size: size) ?? .systemFont(ofSize: size)
+        let font = style.ctFont(size: size) as NSFont
         let paragraph = style.paragraphStyle(scale: scale)
         var attributes: [NSAttributedString.Key: Any] = [
             .font: font, .paragraphStyle: paragraph,
             .foregroundColor: NSColor(srgbRed: style.color[0], green: style.color[1], blue: style.color[2], alpha: 1),
         ]
         if style.italic { attributes[.obliqueness] = 0.2 }
+        if let tracking = style.tracking { attributes[.kern] = tracking * scale }
         if style.underline { attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue }
         textContainerInset = NSSize(width: insets.width * scale, height: insets.height * scale)
         if let storage = textStorage, storage.length > 0 {

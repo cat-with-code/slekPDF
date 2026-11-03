@@ -337,7 +337,7 @@ enum CopyKey: String, CaseIterable {
     case format = "Format"
     case colour = "Colour"
     case position = "Position"
-    case saveWorkKeepsAddedTextEditableOrig = "Save work keeps added text editable Orig"
+    case saveWorkKeepsAddedTextEditable = "Save work keeps added text editable"
     case reply = "Reply"
     case resolve = "Resolve"
     case you = "You"

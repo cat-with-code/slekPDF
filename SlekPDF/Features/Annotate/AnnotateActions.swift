@@ -49,6 +49,13 @@ struct EditableLine: Equatable {
     var box: CGRect
     var fontSize: CGFloat
     var baseline: CGFloat
+    /// The PDF's font (PostScript name) and text colour, when the page has a text layer.
+    var font: String? = nil
+    var color: [CGFloat]? = nil
+    /// PDFium index of the first character (its embedded font).
+    var charIndex = -1
+    /// Neighbouring letters and their distances (letter spacing).
+    var letterSteps: [KhmerTextRebuilder.LetterStep] = []
 }
 
 /// One entry of the inspector's comment list.
@@ -448,6 +455,42 @@ extension DocumentSession {
 // MARK: - Edit PDF text (Figma PDF Text Line 556:525)
 
 extension DocumentSession {
+    /// The PDF's font for an edited line when this Mac has it (and, for Khmer text, it has Khmer letters); else nil,
+    /// which means the bundled Noto Sans Khmer.
+    nonisolated static func installedFont(_ name: String?, for text: String) -> String? {
+        guard let name, !name.isEmpty else { return nil }
+        let font = CTFontCreateWithName(name as CFString, 12, nil)
+        guard CTFontCopyPostScriptName(font) as String == name else { return nil }  // CoreText substituted another font
+        if text.unicodeScalars.contains(where: { (0x1780...0x17FF).contains($0.value) }) {
+            var character: UniChar = 0x1780, glyph: CGGlyph = 0
+            guard CTFontGetGlyphsForCharacters(font, &character, &glyph, 1) else { return nil }
+        }
+        return name
+    }
+
+    /// The PDF's own font for an edited line: installed on this Mac, else the font the PDF embeds when it has every
+    /// letter of the line. Khmer keeps the bundled font unless the real font is installed: embedded subsets usually
+    /// lack the shaping tables Khmer needs.
+    func font(for line: EditableLine, onPageAt index: Int) async -> String? {
+        guard let name = line.font else { return nil }
+        if let installed = Self.installedFont(name, for: line.text) { return installed }
+        guard !line.text.unicodeScalars.contains(where: { (0x1780...0x17FF).contains($0.value) }),
+              pages.indices.contains(index), let id = documentID(for: pages[index]) ?? pdfiumID,
+              await PDFiumService.shared.registerEmbeddedFont(id, page: pages[index].source, charIndex: line.charIndex, name: name),
+              EmbeddedFonts.shared.covers(name, line.text) else { return nil }
+        return name
+    }
+
+    /// Restore original text: drops the edit of the line being typed in or the selected edited line (one undo).
+    func restoreOriginalText() {
+        if let draft = textEditing, draft.line != nil {
+            textEditing = nil
+            if let id = draft.id { removeAnnotation(id: id) }
+            return
+        }
+        if let id = selectedAnnotationID, let edited = annotation(id), case .textEdit = edited.content { removeAnnotation(id: id) }
+    }
+
     /// The text a click can edit on page `index`: the PDF's own text where it is readable, else the page's Khmer OCR
     /// lines. Nil when the page has neither (a scan not recognized yet, or a legacy-font layer).
     func editableLines(onPageAt index: Int) async -> [EditableLine]? {
@@ -456,7 +499,10 @@ extension DocumentSession {
         let doc = documentID(for: ref) ?? id
         let segments = await PDFiumService.shared.editableSegments(doc, page: ref.source)
         if !segments.isEmpty {
-            return segments.map { EditableLine(text: $0.text, box: $0.box, fontSize: $0.fontSize, baseline: $0.baseline) }
+            return segments.map {
+                EditableLine(text: $0.segment.text, box: $0.segment.box, fontSize: $0.segment.fontSize, baseline: $0.segment.baseline,
+                             font: $0.font, color: $0.color, charIndex: $0.segment.charIndex, letterSteps: $0.segment.letterSteps)
+            }
         }
         guard let ocr = ocrResults[ref.id], !ocr.lines.isEmpty else { return nil }
         // OCR boxes have no baseline: Khmer sits about a quarter of the line above the box's bottom (subscripts below).
@@ -492,9 +538,28 @@ extension DocumentSession {
         // The size at which the line's own text, set in the bundled Khmer font, is as tall as it is on the page
         // (PDFium's font size is wrong for PDFs that scale text with a matrix, and OCR has none).
         var style = TextBoxStyle()
+        style.font = await font(for: line, onPageAt: index)
+        // No usable font of the PDF's: at least keep it bold.
+        if style.font == nil, line.font?.localizedCaseInsensitiveContains("bold") == true { style.bold = true }
+        if let color = line.color { style.color = color }
         let ink = KhmerGlyphOutlines.inkHeight(text: line.text, style: style)
-        let fontSize = ink > 0.2 ? min(200, max(4, line.box.height / ink)) : max(4, line.box.height * 0.62)
+        var fontSize = ink > 0.2 ? min(200, max(4, line.box.height / ink)) : max(4, line.box.height * 0.62)
+        // In the PDF's own font, PDFium's size is exact when it agrees with the measured one.
+        if style.font != nil, line.fontSize > 0, abs(line.fontSize - fontSize) <= fontSize * 0.25 { fontSize = line.fontSize }
         style.fontSize = fontSize
+        // Letter spacing (a tracked title): how much farther apart neighbouring letters are than the font's own
+        // advances, the median over the line so word gaps don't count. Only in the PDF's own font.
+        if style.font != nil, line.letterSteps.count >= 3 {
+            let font = style.ctFont(size: fontSize)
+            let extra = line.letterSteps.compactMap { step -> CGFloat? in
+                guard let unit = UTF16.CodeUnit(exactly: step.scalar.value) else { return nil }
+                var character = unit, glyph: CGGlyph = 0, advance = CGSize.zero
+                guard CTFontGetGlyphsForCharacters(font, &character, &glyph, 1) else { return nil }
+                CTFontGetAdvancesForGlyphs(font, .horizontal, &glyph, &advance, 1)
+                return step.distance - advance.width
+            }.sorted()
+            if !extra.isEmpty, abs(extra[extra.count / 2]) >= fontSize * 0.03 { style.tracking = extra[extra.count / 2] }
+        }
         style.lineSpacing = max(1.2, line.box.height / fontSize)
         var draft = TextBoxDraft(pageIndex: index, bounds: cover, text: line.text, style: style,
                                  line: .init(original: line.text, cover: cover, baseline: line.baseline, coverColor: coverColor),

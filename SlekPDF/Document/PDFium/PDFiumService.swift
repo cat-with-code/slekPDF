@@ -71,7 +71,22 @@ final class PDFiumService {
         for index in 0..<document.pageCount {
             if let found = try? document.slekAnnotations(page: index), !found.isEmpty { result[index] = found }
         }
+        // Edited lines drawn in the PDF's own (not installed) font need it again.
+        for (index, found) in result {
+            for annotation in found {
+                guard case let .textEdit(info) = annotation.content, let name = info.style.font,
+                      DocumentSession.installedFont(name, for: info.text) == nil,
+                      let data = document.embeddedFontData(named: name, onPage: index) else { continue }
+                EmbeddedFonts.shared.register(data, named: name)
+            }
+        }
         return result
+    }
+
+    /// Makes the PDF's embedded font of character `charIndex` available as `name`. False if it is not embedded.
+    func registerEmbeddedFont(_ id: DocumentID, page index: Int, charIndex: Int, name: String) -> Bool {
+        guard charIndex >= 0, let data = try? documents[id]?.embeddedFontData(onPage: index, charIndex: charIndex) else { return false }
+        return EmbeddedFonts.shared.register(data, named: name)
     }
 
     /// OCR results saved in an open document, by source page (reopened saved work).
@@ -189,10 +204,15 @@ final class PDFiumService {
 
     /// The pieces of text a click can edit (Edit PDF text): each line split at wide gaps, so a click in a table cell
     /// or a column takes that phrase, not the whole row. Empty for an unreadable layer.
-    func editableSegments(_ id: DocumentID, page index: Int) -> [KhmerTextRebuilder.Segment] {
-        guard textLayer(id, page: index) == .usable, let chars = page(id, index)?.chars else { return [] }
-        return KhmerTextRebuilder.segments(chars, byHeight: true).flatMap { $0 }.map {
-            KhmerTextRebuilder.Segment(text: KhmerNormalizer.normalize($0.text), box: $0.box, fontSize: $0.fontSize, baseline: $0.baseline)
+    /// With each segment, its font's PostScript name and its colour (from the first character).
+    func editableSegments(_ id: DocumentID, page index: Int) -> [(segment: KhmerTextRebuilder.Segment, font: String?, color: [CGFloat]?)] {
+        // A page with only a few words is still editable; only gibberish layers (legacy fonts) are not.
+        guard textLayer(id, page: index) != .unreadable, let chars = page(id, index)?.chars else { return [] }
+        return KhmerTextRebuilder.segments(chars, byHeight: true).flatMap { $0 }.map { segment in
+            let style = segment.charIndex >= 0 ? try? documents[id]?.textStyle(onPage: index, charIndex: segment.charIndex) : nil
+            let normalized = KhmerTextRebuilder.Segment(text: KhmerNormalizer.normalize(segment.text), box: segment.box, fontSize: segment.fontSize,
+                                                    baseline: segment.baseline, charIndex: segment.charIndex, letterSteps: segment.letterSteps)
+            return (normalized, style?.font, style?.color)
         }
     }
 

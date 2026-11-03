@@ -73,6 +73,62 @@ nonisolated final class PDFiumDocument {
         }
     }
 
+    /// Font (PostScript name, without the subset prefix) and fill colour (0–1 RGB) of character `charIndex`.
+    func textStyle(onPage index: Int, charIndex: Int) throws -> (font: String?, color: [CGFloat]?) {
+        try withTextPage(index) { textPage in
+            var buffer = [CChar](repeating: 0, count: 256)
+            var font: String?
+            let length = FPDFText_GetFontInfo(textPage, Int32(charIndex), &buffer, UInt(buffer.count), nil)
+            if length > 0, length <= buffer.count {
+                var name = String(cString: buffer)
+                if let plus = name.firstIndex(of: "+"), name.distance(from: name.startIndex, to: plus) == 6 {
+                    name = String(name[name.index(after: plus)...])
+                }
+                font = name
+            }
+            var r: UInt32 = 0, g: UInt32 = 0, b: UInt32 = 0, a: UInt32 = 0
+            let color: [CGFloat]? = FPDFText_GetFillColor(textPage, Int32(charIndex), &r, &g, &b, &a) != 0
+                ? [CGFloat(r) / 255, CGFloat(g) / 255, CGFloat(b) / 255] : nil
+            return (font, color)
+        }
+    }
+
+    /// The font file the PDF embeds for character `charIndex` (often a subset: only the letters the document uses).
+    func embeddedFontData(onPage index: Int, charIndex: Int) throws -> Data? {
+        try withTextPage(index) { textPage in
+            guard let object = FPDFText_GetTextObject(textPage, Int32(charIndex)) else { return nil }
+            return Self.embeddedData(of: FPDFTextObj_GetFont(object))
+        }
+    }
+
+    /// The embedded font named `name` (base font name without the subset prefix) used by a text object on the page.
+    func embeddedFontData(named name: String, onPage index: Int) -> Data? {
+        guard let page = FPDF_LoadPage(handle, Int32(index)) else { return nil }
+        defer { FPDF_ClosePage(page) }
+        for i in 0..<FPDFPage_CountObjects(page) {
+            guard let object = FPDFPage_GetObject(page, i), FPDFPageObj_GetType(object) == FPDF_PAGEOBJ_TEXT,
+                  let font = FPDFTextObj_GetFont(object) else { continue }
+            var buffer = [CChar](repeating: 0, count: 256)
+            let length = FPDFFont_GetBaseFontName(font, &buffer, buffer.count)
+            guard length > 0, length <= buffer.count else { continue }
+            var base = String(cString: buffer)
+            if let plus = base.firstIndex(of: "+"), base.distance(from: base.startIndex, to: plus) == 6 {
+                base = String(base[base.index(after: plus)...])
+            }
+            if base == name, let data = Self.embeddedData(of: font) { return data }
+        }
+        return nil
+    }
+
+    private static func embeddedData(of font: FPDF_FONT?) -> Data? {
+        guard let font, FPDFFont_GetIsEmbedded(font) == 1 else { return nil }
+        var length = 0
+        guard FPDFFont_GetFontData(font, nil, 0, &length) != 0 || length > 0, length > 0 else { return nil }
+        var data = Data(count: length)
+        let ok = data.withUnsafeMutableBytes { FPDFFont_GetFontData(font, $0.bindMemory(to: UInt8.self).baseAddress, length, &length) }
+        return ok != 0 ? data : nil
+    }
+
     /// How many characters of a page each font draws (font names without the subset prefix, e.g. "LimonS1").
     /// Spaces and characters PDFium generated are not counted.
     func fontUsage(onPage index: Int) throws -> [String: Int] {

@@ -15,10 +15,31 @@ nonisolated struct TextBoxStyle: Codable, Equatable, Sendable {
     var alignment: Alignment = .left
     /// Document colour as 0–1 RGB.
     var color: [CGFloat] = Swatch.black.rgb
+    /// PostScript name of a font installed on this Mac (an edited PDF line keeps the line's own font when it is);
+    /// nil = the bundled Noto Sans Khmer.
+    var font: String?
+    /// Extra space between letters in points (an edited line keeps the original's letter spacing).
+    var tracking: CGFloat?
+
+    /// Font and letter spacing for laying out text at `size`.
+    func layoutAttributes(size: CGFloat) -> [NSAttributedString.Key: Any] {
+        var attributes: [NSAttributedString.Key: Any] = [.font: ctFont(size: size)]
+        if let tracking { attributes[.kern] = tracking * size / max(fontSize, 0.1) }
+        return attributes
+    }
 
     enum Alignment: String, Codable, Sendable { case left, center, right }
 
-    var fontName: String { bold ? "NotoSansKhmer-Bold" : "NotoSansKhmer-Regular" }
+    var fontName: String { font ?? (bold ? "NotoSansKhmer-Bold" : "NotoSansKhmer-Regular") }
+
+    /// The font to lay out with: a font the PDF embeds (registered in `EmbeddedFonts`), else one installed on this
+    /// Mac, else the bundled one. Bold on such a font asks for its bold face.
+    func ctFont(size: CGFloat) -> CTFont {
+        let base = font.flatMap { EmbeddedFonts.shared.font(named: $0, size: size) }
+            ?? CTFontCreateWithName(fontName as CFString, size, nil)
+        guard font != nil, bold else { return base }
+        return CTFontCreateCopyWithSymbolicTraits(base, size, nil, .traitBold, .traitBold) ?? base
+    }
 
     /// Line spacing is a multiple of the font size (Figma: 14 pt text, spacing 1.6 → ≈ 24 pt lines, a 44 pt box).
     /// `scale` sizes it for the on-screen editor at the view's zoom.
@@ -61,6 +82,41 @@ nonisolated struct TextBoxStyle: Codable, Equatable, Sendable {
     }
 }
 
+/// Fonts taken from the PDFs open in Slek, by base font name (an edited line in a PDF whose font is not installed,
+/// e.g. Calibri). Process-wide; drawing happens on PDFKit's threads, so access is locked.
+nonisolated final class EmbeddedFonts: @unchecked Sendable {
+    static let shared = EmbeddedFonts()
+    private let lock = NSLock()
+    private var fonts: [String: CGFont] = [:]
+
+    /// Keeps `data` as the font named `name` (the first one wins). False if it is not a usable font.
+    @discardableResult
+    func register(_ data: Data, named name: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if fonts[name] != nil { return true }
+        guard let provider = CGDataProvider(data: data as CFData), let font = CGFont(provider) else { return false }
+        fonts[name] = font
+        return true
+    }
+
+    func font(named name: String, size: CGFloat) -> CTFont? {
+        lock.lock()
+        let font = fonts[name]
+        lock.unlock()
+        return font.map { CTFontCreateWithGraphicsFont($0, size, nil, nil) }
+    }
+
+    /// Whether the font named `name` has a glyph for every letter of `text` (an embedded subset may not).
+    func covers(_ name: String, _ text: String) -> Bool {
+        guard let font = font(named: name, size: 12) else { return false }
+        let units = Array(text.filter { !$0.isWhitespace }.utf16)
+        guard !units.isEmpty else { return true }
+        var glyphs = [CGGlyph](repeating: 0, count: units.count)
+        return CTFontGetGlyphsForCharacters(font, units, &glyphs, units.count)
+    }
+}
+
 nonisolated enum KhmerGlyphOutlines {
     /// The shaped text (CoreText, Noto Sans Khmer) laid out in `rect` as filled outlines, one path per glyph and
     /// underline. The saved appearance and on-screen drawing both use this, so they cannot differ.
@@ -70,10 +126,10 @@ nonisolated enum KhmerGlyphOutlines {
     /// page y of the first line's baseline (an edited line sits on the original line's baseline).
     static func outlines(text: String, in rect: CGRect, style: TextBoxStyle, insets: CGSize = textBoxInsets,
                          firstBaseline: CGFloat? = nil) -> [CGPath] {
-        let font = CTFontCreateWithName(style.fontName as CFString, style.fontSize, nil)
+        let font = style.ctFont(size: style.fontSize)
         let paragraph = style.paragraphStyle()
         let framesetter = CTFramesetterCreateWithAttributedString(
-            NSAttributedString(string: text, attributes: [.font: font, .paragraphStyle: paragraph]))
+            NSAttributedString(string: text, attributes: style.layoutAttributes(size: style.fontSize).merging([.font: font, .paragraphStyle: paragraph]) { $1 }))
         // Lay out in a tall column so no line is dropped, then hang it from the box's top inset.
         let column = CGSize(width: max(1, rect.width - 2 * insets.width), height: 100_000)
         let frame = CTFramesetterCreateFrame(framesetter, CFRange(), CGPath(rect: CGRect(origin: .zero, size: column), transform: nil), nil)
@@ -111,11 +167,11 @@ nonisolated enum KhmerGlyphOutlines {
     /// Height a box of `width` needs for `text` (Figma minimum 44 pt), so lines are never cut off.
     static func fittedHeight(text: String, width: CGFloat, style: TextBoxStyle, insets: CGSize = textBoxInsets,
                              minimum: CGFloat = TextBoxStyle.minimumHeight) -> CGFloat {
-        let font = CTFontCreateWithName(style.fontName as CFString, style.fontSize, nil)
+        let font = style.ctFont(size: style.fontSize)
         let paragraph = style.paragraphStyle()
         let sample = text.isEmpty || text.hasSuffix("\n") ? text + "ក" : text  // an empty last line still takes a line
         let framesetter = CTFramesetterCreateWithAttributedString(
-            NSAttributedString(string: sample, attributes: [.font: font, .paragraphStyle: paragraph]))
+            NSAttributedString(string: sample, attributes: style.layoutAttributes(size: style.fontSize).merging([.font: font, .paragraphStyle: paragraph]) { $1 }))
         let size = CTFramesetterSuggestFrameSizeWithConstraints(
             framesetter, CFRange(), nil, CGSize(width: max(1, width - 2 * insets.width), height: 100_000), nil)
         return max(minimum, ceil(size.height + 2 * insets.height))
@@ -124,16 +180,20 @@ nonisolated enum KhmerGlyphOutlines {
     /// Height of the ink of `text` set at 1 pt (glyph outlines, top of the highest mark to the bottom of the lowest
     /// subscript). Dividing a line's drawn height by it gives the size that draws `text` as tall as the original.
     static func inkHeight(text: String, style: TextBoxStyle) -> CGFloat {
-        let font = CTFontCreateWithName(style.fontName as CFString, 1, nil)
-        let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [.font: font]))
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: style.layoutAttributes(size: 1)))
         return CTLineGetBoundsWithOptions(line, .useGlyphPathBounds).height
     }
 
     /// Width one line of `text` takes (no wrapping).
     static func lineWidth(text: String, style: TextBoxStyle) -> CGFloat {
-        let font = CTFontCreateWithName(style.fontName as CFString, style.fontSize, nil)
-        let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [.font: font]))
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: style.layoutAttributes(size: style.fontSize)))
         return ceil(CTLineGetTypographicBounds(line, nil, nil, nil))
+    }
+
+    /// Width of the ink of `text` (glyph outlines), as PDFium measures a line's character boxes.
+    static func inkWidth(text: String, style: TextBoxStyle) -> CGFloat {
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: style.layoutAttributes(size: style.fontSize)))
+        return CTLineGetBoundsWithOptions(line, .useGlyphPathBounds).width
     }
 
     /// A PDF content stream that fills `outlines(text:in:style:)` in the style's colour.

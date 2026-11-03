@@ -1445,9 +1445,9 @@
     "km": "ទីតាំង",
     "en": "Position"
   },
-  "Save work keeps added text editable Orig": {
-    "km": "ការរក្សាទុកការងារ ធ្វើឲ្យអត្ថបទដែលបានបន្ថែមនៅតែអាចកែបាន។ ការជំនួសអត្ថបទដើមក្នុង PDF ជាមុខងារនាពេលក្រោយ។",
-    "en": "Save work keeps added text editable. Original PDF text replacement is a later feature."
+  "Save work keeps added text editable": {
+    "km": "ការរក្សាទុកការងារ ធ្វើឲ្យអត្ថបទដែលបានបន្ថែមនៅតែអាចកែបាន។",
+    "en": "Save work keeps added text editable."
   },
   "Reply": {
     "km": "ឆ្លើយតប",

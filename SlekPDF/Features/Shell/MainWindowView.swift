@@ -45,6 +45,15 @@ struct MainWindowView: View {
     @EnvironmentObject private var toasts: ToastCenter
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Figma 15: recovery copies left by an unexpected quit are offered once per launch, in a window with no document.
+    private func offerRecovery() {
+        let store = session.recoveryStore
+        guard session.document == nil, session.organizeDialog == nil, !store.offeredThisLaunch, let entry = store.entries().first else { return }
+        store.offeredThisLaunch = true
+        session.recoveryOffer = entry
+        session.organizeDialog = .recovered
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let sizeClass = WindowSizeClass(width: proxy.size.width)
@@ -135,7 +144,10 @@ struct MainWindowView: View {
             }
         }
         .animation(.easeOut(duration: 0.15), value: session.isModalPresented)
-        .onAppear { session.undoManager = undoManager }
+        .onAppear {
+            session.undoManager = undoManager
+            offerRecovery()
+        }
         .onChange(of: undoManager) { session.undoManager = $0 }
         .ignoresSafeArea()
     }

@@ -270,7 +270,7 @@ extension DocumentSession {
                 ocrLines = ocr.lines.map { ($0.displayText, $0.bounds) }
                 lines = ocr.lines.map { ExportLine(text: $0.displayText, box: $0.bounds, fontSize: $0.bounds.height * 0.75) }
             } else {
-                lines = await PDFiumService.shared.textLines(id, page: ref.source).map {
+                lines = await PDFiumService.shared.textLines(documentID(for: ref) ?? id, page: ref.source).map {
                     ExportLine(text: $0.text, box: $0.box, fontSize: $0.fontSize)
                 }
             }

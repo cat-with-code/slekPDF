@@ -59,8 +59,39 @@ final class DocumentSession: ObservableObject {
     /// One page of the edited document: which page of the source file, turned how many × 90° clockwise.
     struct PageRef: Identifiable, Hashable {
         let id = UUID()
+        /// Page index in its file.
         let source: Int
         var quarterTurns = 0
+        /// Insert Pages from File…: the other PDF this page comes from (nil = the open document).
+        var file: URL?
+    }
+
+    /// PDFs whose pages were inserted (Organize ▸ Insert Pages from File…), open in PDFium and PDFKit.
+    struct InsertedDocument {
+        let id: PDFiumService.DocumentID
+        let pages: [PDFPage]
+        let rotations: [Int]
+    }
+
+    var insertedDocuments: [URL: InsertedDocument] = [:]
+    /// Rotate view (Read): turns pages on screen only; the document and saved work are unchanged.
+    @Published var viewTurns: [PageRef.ID: Int] = [:] {
+        didSet { if viewTurns != oldValue { mirrorPages() } }
+    }
+
+    /// The PDFium document a page belongs to.
+    func documentID(for ref: PageRef) -> PDFiumService.DocumentID? {
+        ref.file.map { insertedDocuments[$0]?.id } ?? pdfiumID
+    }
+
+    private func pdfPage(for ref: PageRef) -> PDFPage? {
+        if let file = ref.file { return insertedDocuments[file]?.pages[safe: ref.source] }
+        return originalPages[safe: ref.source]
+    }
+
+    private func baseRotation(for ref: PageRef) -> Int {
+        if let file = ref.file { return insertedDocuments[file]?.rotations[safe: ref.source] ?? 0 }
+        return originalRotations[safe: ref.source] ?? 0
     }
 
     @Published private(set) var pages: [PageRef] = []
@@ -91,6 +122,7 @@ final class DocumentSession: ObservableObject {
 
     var hasUnsavedChanges: Bool {
         pages != savedPages || annotations != savedAnnotations || ocrResults != savedOCR || !(textEditing?.text.isEmpty ?? true)
+            || recoveredEntryID != nil
     }
 
     // MARK: Khmer OCR (Figma 04 / 12 / 39 / 41)
@@ -117,8 +149,54 @@ final class DocumentSession: ObservableObject {
     @Published var exportJob: ExportJob?
     /// Destination waiting for 36 (already exists) or 14 (could not save).
     var pendingExport: PendingExport?
-    /// Bumped whenever pages, annotations or OCR change (the export preview rebuilds).
-    @Published private(set) var contentRevision = 0
+    /// Bumped whenever pages, annotations or OCR change (the export preview rebuilds; a recovery copy is scheduled).
+    @Published private(set) var contentRevision = 0 {
+        didSet {
+            changesSinceSave += 1
+            scheduleRecoveryCopy()
+        }
+    }
+
+    // MARK: Recovery (Figma 15)
+
+    /// This window's recovery copy.
+    let recoveryID = UUID()
+    var recoveryStore = RecoveryStore.shared
+    /// Edits since the work was opened or saved (shown in 15).
+    var changesSinceSave = 0
+    /// Opened from a recovery copy: unsaved until saved; the copy is removed on save or close.
+    var recoveredEntryID: UUID?
+    /// The copy offered by 15.
+    var recoveryOffer: RecoveryStore.Entry?
+    private var recoveryTask: Task<Void, Never>?
+
+    /// Writes the recovery copy a moment after the last change (Preferences ▸ Keep recovery copies).
+    private func scheduleRecoveryCopy() {
+        recoveryTask?.cancel()
+        guard RecoveryStore.isEnabled, document != nil else { return }
+        recoveryTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard let self, !Task.isCancelled, self.hasUnsavedChanges, self.document != nil else { return }
+            try? await self.recoveryStore.write(self, id: self.recoveryID)
+        }
+    }
+
+    /// Saved or closed: no recovery copy is needed any more.
+    func removeRecoveryCopies() {
+        recoveryTask?.cancel()
+        recoveryStore.remove(recoveryID)
+        if let recovered = recoveredEntryID { recoveryStore.remove(recovered) }
+        recoveredEntryID = nil
+    }
+
+    /// 15 Open recovered work.
+    func openRecovered(_ entry: RecoveryStore.Entry) async {
+        guard let url = try? recoveryStore.openableCopy(of: entry) else { return }
+        await open(url)
+        guard document != nil else { return }
+        recoveredEntryID = entry.id
+        changesSinceSave = entry.changes
+    }
 
     /// Pages waiting for “Recognize again” (39).
     var pendingOCRPages: [Int] = []
@@ -133,7 +211,7 @@ final class DocumentSession: ObservableObject {
 
     enum OrganizeDialog: Equatable {
         case deletePages, saveWork, merge, split, closeConfirm, recognizing, recognizeAgain, exportExists, exportFailed,
-             noTables, excelFailed
+             noTables, excelFailed, recovered
     }
 
     /// Every open session, for the quit check (Save changes before closing?).
@@ -152,7 +230,8 @@ final class DocumentSession: ObservableObject {
     func editedPageSources(_ indices: [Int]? = nil) -> [PDFiumService.PageSource] {
         guard let id = pdfiumID else { return [] }
         return (indices ?? Array(pages.indices)).map {
-            .open(id, page: pages[$0].source, quarterTurns: pages[$0].quarterTurns, annotations: annotations[pages[$0].id] ?? [],
+            .open(documentID(for: pages[$0]) ?? id, page: pages[$0].source, quarterTurns: pages[$0].quarterTurns,
+                  annotations: annotations[pages[$0].id] ?? [],
                   ocr: ocrResults[pages[$0].id])
         }
     }
@@ -263,8 +342,13 @@ final class DocumentSession: ObservableObject {
         searchResults = []
         currentMatchIndex = nil
         searchQuery = ""
+        removeRecoveryCopies()
+        changesSinceSave = 0
         if let id = pdfiumID { await PDFiumService.shared.close(id) }
         pdfiumID = nil
+        for inserted in insertedDocuments.values { await PDFiumService.shared.close(inserted.id) }
+        insertedDocuments = [:]
+        viewTurns = [:]
         accessedURL?.stopAccessingSecurityScopedResource()
         accessedURL = nil
         document = nil
@@ -470,12 +554,17 @@ final class DocumentSession: ObservableObject {
     /// Readable text of a PDFKit selection: each selected line's rectangle is read from PDFium and rebuilt.
     func text(of selection: PDFSelection) async -> String {
         guard let id = pdfiumID, let document else { return selection.string ?? "" }
-        let lines: [(page: Int, rect: CGRect)] = selection.selectionsByLine().compactMap { line in
-            guard let page = line.pages.first else { return nil }
+        // Each line is read from the PDF its page comes from (inserted pages have their own).
+        var parts: [String] = []
+        for line in selection.selectionsByLine() {
+            guard let page = line.pages.first else { continue }
             let index = document.index(for: page)
-            return (pages.indices.contains(index) ? pages[index].source : index, line.bounds(for: page))
+            let ref = pages.indices.contains(index) ? pages[index] : nil
+            let text = await PDFiumService.shared.copyText(ref.flatMap(documentID(for:)) ?? id,
+                                                           lines: [(ref?.source ?? index, line.bounds(for: page))])
+            if !text.isEmpty { parts.append(text) }
         }
-        return await PDFiumService.shared.copyText(id, lines: lines)
+        return parts.joined(separator: "\n")
     }
 
     func copy(_ selection: PDFSelection) {
@@ -492,7 +581,7 @@ final class DocumentSession: ObservableObject {
     /// PDFium reports pages of the source file; show them at their current place (deleted pages drop out).
     private func currentPageMatches(_ matches: [PDFiumMatch]) -> [PDFiumMatch] {
         matches.compactMap { match in
-            pages.firstIndex { $0.source == match.page }.map {
+            pages.firstIndex { $0.source == match.page && $0.file == nil }.map {
                 PDFiumMatch(page: $0, charIndex: match.charIndex, charCount: match.charCount, rects: match.rects,
                             before: match.before, match: match.match, after: match.after)
             }
@@ -516,8 +605,8 @@ final class DocumentSession: ObservableObject {
         guard let document else { return }
         while document.pageCount > 0 { document.removePage(at: document.pageCount - 1) }
         for (index, ref) in pages.enumerated() {
-            let page = originalPages[ref.source]
-            page.rotation = (originalRotations[ref.source] + ref.quarterTurns * 90) % 360
+            guard let page = pdfPage(for: ref) else { continue }
+            page.rotation = (baseRotation(for: ref) + (ref.quarterTurns + (viewTurns[ref.id] ?? 0)) * 90) % 360
             document.insert(page, at: index)
         }
         mirrorAnnotations()
@@ -579,6 +668,8 @@ final class DocumentSession: ObservableObject {
         savedPages = pages
         savedAnnotations = annotations
         savedOCR = ocrResults
+        changesSinceSave = 0
+        removeRecoveryCopies()
     }
 
     /// Replaces page `pageID`'s OCR result (recognition, a correction, Mark reviewed) and registers the undo.
@@ -631,11 +722,11 @@ final class DocumentSession: ObservableObject {
 
     /// Rebuilds the drawn annotations on every page from the model.
     private func mirrorAnnotations() {
-        for page in originalPages {
+        for page in originalPages + insertedDocuments.values.flatMap(\.pages) {
             for annotation in page.annotations where annotation is SlekPDFAnnotation { page.removeAnnotation(annotation) }
         }
         for ref in pages {
-            let page = originalPages[ref.source]
+            guard let page = pdfPage(for: ref) else { continue }
             for annotation in annotations[ref.id] ?? [] where annotation.id != textEditing?.id {
                 let drawn = SlekPDFAnnotation(annotation, selected: annotation.id == selectedAnnotationID)
                 page.addAnnotation(drawn)
@@ -667,4 +758,8 @@ final class DocumentSession: ObservableObject {
         thumbnailCache[index] = image
         return image
     }
+}
+
+extension Array {
+    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }

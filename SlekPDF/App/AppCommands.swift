@@ -120,7 +120,7 @@ private struct FileMenuCommands: Commands {
         CommandGroup(replacing: .saveItem) {
             // 42/43 Save work; Save a copy and 05 Export are not built yet.
             Button(language(.menuSaveWork)) { session?.requestSaveWork(language) }.shortcut(.saveWork).disabled(!session.hasDocument)
-            Button(language(.menuSaveACopy)) {}.shortcut(.saveACopy).disabled(true)
+            Button(language(.menuSaveACopy)) { session?.requestSaveACopy(language) }.shortcut(.saveACopy).disabled(!session.hasDocument)
             Button(language(.menuExport)) { session.openExport(nil) }.shortcut(.export).disabled(!session.hasDocument)
         }
         CommandGroup(replacing: .printItem) {
@@ -243,7 +243,11 @@ private struct DocumentAndToolsCommands: Commands {
                 .disabled(!hasDocument || session?.workspace != .organizePages || (session?.selectedPageIDs.isEmpty ?? true)
                           || (session?.selectedPageIDs.count ?? 0) >= (session?.pageCount ?? 0))
             Divider()
-            Button(language(.menuInsertPagesFromFile)) {}.shortcut(.insertPages).disabled(true)
+            Button(language(.menuInsertPagesFromFile)) {
+                session?.workspace = .organizePages
+                session?.requestInsertPages(language)
+            }
+            .shortcut(.insertPages).disabled(!session.hasDocument)
             Button(language(.menuSplitIntoPDFs)) { session?.organizeDialog = .split }  // 21
                 .shortcut(.splitIntoPDFs)
                 .disabled(!hasDocument || (session?.pageCount ?? 0) < 2)

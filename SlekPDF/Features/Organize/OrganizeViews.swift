@@ -175,8 +175,7 @@ struct OrganizeInspector: View {
                 DSButton(.mergePDFs, icon: .merge, fullWidth: true) { session.organizeDialog = .merge }  // 19
                 DSDivider()
                 header(.save, .aNewCopyIsSavedSourceFilesArePr)
-                // Export (05–09) is not built yet; Save work (⌘S, toolbar) keeps the page changes meanwhile.
-                DSButton(.openExport, icon: .download, style: .primary, fullWidth: true).disabled(true)
+                DSButton(.openExport, icon: .download, style: .primary, fullWidth: true) { session.workspace = .export }
             }
             .padding(DSSpace.s16)
         }
@@ -267,6 +266,7 @@ struct OrganizeDialogView: View {
         case .exportFailed: ExportFailedDialog()  // 14
         case .noTables: NoTablesDialog()  // 17
         case .excelFailed: ExcelFailedDialog()  // 38
+        case .recovered: RecoveredWorkDialog()  // 15
         }
     }
 

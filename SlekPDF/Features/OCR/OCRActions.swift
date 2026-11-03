@@ -102,12 +102,13 @@ extension DocumentSession {
                 guard !flag.isCancelled, let self else { break }
                 self.ocrJob?.currentNumber = (self.pages.firstIndex { $0.id == ref.id } ?? 0) + 1
                 defer { self.ocrJob?.finished += 1 }
-                if skipText, await PDFiumService.shared.hasUsableText(id, page: ref.source) { continue }
-                guard let image = await PDFiumService.shared.renderForOCR(id, page: ref.source, quarterTurns: ref.quarterTurns,
+                let doc = self.documentID(for: ref) ?? id
+                if skipText, await PDFiumService.shared.hasUsableText(doc, page: ref.source) { continue }
+                guard let image = await PDFiumService.shared.renderForOCR(doc, page: ref.source, quarterTurns: ref.quarterTurns,
                                                                           ppi: CGFloat(ppi)) else { continue }
                 guard let result = try? await OCRWorker.shared.recognize(image, ppi: ppi, languages: languages,
                                                                           isCancelled: { flag.isCancelled }) else { continue }
-                let rects = await PDFiumService.shared.pageRects(id, result.lines.map(\.pixelRect), page: ref.source,
+                let rects = await PDFiumService.shared.pageRects(doc, result.lines.map(\.pixelRect), page: ref.source,
                                                                  quarterTurns: ref.quarterTurns, ppi: CGFloat(ppi))
                 let lines = zip(result.lines, rects).map { OCRLine(bounds: $1, text: $0.text, confidence: $0.confidence) }
                 guard !flag.isCancelled, self.pages.contains(where: { $0.id == ref.id }) else { continue }

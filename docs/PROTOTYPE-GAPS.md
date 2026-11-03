@@ -45,6 +45,20 @@ Save work (42/43) writes an **editable PDF** ("<name> — work.pdf" in the defau
 - **Preferences (D-10 … D-10o) — built.** Default OCR language, export folder, recovery copies and OCR hints are stored now and take effect when OCR, export and recovery are built. Figma's sample "Custom" shortcuts (Export to Word, Recognize Current Page) are for commands that don't exist yet; the Custom group lists what the user adds. Tool keys V/T/H/C and ↩ (Mark reviewed) are shown but not editable (canvas keys, not ⌘ shortcuts).
 - **Copy corrections to make in Figma.** The two version lines say "macOS 12 or later"; the app requires macOS 13, so `copy.json` says 13. "Check for updates…" is disabled (no verified update channel). The About/Release Notes version text ("1.0, Preview build 0.9.3") is placeholder copy: the build is `MARKETING_VERSION` 0.1.0 (1), which Report/Feedback system info uses.
 
+## Workspaces & remaining screens — built 3 Nov 2026, open items
+
+- **Annotate (03)** — docs/plans/annotate.md (open points listed per step).
+- **Khmer OCR (04, 12, 39, 41)** — docs/plans/khmer-ocr.md. Deskew shown disabled (needs the `osd` model).
+- **Export (05–09, 14, 17, 18, 36–38, 40)** — Word, Excel, Word + Excel, searchable PDF, plain text. Tables are detected from
+  columns of PDF text (recognized scans need Select table region; OCR keeps lines, not columns). Table edits are not saved in
+  work. Figma's “Font substituted” / “Reading order changed” / “Merged header split” issues are not detected; the issues list
+  shows pages without text and unreviewed uncertain OCR lines. Keep original page images is always on (shown disabled).
+  14 / 38 messages are generalized (the cause is not always “read-only” / “disk full”). Draft Khmer marked in copy.json notes.
+- **Recovered work (15)** — recovery copies in the app container 3 s after a change, removed on save/close, offered once per
+  launch. **Save a copy…**, **Insert Pages from File…**, Read tools (**Select/copy text** copies the page's readable text,
+  **Rotate view** turns the page on screen only), **Print ▸ Comments summary page** — built.
+- Still disabled on purpose: **Check for updates…** (no verified update channel).
+
 ## Not started (feasible, needs building)
 
 - PDFKit canvas, thumbnails, search, page operations; two-up view for Large/Wide.

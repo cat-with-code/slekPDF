@@ -2072,5 +2072,51 @@
     "km": "អូសលើតារាងនៅលើទំព័រដើម។",
     "en": "Drag over a table on the source page.",
     "note": "Export state — not a Figma copy variable; draft Khmer, needs review"
+  },
+  "fmt: Copied the text of page N": {
+    "km": "បានចម្លងអត្ថបទទំព័រ {0}",
+    "en": "Copied the text of page {0}",
+    "note": "Not a Figma copy variable (Read tools / Insert pages / Save a copy); draft Khmer — needs review"
+  },
+  "fmt: File could not be opened": {
+    "km": "មិនអាចបើក “{0}” បានទេ។",
+    "en": "“{0}” couldn’t be opened.",
+    "note": "Not a Figma copy variable (Read tools / Insert pages / Save a copy); draft Khmer — needs review"
+  },
+  "No text on this page to copy": {
+    "km": "មិនមានអត្ថបទនៅលើទំព័រនេះសម្រាប់ចម្លងទេ។",
+    "en": "There is no text on this page to copy.",
+    "note": "Not a Figma copy variable (Read tools / Insert pages / Save a copy); draft Khmer — needs review"
+  },
+  "Recovered unfinished work": {
+    "km": "បានសង្គ្រោះការងារមិនទាន់បញ្ចប់",
+    "en": "Recovered unfinished work"
+  },
+  "Slek PDF closed unexpectedly These edits": {
+    "km": "Slek PDF បានបិទដោយមិនបានរំពឹងទុក។ ការកែទាំងនេះត្រូវបានសង្គ្រោះ ហើយមិនទាន់បានរក្សាទុកនៅឡើយ។",
+    "en": "Slek PDF closed unexpectedly. These edits were recovered and have not been saved yet."
+  },
+  "Discard": {
+    "km": "បោះចោល",
+    "en": "Discard"
+  },
+  "Not now": {
+    "km": "មិនមែនឥឡូវ",
+    "en": "Not now"
+  },
+  "Open recovered work": {
+    "km": "បើកការងារដែលបានសង្គ្រោះ",
+    "en": "Open recovered work"
+  },
+  "fmt: N edits · last change time": {
+    "km": "ការកែ {0} · ចុងក្រោយ{1}",
+    "en": "{0} edits · last change {1}",
+    "en_one": "1 edit · last change {1}",
+    "note": "Template derived from Figma Copy/12 edits · last change today 10:24"
+  },
+  "fmt: today time": {
+    "km": "ថ្ងៃនេះ {0}",
+    "en": "today {0}",
+    "note": "Part of Figma Copy/12 edits · last change today 10:24"
   }
 }

@@ -12,8 +12,9 @@ final class PrintOptions: ObservableObject {
     @Published var content: Content = .documentAndAnnotations { didSet { onChange() } }
     @Published var addedText = true { didSet { onChange() } }
     @Published var highlights = true { didSet { onChange() } }
-    /// Needs comment threads (Annotate, not built yet); off and disabled until then.
-    @Published var commentsSummary = false
+    /// Appends a page listing the comments (Annotate); disabled when there are none.
+    @Published var commentsSummary = false { didSet { onChange() } }
+    var hasComments = false
 
     var onChange: () -> Void = {}
 
@@ -42,10 +43,20 @@ enum PrintController {
               let operation = document.printOperation(for: info, scalingMode: .pageScaleToFit, autoRotate: true)
         else { return }
         let options = PrintOptions()
+        options.hasComments = !session.comments.isEmpty
         let visibility = AnnotationVisibility(document: document)
         let accessory = PrintAccessoryController(options: options, language: language)
+        let summary = CommentsSummary.page(session.comments, size: document.page(at: 0)?.bounds(for: .mediaBox).size ?? CGSize(width: 595, height: 842),
+                                           language: language)
+        var summaryShown = false
+        func showSummary(_ show: Bool) {
+            guard show != summaryShown, let summary else { return }
+            if show { document.insert(summary, at: document.pageCount) } else { document.removePage(at: document.index(for: summary)) }
+            summaryShown = show
+        }
         options.onChange = {
             visibility.apply(options)
+            showSummary(options.commentsSummary && options.content == .documentAndAnnotations)
             accessory.previewToken += 1  // the print panel re-renders its preview
         }
         operation.showsPrintPanel = true
@@ -57,6 +68,7 @@ enum PrintController {
 
         let completion = PrintCompletion { success, info in
             visibility.restore()
+            showSummary(false)
             guard success else { return }
             let pages = info.pageCount(of: document.pageCount)
             session.toasts.show(.progress, CopyCatalog.shared.format(.fmtPrintingNPagesToPrinter, language, pages, info.printer.name))
@@ -163,7 +175,7 @@ struct PrintAccessoryView: View {
             VStack(alignment: .leading, spacing: DSSpace.s6) {
                 DSCheckbox(label: .addedKhmerText, isOn: $options.addedText)
                 DSCheckbox(label: .highlights, isOn: $options.highlights)
-                DSCheckbox(label: .commentsSummaryPageAtTheEnd, isOn: $options.commentsSummary).disabled(true)
+                DSCheckbox(label: .commentsSummaryPageAtTheEnd, isOn: $options.commentsSummary).disabled(!options.hasComments)
             }
             .disabled(options.content == .documentOnly)
             Text(CopyCatalog.shared.string(.khmerFontsAreEmbeddedSoClustersPri, language)).dsText(.caption).foregroundColor(DSColor.textTertiary)
@@ -171,5 +183,46 @@ struct PrintAccessoryView: View {
         }
         .padding(DSSpace.s20)
         .frame(width: 420, alignment: .leading)
+    }
+}
+
+/// Print ▸ Comments (summary page at the end): one page listing every comment in reading order — page, author,
+/// time, quoted text, the comment and its replies. Drawn with CoreText, so Khmer is shaped.
+enum CommentsSummary {
+    @MainActor
+    static func page(_ comments: [CommentEntry], size: CGSize, language: AppLanguage) -> PDFPage? {
+        guard !comments.isEmpty else { return nil }
+        func font(_ name: String, _ size: CGFloat) -> NSFont { NSFont(name: name, size: size) ?? .systemFont(ofSize: size) }
+        let gray = NSColor(white: 0.33, alpha: 1), black = NSColor(white: 0.11, alpha: 1)
+        let text = NSMutableAttributedString()
+        func add(_ string: String, _ f: NSFont, _ color: NSColor, after: CGFloat = 4, indent: CGFloat = 0) {
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.paragraphSpacing = after
+            paragraph.firstLineHeadIndent = indent
+            paragraph.headIndent = indent
+            text.append(NSAttributedString(string: string + "\n", attributes: [.font: f, .foregroundColor: color, .paragraphStyle: paragraph]))
+        }
+        add(CopyCatalog.shared.format(.fmtCommentsN, language, comments.count), font("NotoSansKhmer-Bold", 18), black, after: 14)
+        for entry in comments {
+            let author = entry.info.author == DocumentSession.currentAuthor ? CopyCatalog.shared.string(.you, language) : entry.info.author
+            add("\(CopyCatalog.shared.format(.fmtPageNTime, language, entry.pageIndex + 1, RecoveredWorkDialog.time(entry.info.date, language))) · \(author)",
+                font("NotoSansKhmer-Medium", 10), gray, after: 2)
+            if let quote = entry.info.quote { add("“\(quote)”", font("NotoSansKhmer-Regular", 10), gray, after: 2, indent: 8) }
+            add(entry.info.text, font("NotoSansKhmer-Regular", 12), black, after: entry.info.replies.isEmpty ? 12 : 4)
+            for reply in entry.info.replies {
+                add("\(reply.author): \(reply.text)", font("NotoSansKhmer-Regular", 11), black, after: 4, indent: 16)
+            }
+        }
+        let data = NSMutableData()
+        var media = CGRect(origin: .zero, size: size)
+        guard let consumer = CGDataConsumer(data: data as CFMutableData),
+              let context = CGContext(consumer: consumer, mediaBox: &media, nil) else { return nil }
+        context.beginPDFPage(nil)
+        let frame = CTFramesetterCreateFrame(CTFramesetterCreateWithAttributedString(text), CFRange(),
+                                             CGPath(rect: media.insetBy(dx: 56, dy: 56), transform: nil), nil)
+        CTFrameDraw(frame, context)
+        context.endPDFPage()
+        context.closePDF()
+        return PDFDocument(data: data as Data)?.page(at: 0)
     }
 }

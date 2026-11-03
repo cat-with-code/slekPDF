@@ -246,14 +246,14 @@ struct ReadInspectorView: View {
         }
         DSLabel(.searchResultsAppearHere, style: .caption).foregroundColor(DSColor.textSecondary)
         DSDivider()
-        DSButton(.selectCopyText, icon: .copy, fullWidth: true)
-        DSButton(.rotateView, icon: .rotate, fullWidth: true)
+        DSButton(.selectCopyText, icon: .copy, fullWidth: true) { Task { await session.copyPageText(language) } }
+        DSButton(.rotateView, icon: .rotate, fullWidth: true) { session.rotateView() }
         DSDivider()
         VStack(alignment: .leading, spacing: DSSpace.s4) {
             DSLabel(.scannedPages, style: .heading).foregroundColor(DSColor.textPrimary)
             DSLabel(.recognizeTextToEnableSearchingAndC, style: .caption).foregroundColor(DSColor.textSecondary)
         }
-        DSButton(.openKhmerOCR, icon: .textRecognition, style: .primary, fullWidth: true)
+        DSButton(.openKhmerOCR, icon: .textRecognition, style: .primary, fullWidth: true) { session.workspace = .khmerOCR }
     }
 }
 

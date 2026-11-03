@@ -100,7 +100,7 @@ extension DocumentSession {
         for index in indices where pages.indices.contains(index) {
             let ref = pages[index]
             guard ocrResults[ref.id]?.lines.isEmpty ?? true else { continue }
-            let lines = await PDFiumService.shared.textSegments(id, page: ref.source)
+            let lines = await PDFiumService.shared.textSegments(documentID(for: ref) ?? id, page: ref.source)
             found += TableDetector.detect(lines).map { ExportTable(pageID: ref.id, region: $0.region, rows: $0.rows) }
         }
         // Keep edits to a table that is found again in the same place.
@@ -114,7 +114,7 @@ extension DocumentSession {
     @discardableResult
     func addExportTable(in rect: CGRect, onPageAt index: Int) async -> Bool {
         guard let id = pdfiumID, pages.indices.contains(index) else { return false }
-        let lines = await PDFiumService.shared.textSegments(id, page: pages[index].source)
+        let lines = await PDFiumService.shared.textSegments(documentID(for: pages[index]) ?? id, page: pages[index].source)
         guard let table = TableDetector.table(in: rect, lines) else { return false }
         exportTables.removeAll { $0.pageID == pages[index].id && $0.region.intersects(table.region) }
         exportTables.append(ExportTable(pageID: pages[index].id, region: table.region, rows: table.rows))

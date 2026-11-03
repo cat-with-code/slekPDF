@@ -124,6 +124,45 @@ final class AnnotationModelTests: XCTestCase {
         XCTAssertEqual(kit.page(at: 0)?.annotations.first?.type, "Text")
     }
 
+    /// Slek's annotations are drawn by the page (sharp at every zoom) exactly where they were drawn as PDFKit
+    /// annotations, also on a rotated page.
+    func testThePageDrawsSlekAnnotationsWhereTheyBelong() async throws {
+        FontRegistry.registerBundledFonts()
+        let session = try await open(fixture())
+        XCTAssertTrue(session.document?.page(at: 0) is SlekPDFPage)
+        for (index, sample) in samples(on: session).enumerated() { session.addAnnotation(sample, toPageAt: index) }
+        session.selectedPageIDs = [session.pages[1].id]
+        session.rotateSelectedPages()
+        defer { SlekPDFAnnotation.drawsItself = false }
+        for index in 0..<2 {
+            let page = try XCTUnwrap(session.document?.page(at: index))
+            SlekPDFAnnotation.drawsItself = true
+            let old = try render(page)
+            SlekPDFAnnotation.drawsItself = false
+            let new = try render(page)
+            let differing = zip(old, new).filter { abs(Int($0) - Int($1)) > 24 }.count
+            XCTAssertLessThan(differing, old.count / 2000, "page \(index) (rotation \(page.rotation))")
+            XCTAssertNotEqual(new, try render(page, withoutSlek: true), "page \(index): nothing drawn")
+        }
+        await session.close()
+    }
+
+    private func render(_ page: PDFPage, withoutSlek: Bool = false) throws -> [UInt8] {
+        let side = 900
+        var pixels = [UInt8](repeating: 255, count: side * side)
+        let hidden = withoutSlek ? page.annotations.filter { $0 is SlekPDFAnnotation } : []
+        hidden.forEach { $0.shouldDisplay = false }
+        defer { hidden.forEach { $0.shouldDisplay = true } }
+        try pixels.withUnsafeMutableBytes { buffer in
+            let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: side, height: side, bitsPerComponent: 8, bytesPerRow: side,
+                                                  space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue))
+            context.setFillColor(gray: 1, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: side, height: side))
+            page.draw(with: .mediaBox, to: context)
+        }
+        return pixels
+    }
+
     func testTextBoxIsDrawnOnThePageInsideItsBounds() async throws {
         FontRegistry.registerBundledFonts()
         let session = try await open(fixture())

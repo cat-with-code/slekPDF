@@ -88,8 +88,19 @@ nonisolated final class SlekPDFAnnotation: PDFAnnotation {
         }
     }
 
+    /// PDFKit caches an annotation's own drawing as a low-resolution image, so Slek's text looked blurry next to the
+    /// page's text when zoomed or on Retina screens. `SlekPDFPage` draws it as part of the page instead (sharp at
+    /// every zoom, and in thumbnails and print); this object stays for hit-testing and the print options.
+    /// True only in tests comparing the two ways of drawing.
+    nonisolated(unsafe) static var drawsItself = false
+
     override func draw(with box: PDFDisplayBox, in context: CGContext) {
-        guard shouldDisplay else { return }
+        guard Self.drawsItself, shouldDisplay else { return }
+        render(in: context)
+    }
+
+    /// Draws the annotation in page space.
+    func render(in context: CGContext) {
         context.saveGState()
         defer { context.restoreGState() }
         switch model.content {
@@ -194,4 +205,25 @@ nonisolated final class SlekPDFAnnotation: PDFAnnotation {
         path.closeSubpath()
         return path
     }
+}
+
+/// A page that draws Slek's annotations as part of itself, at the resolution PDFKit renders the page (see
+/// `SlekPDFAnnotation.drawsItself`). Annotations hidden with `shouldDisplay` (print options) are skipped.
+nonisolated final class SlekPDFPage: PDFPage {
+    override func draw(with box: PDFDisplayBox, to context: CGContext) {
+        super.draw(with: box, to: context)
+        guard !SlekPDFAnnotation.drawsItself else { return }
+        let slek = annotations.compactMap { $0 as? SlekPDFAnnotation }.filter(\.shouldDisplay)
+        guard !slek.isEmpty else { return }
+        context.saveGState()
+        context.concatenate(transform(for: box))
+        for annotation in slek { annotation.render(in: context) }
+        context.restoreGState()
+    }
+}
+
+/// Makes PDFKit create `SlekPDFPage`s. Set as a document's delegate right after creating it, before any page is read.
+nonisolated final class SlekPageFactory: NSObject, PDFDocumentDelegate, @unchecked Sendable {
+    static let shared = SlekPageFactory()
+    func classForPage() -> AnyClass { SlekPDFPage.self }
 }

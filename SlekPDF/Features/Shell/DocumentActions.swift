@@ -28,7 +28,9 @@ extension DocumentSession {
     /// is only read; saved work copies its pages like the document's own.
     @discardableResult
     func insertPages(from url: URL) async -> Bool {
-        guard document != nil, let pdf = PDFDocument(url: url), !pdf.isLocked, pdf.pageCount > 0 else { return false }
+        let pdf = PDFDocument(url: url)
+        pdf?.delegate = SlekPageFactory.shared
+        guard document != nil, let pdf, !pdf.isLocked, pdf.pageCount > 0 else { return false }
         if insertedDocuments[url] == nil {
             guard let opened = try? await PDFiumService.shared.open(url: url), opened.pageCount == pdf.pageCount else { return false }
             let pdfPages = (0..<pdf.pageCount).compactMap { pdf.page(at: $0) }

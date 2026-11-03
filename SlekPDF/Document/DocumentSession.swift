@@ -244,7 +244,9 @@ final class DocumentSession: ObservableObject {
         dismissOpenError()
         let didAccess = url.startAccessingSecurityScopedResource()
         let name = url.lastPathComponent
-        guard let pdf = PDFDocument(url: url), pdf.pageCount > 0 else {
+        let pdf = PDFDocument(url: url)
+        pdf?.delegate = SlekPageFactory.shared  // Slek's annotations are drawn as part of the page (sharp)
+        guard let pdf, pdf.pageCount > 0 else {
             if didAccess { url.stopAccessingSecurityScopedResource() }
             openError = .unreadable(fileName: name)
             return
@@ -750,14 +752,18 @@ final class DocumentSession: ObservableObject {
 
     /// Rebuilds the drawn annotations on every page from the model.
     private func mirrorAnnotations() {
+        var touched: [PDFPage] = []
         for page in originalPages + insertedDocuments.values.flatMap(\.pages) {
-            for annotation in page.annotations where annotation is SlekPDFAnnotation { page.removeAnnotation(annotation) }
+            let old = page.annotations.filter { $0 is SlekPDFAnnotation }
+            if !old.isEmpty { touched.append(page) }
+            for annotation in old { page.removeAnnotation(annotation) }
         }
         for ref in pages {
             guard let page = pdfPage(for: ref) else { continue }
             for annotation in annotations[ref.id] ?? [] where annotation.id != textEditing?.id {
                 let drawn = SlekPDFAnnotation(annotation, selected: annotation.id == selectedAnnotationID)
                 page.addAnnotation(drawn)
+                if !touched.contains(page) { touched.append(page) }
                 // PDFKit gives notes a popup; Slek shows comments in its own panel (Annotate step 2).
                 if let popup = drawn.popup {
                     page.removeAnnotation(popup)
@@ -765,6 +771,8 @@ final class DocumentSession: ObservableObject {
                 }
             }
         }
+        // The page draws Slek's annotations itself (SlekPDFPage): redraw the pages whose annotations changed.
+        for page in touched { pdfView?.annotationsChanged(on: page) }
     }
 
     /// PDFKit's copy of an annotation Slek wrote into saved work. PDFKit does not expose the private keys, so the

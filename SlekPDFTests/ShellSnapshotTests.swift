@@ -72,6 +72,7 @@ final class ShellSnapshotTests: XCTestCase {
                         .environmentObject(state)
                         .environmentObject(session)
                         .environmentObject(recents)
+                        .environmentObject(ToastCenter())
                         .environment(\.appLanguage, language)
                         .frame(width: size.width, height: size.height)
                     let host = NSHostingView(rootView: root)

@@ -1,0 +1,136 @@
+import AppKit
+import SwiftUI
+import XCTest
+@testable import SlekPDF
+
+/// Renders design-system components the way the Figma component pages show their variants, in Khmer/English ×
+/// Light/Dark, for side-by-side comparison. Runs only when SNAPSHOT_DIR is set (Tools/render_snapshots.sh);
+/// PNGs land in ~/Library/Containers/com.example.SlekPDF/Data/tmp/shell-snapshots/components-*.png.
+@MainActor
+final class ComponentGallerySnapshotTests: XCTestCase {
+    func testRenderComponentGallery() throws {
+        guard ProcessInfo.processInfo.environment["SNAPSHOT_DIR"] != nil else {
+            throw XCTSkip("Set SNAPSHOT_DIR to write snapshots")
+        }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("shell-snapshots")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        FontRegistry.registerBundledFonts()
+        for language in AppLanguage.allCases {
+            for (appearance, label) in [(NSAppearance.Name.aqua, "light"), (.darkAqua, "dark")] {
+                let view = FeedbackGallery()
+                    .environment(\.appLanguage, language)
+                try render(view, size: CGSize(width: 1100, height: 520), appearance: appearance,
+                           to: dir.appendingPathComponent("components-feedback-\(language.rawValue)-\(label).png"))
+                try render(ControlsGallery().environment(\.appLanguage, language), size: CGSize(width: 900, height: 300), appearance: appearance,
+                           to: dir.appendingPathComponent("components-controls-\(language.rawValue)-\(label).png"))
+            }
+        }
+    }
+
+    /// Prototype D-27 … D-34 (App menu & Help) as in-window panels over the start screen, 1280×900.
+    func testRenderAppPanels() throws {
+        guard ProcessInfo.processInfo.environment["SNAPSHOT_DIR"] != nil else {
+            throw XCTSkip("Set SNAPSHOT_DIR to write snapshots")
+        }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("shell-snapshots")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        FontRegistry.registerBundledFonts()
+        let recents = RecentDocuments(defaults: UserDefaults(suiteName: "panel-recents-\(UUID())")!)
+        let panels: [(String, AppPanel)] = [("D27-about", .about(.about)), ("D28-shortcuts", .about(.shortcuts)), ("D29-licenses", .about(.licenses)),
+                                            ("D29-privacy", .about(.privacy)), ("D30-help", .help), ("D31-developer", .developer),
+                                            ("D32-release-notes", .releaseNotes), ("D33-report", .reportProblem), ("D34-feedback", .feedback),
+                                            ("D10-preferences", .preferences(.general)), ("D10k-shortcuts", .preferences(.shortcuts))]
+        for (name, panel) in panels {
+            for language in AppLanguage.allCases {
+                for (appearance, label) in [(NSAppearance.Name.aqua, "light"), (.darkAqua, "dark")] where label == "light" || name == "D27-about" {
+                    let state = AppState(defaults: UserDefaults(suiteName: "panel-\(UUID())")!)
+                    state.language = language
+                    let session = DocumentSession()
+                    session.panel = panel
+                    let view = MainWindowView()
+                        .environmentObject(state).environmentObject(session).environmentObject(recents).environmentObject(ToastCenter())
+                        .environment(\.appLanguage, language)
+                    try render(view, size: ChromeMetrics.defaultWindowSize, appearance: appearance,
+                               to: dir.appendingPathComponent("panel-\(name)-\(language.rawValue)-\(label).png"))
+                }
+            }
+        }
+    }
+
+    private func render(_ view: some View, size: CGSize, appearance: NSAppearance.Name, to url: URL) throws {
+        let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height))
+        host.frame = CGRect(origin: .zero, size: size)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.appearance = NSAppearance(named: appearance)
+        window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: rep)
+        try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: url)
+    }
+}
+
+/// Figma Toast 143:68, Banner 141:101, Progress Bar 100:74 and Spinner 100:11 with their sample text.
+private struct FeedbackGallery: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: 32) {
+            VStack(alignment: .leading, spacing: 26) {
+                DSToast(tone: .default, message: "2 pages deleted", action: DSInlineAction(title: "Undo") {}, onClose: {})
+                DSToast(tone: .success, message: "Export finished · Document.docx", action: DSInlineAction(title: "Show in Finder") {}, onClose: {})
+                DSToast(tone: .error, message: "Couldn’t save — disk is full", action: DSInlineAction(title: "Details") {}, onClose: {})
+                DSToast(tone: .progress, message: "Exporting · 40%", action: DSInlineAction(title: "Cancel") {}, onClose: {})
+                HStack(spacing: 48) {
+                    DSSpinner(size: .small)
+                    DSSpinner(size: .regular)
+                    DSSpinner(size: .large)
+                }
+            }
+            .frame(width: 400, alignment: .leading)
+            VStack(alignment: .leading, spacing: 16) {
+                DSBanner(tone: .info, title: "This page is scanned", message: "Recognize text to search, select and copy it.",
+                         action: DSInlineAction(title: "Recognize text") {}, onClose: {})
+                DSBanner(tone: .warning, title: "Preview build", message: "Excel export has not passed validation yet. Check results before sharing.",
+                         action: DSInlineAction(title: "Learn more") {}, onClose: {})
+                DSBanner(tone: .neutral, title: "Flattened copy", message: "Added text in this file can no longer be edited. Open the saved work to edit.",
+                         action: DSInlineAction(title: "Open saved work") {}, onClose: {})
+            }
+            .frame(width: 320)
+            VStack(alignment: .leading, spacing: 24) {
+                DSProgressBar(label: "Recognizing page 2 of 5", detail: "40% · about 1 minute left", state: .inProgress(0.4), onCancel: {})
+                DSProgressBar(label: "Recognizing page 2 of 5", detail: "40% · about 1 minute left", state: .paused(0.4), onCancel: {})
+                DSProgressBar(label: "Recognizing page 2 of 5", detail: "40% · about 1 minute left", state: .complete, onCancel: {})
+                DSProgressBar(label: "Recognizing page 2 of 5", detail: "40% · about 1 minute left", state: .error(0.4), onCancel: {})
+            }
+            .frame(width: 280)
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(DSColor.backgroundWindow)
+    }
+}
+
+/// Figma Switch 140:36, Badge 89:32, Tab 98:64 (Segmented) and Tooltip 91:30.
+private struct ControlsGallery: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 28) {
+            HStack(spacing: 48) {
+                DSSwitch(label: "Switch label", isOn: .constant(false))
+                DSSwitch(label: "Switch label", isOn: .constant(true))
+                DSSwitch(label: "Switch label", isOn: .constant(false)).disabled(true)
+                DSSwitch(label: "Switch label", isOn: .constant(true)).disabled(true)
+            }
+            HStack(spacing: 16) {
+                ForEach([DSBadge.Tone.neutral, .accent, .success, .warning, .danger], id: \.self) { DSBadge(label: "Badge", tone: $0) }
+                ForEach([DSBadge.Tone.neutral, .accent, .success, .warning, .danger], id: \.self) { DSBadge(label: "Badge", tone: $0, style: .solid) }
+            }
+            HStack(spacing: 32) {
+                DSSegmentedControl(selection: .constant(0), segments: [.init(value: 0, title: "Word preview"), .init(value: 1, title: "Excel preview")])
+                DSTooltipBubble(text: "Open PDF", shortcut: "⌘O", language: .en)
+            }
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(DSColor.backgroundWindow)
+    }
+}

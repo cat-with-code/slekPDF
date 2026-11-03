@@ -6,15 +6,31 @@ struct DSButton: View {
     enum Style { case primary, secondary, plain, destructive }
     enum Size { case regular, small }
 
-    let title: CopyKey
+    /// A copy key, or text already in the interface language (file names, composed messages).
+    enum Title {
+        case key(CopyKey)
+        case text(String)
+    }
+
+    let title: Title
     var icon: DSIcon?
     var style: Style = .secondary
     var size: Size = .regular
     var fullWidth = false
     let action: () -> Void
+    @Environment(\.appLanguage) private var language
 
     init(_ title: CopyKey, icon: DSIcon? = nil, style: Style = .secondary, size: Size = .regular,
          fullWidth: Bool = false, action: @escaping () -> Void = {}) {
+        self.init(title: .key(title), icon: icon, style: style, size: size, fullWidth: fullWidth, action: action)
+    }
+
+    init(text: String, icon: DSIcon? = nil, style: Style = .secondary, size: Size = .regular,
+         fullWidth: Bool = false, action: @escaping () -> Void = {}) {
+        self.init(title: .text(text), icon: icon, style: style, size: size, fullWidth: fullWidth, action: action)
+    }
+
+    private init(title: Title, icon: DSIcon?, style: Style, size: Size, fullWidth: Bool, action: @escaping () -> Void) {
         self.title = title
         self.icon = icon
         self.style = style
@@ -23,11 +39,18 @@ struct DSButton: View {
         self.action = action
     }
 
+    private var titleText: String {
+        switch title {
+        case let .key(key): CopyCatalog.shared.string(key, language)
+        case let .text(text): text
+        }
+    }
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: DSSpace.s6) {
                 if let icon { icon.image() }
-                DSLabel(title, style: size == .regular ? .label : .labelSmall)
+                Text(titleText).dsText(size == .regular ? .label : .labelSmall)
                     .lineLimit(1)
             }
             .frame(maxWidth: fullWidth ? .infinity : nil)
@@ -46,7 +69,7 @@ struct DSButtonStyle: ButtonStyle {
         configuration.label
             .foregroundColor(foreground)
             .padding(.horizontal, size == .regular ? DSSpace.s16 : DSSpace.s12)
-            .frame(minHeight: size == .regular ? 32 : 28)
+            .frame(minHeight: size == .regular ? 32 : 24)  // Figma Button: Regular 32 / Small 24
             .background(Capsule().fill(background(pressed: configuration.isPressed)))
             .overlay(Capsule().inset(by: DSStroke.default / 2).stroke(border, lineWidth: DSStroke.default))
             .contentShape(Capsule())

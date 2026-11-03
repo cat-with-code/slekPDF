@@ -4,13 +4,15 @@ import UniformTypeIdentifiers
 /// One document window: owns its `DocumentSession`, the Open panel and drag & drop.
 struct DocumentWindow: View {
     @StateObject private var session = DocumentSession()
+    @StateObject private var toasts = ToastCenter()
     @EnvironmentObject private var recents: RecentDocuments
 
     var body: some View {
         MainWindowView()
             .environmentObject(session)
+            .environmentObject(toasts)
             .navigationTitle(session.fileName ?? "Slek PDF")
-            .onAppear { session.onOpened = { [weak recents] url in recents?.add(url) } }
+            .onAppear { session.onOpened = { [weak recents = recents] url in recents?.add(url) } }
             // Release PDFium and the file's sandbox access when the window closes.
             .onDisappear { Task { await session.close() } }
             // Files opened from Finder (double-click, Open With, drag onto the Dock icon).
@@ -39,6 +41,7 @@ struct DocumentWindow: View {
 /// Rows: title bar 44 · toolbar 50 · workspace tabs 44 · workspace (sidebar | canvas | inspector) · status bar 36.
 struct MainWindowView: View {
     @EnvironmentObject private var session: DocumentSession
+    @EnvironmentObject private var toasts: ToastCenter
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -84,16 +87,35 @@ struct MainWindowView: View {
             }
         }
         .background(DSColor.backgroundWindow)
-        .background(
+        .background {
+            let isBlocked = session.document == nil || session.isModalPresented
             // ⌘K, shown on the search field's badge, focuses search like ⌘F.
             Button("") { session.focusSearch() }
-                .keyboardShortcut("k")
-                .disabled(session.document == nil || session.isModalPresented)
+                .shortcut(.focusSearch)
+                .disabled(isBlocked)
                 .opacity(0)
-        )
+            // ⌘= zooms in like View ▸ Zoom In (⌘+), so the key works without Shift — while Zoom In keeps its default.
+            Button("") { session.zoomIn() }
+                .keyboardShortcut("=")
+                .disabled(isBlocked || ShortcutStore.shared.isChanged(.zoomIn))
+                .opacity(0)
+        }
+        .overlay(alignment: .bottom) {
+            // Toast 143:68: bottom-centre, 24 pt above the status bar.
+            if let toast = toasts.current {
+                DSToast(tone: toast.tone, message: toast.message, action: toast.action) { toasts.dismiss() }
+                    .onHover { toasts.isHovered = $0 }
+                    .padding(.bottom, ChromeMetrics.statusBarHeight + DSSpace.s24)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    .id(toast.id)
+            }
+        }
+        .animation(reduceMotion ? .easeOut(duration: 0.15) : .timingCurve(0.32, 0.72, 0, 1, duration: 0.25), value: toasts.current?.id)
         .overlay {
             if let error = session.openError {
                 ModalLayer { OpenErrorDialog(error: error) }
+            } else if let panel = session.panel {
+                ModalLayer { AppPanelView(panel: panel) }
             }
         }
         .animation(.easeOut(duration: 0.15), value: session.isModalPresented)

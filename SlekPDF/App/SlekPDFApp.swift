@@ -5,7 +5,6 @@ struct SlekPDFApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var appState = AppState()
     @StateObject private var recents = RecentDocuments()
-    @StateObject private var windows = WindowList()
 
     init() {
         FontRegistry.registerBundledFonts()
@@ -23,11 +22,14 @@ struct SlekPDFApp: App {
                     minHeight: ChromeMetrics.minimumWindowSize.height,
                     idealHeight: ChromeMetrics.defaultWindowSize.height
                 )
-                .onAppear { appState.applyAppearance() }
+                .onAppear {
+                    appState.applyAppearance()
+                    MainMenuLocalizer.shared.start(appState)
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: ChromeMetrics.defaultWindowSize.width, height: ChromeMetrics.defaultWindowSize.height)
-        .commands { AppCommands(appState: appState, recents: recents, windows: windows) }
+        .commands { AppCommands(appState: appState, recents: recents) }
     }
 }
 

@@ -19,6 +19,8 @@ struct DSSearchField: View {
     var matchLabel: String?
     var noResults = false
     var focusRequest = 0
+    /// The ⌘K hint (Search Field "Show shortcut"); off where ⌘K doesn't focus this field.
+    var showsShortcutHint = true
     var onPrevious: () -> Void = {}
     var onNext: () -> Void = {}
     var onSubmit: () -> Void = {}
@@ -33,7 +35,7 @@ struct DSSearchField: View {
                 .dsText(.body)
                 .focused($isFocused)
                 .onSubmit(onSubmit)
-            if text.isEmpty {
+            if text.isEmpty, showsShortcutHint {
                 Text("⌘K")
                     .font(.custom("Inter-SemiBold", fixedSize: 11))
                     .foregroundColor(DSColor.textPrimary)
@@ -41,15 +43,15 @@ struct DSSearchField: View {
                     .padding(.vertical, DSSpace.s2)
                     .overlay(RoundedRectangle(cornerRadius: DSRadius.xs).strokeBorder(DSColor.textPrimary, lineWidth: DSStroke.default))
                     .padding(.trailing, DSSpace.s8)
-            } else {
+            } else if !text.isEmpty {
                 if noResults {
                     DSLabel(.noResults, style: .caption).foregroundColor(DSColor.statusDanger).fixedSize()
                 } else if let matchLabel {
                     Text(matchLabel).dsText(.caption).foregroundColor(DSColor.textSecondary).fixedSize()
-                    DSIconButton(.up, size: 24, action: onPrevious).help(CopyCatalog.shared.string(.previousMatch, language))
-                    DSIconButton(.down, size: 24, action: onNext).help(CopyCatalog.shared.string(.nextMatch, language))
+                    DSIconButton(.up, size: 24, action: onPrevious).dsTooltip(.previousMatch, shortcut: "⇧⌘G")
+                    DSIconButton(.down, size: 24, action: onNext).dsTooltip(.nextMatch, shortcut: "⌘G")
                 }
-                DSIconButton(.close, size: 24) { text = "" }.help(CopyCatalog.shared.string(.clearSearch, language))
+                DSIconButton(.close, size: 24) { text = "" }.dsTooltip(.clearSearch)
             }
         }
         .padding(.leading, DSSpace.s12)

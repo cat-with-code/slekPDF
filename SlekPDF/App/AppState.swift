@@ -28,6 +28,11 @@ enum Workspace: CaseIterable, Identifiable {
     }
 }
 
+/// Preferences ▸ Default OCR language.
+enum OCRLanguage: String, CaseIterable {
+    case khmer, khmerEnglish, english
+}
+
 enum AppearancePreference: String, CaseIterable {
     case system, light, dark
 
@@ -53,17 +58,54 @@ final class AppState: ObservableObject {
         }
     }
 
+    // Preferences ▸ General (Figma 10 Preferences). Read by OCR, recovery and export as those features land.
+    @Published var ocrLanguage: OCRLanguage {
+        didSet { defaults.set(ocrLanguage.rawValue, forKey: Keys.ocrLanguage) }
+    }
+
+    @Published var keepRecoveryCopies: Bool {
+        didSet { defaults.set(keepRecoveryCopies, forKey: Keys.keepRecoveryCopies) }
+    }
+
+    @Published var showOCRConfidenceHints: Bool {
+        didSet { defaults.set(showOCRConfidenceHints, forKey: Keys.showOCRConfidenceHints) }
+    }
+
+    /// nil = the user's Documents folder. Kept as a security-scoped bookmark so the sandbox allows writing there.
+    @Published private(set) var exportFolder: URL?
+
     private let defaults: UserDefaults
 
     private enum Keys {
         static let language = "interfaceLanguage"
         static let appearance = "appearance"
+        static let ocrLanguage = "defaultOCRLanguage"
+        static let keepRecoveryCopies = "keepRecoveryCopies"
+        static let showOCRConfidenceHints = "showOCRConfidenceHints"
+        static let exportFolder = "defaultExportFolderBookmark"
     }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         language = defaults.string(forKey: Keys.language).flatMap(AppLanguage.init(rawValue:)) ?? .km
         appearance = defaults.string(forKey: Keys.appearance).flatMap(AppearancePreference.init(rawValue:)) ?? .system
+        ocrLanguage = defaults.string(forKey: Keys.ocrLanguage).flatMap(OCRLanguage.init(rawValue:)) ?? .khmerEnglish
+        keepRecoveryCopies = defaults.object(forKey: Keys.keepRecoveryCopies) as? Bool ?? true
+        showOCRConfidenceHints = defaults.object(forKey: Keys.showOCRConfidenceHints) as? Bool ?? true
+        if let bookmark = defaults.data(forKey: Keys.exportFolder) {
+            var stale = false
+            exportFolder = try? URL(resolvingBookmarkData: bookmark, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &stale)
+        }
+    }
+
+    /// A folder the user picked in an Open panel, or nil for Documents.
+    func setExportFolder(_ url: URL?) {
+        exportFolder = url
+        if let url, let bookmark = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
+            defaults.set(bookmark, forKey: Keys.exportFolder)
+        } else {
+            defaults.removeObject(forKey: Keys.exportFolder)
+        }
     }
 
     /// Theme is applied app-wide so every window, sheet and menu follows the status-bar switch.

@@ -39,15 +39,21 @@ struct ToolbarView: View {
         HStack(spacing: DSSpace.s8) {
             if sizeClass == .compact {
                 DSIconButton(.leftBar) { session.toggleCompactSidebar() }
+                    .dsTooltip(.showPageSidebar, shortcut: "⌥⌘S")
+                    .disabled(!hasDocument)
             }
             DSButton(.openPDF, icon: .folderOpen) { session.isImporterPresented = true }
-            DSButton(.saveWork, icon: .save).disabled(!hasDocument)
+                .dsTooltip(.openPDF, shortcut: "⌘O")
+            // Honest states: these stay disabled until their features exist (as in the menu bar).
+            DSButton(.saveWork, icon: .save).disabled(true)  // 42 Save work
             DSDivider(axis: .vertical).frame(height: 24).padding(.horizontal, DSSpace.s4)
-            DSButton(.undo, icon: .undo, style: .plain).disabled(!hasDocument)
-            DSButton(.redo, icon: .redo, style: .plain).disabled(!hasDocument)
+            DSButton(.undo, icon: .undo, style: .plain).disabled(true)  // nothing to undo before Organize/Annotate
+            DSButton(.redo, icon: .redo, style: .plain).disabled(true)
             Spacer()
-            DSButton(.print, icon: .printer, style: .plain).disabled(!hasDocument)
-            DSButton(.preferences, icon: .setting, style: .plain)
+            DSButton(.print, icon: .printer, style: .plain).disabled(true)  // 25 Print
+            DSButton(.preferences, icon: .setting, style: .plain) { session.panel = .preferences(.general) }  // D-10
+                .dsTooltip(.preferences, shortcut: ShortcutStore.shared.shortcut(.preferences)?.display)
+                .disabled(session.isModalPresented)
         }
         .padding(.horizontal, DSSpace.s12)
         .frame(height: ChromeMetrics.toolbarHeight)

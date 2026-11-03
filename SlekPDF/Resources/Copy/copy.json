@@ -617,5 +617,577 @@
     "km": "សម្អាតម៉ឺនុយ",
     "en": "Clear Menu",
     "note": "Figma prototype menu bar (183:21815)"
+  },
+  "Version 1 0 (Preview build 0 9 3) · macO": {
+    "km": "កំណែ 1.0 (កំណែសាកល្បង 0.9.3) · macOS 13 ឡើងទៅ · Apple Silicon និង Intel",
+    "en": "Version 1.0 (Preview build 0.9.3) · macOS 13 or later · Apple Silicon & Intel"
+  },
+  "A Khmer-first PDF tool for reading, orga": {
+    "km": "កម្មវិធី PDF សម្រាប់ភាសាខ្មែរ ដើម្បីអាន រៀបចំ ចំណារ ស្គាល់អក្សរខ្មែរ និងនាំចេញជា Word, Excel, PDF ស្វែងរកបាន និងអត្ថបទ — ទាំងអស់នៅលើ Mac នេះ។",
+    "en": "A Khmer-first PDF tool for reading, organizing, annotating, recognizing Khmer text and exporting to Word, Excel, searchable PDF and plain text — all on this Mac."
+  },
+  "Known limitations": {
+    "km": "ដែនកំណត់ដែលដឹងរួច",
+    "en": "Known limitations"
+  },
+  "Editing original PDF text, handwriting O": {
+    "km": "ការកែអត្ថបទដើមក្នុង PDF, OCR សរសេរដៃ, ទម្រង់, ហត្ថលេខា និងការលុបលាក់ មិនរួមបញ្ចូលក្នុងកំណែ 1 ទេ។",
+    "en": "Editing original PDF text, handwriting OCR, forms, signatures and redaction are not included in version 1."
+  },
+  "Placeholder list — confirm exact version": {
+    "km": "បញ្ជីបណ្ដោះអាសន្ន — សូមបញ្ជាក់កំណែ និងអាជ្ញាប័ណ្ណ មុនពេលចេញផ្សាយ។",
+    "en": "Placeholder list — confirm exact versions and licences before release."
+  },
+  "Slek PDF Help": {
+    "km": "ជំនួយ Slek PDF",
+    "en": "Slek PDF Help"
+  },
+  "Search help": {
+    "km": "ស្វែងរកជំនួយ",
+    "en": "Search help"
+  },
+  "Getting started": {
+    "km": "ចាប់ផ្ដើមប្រើ",
+    "en": "Getting started"
+  },
+  "Recognize Khmer text (OCR)": {
+    "km": "ស្គាល់អក្សរខ្មែរ (OCR)",
+    "en": "Recognize Khmer text (OCR)"
+  },
+  "Export to Word or Excel": {
+    "km": "នាំចេញជា Word ឬ Excel",
+    "en": "Export to Word or Excel"
+  },
+  "Add Khmer text & comments": {
+    "km": "បន្ថែមអត្ថបទខ្មែរ និងមតិយោបល់",
+    "en": "Add Khmer text & comments"
+  },
+  "Troubleshooting": {
+    "km": "ដោះស្រាយបញ្ហា",
+    "en": "Troubleshooting"
+  },
+  "Slek PDF lets you read, organize, annota": {
+    "km": "Slek PDF ជួយអ្នកអាន រៀបចំ ចំណារ ស្គាល់អក្សរ និងនាំចេញឯកសារ PDF ខ្មែរ — ទាំងអស់នៅលើ Mac របស់អ្នក។",
+    "en": "Slek PDF lets you read, organize, annotate, recognize and export Khmer PDFs — everything stays on your Mac."
+  },
+  "Choose Open PDF (⌘O) or drag a PDF into ": {
+    "km": "ជ្រើស បើក PDF (⌘O) ឬអូសឯកសារ PDF ចូលក្នុងបង្អួច។",
+    "en": "Choose Open PDF (⌘O) or drag a PDF into the window."
+  },
+  "Use the tabs to switch workspace: Read, ": {
+    "km": "ប្រើផ្ទាំងខាងលើ ដើម្បីប្ដូរកន្លែងធ្វើការ៖ អាន រៀបចំទំព័រ ចំណារពន្យល់ OCR ខ្មែរ និងនាំចេញ។",
+    "en": "Use the tabs to switch workspace: Read, Organize pages, Annotate, Khmer OCR and Export."
+  },
+  "Save work (⌘S) keeps your added text and": {
+    "km": "រក្សាទុកការងារ (⌘S) ធ្វើឲ្យអត្ថបទ និងមតិយោបល់ដែលបានបន្ថែម នៅតែអាចកែបាន។ ឯកសារ PDF ដើមមិនផ្លាស់ប្ដូរទេ។",
+    "en": "Save work (⌘S) keeps your added text and comments editable. Your original PDF is never changed."
+  },
+  "Switch the interface language any time w": {
+    "km": "ប្ដូរភាសាផ្ទៃប្រើប្រាស់បានគ្រប់ពេល ដោយប្រើ ខ្មែរ | English នៅរបារស្ថានភាព។",
+    "en": "Switch the interface language any time with the Khmer | English switch in the status bar."
+  },
+  "Related": {
+    "km": "ពាក់ព័ន្ធ",
+    "en": "Related"
+  },
+  "Hoeurn Dareach": {
+    "km": "ហឿន ដារាជ",
+    "en": "Hoeurn Dareach"
+  },
+  "Designer & developer · Phnom Penh, Cambo": {
+    "km": "អ្នករចនា និងអ្នកអភិវឌ្ឍ · ភ្នំពេញ កម្ពុជា",
+    "en": "Designer & developer · Phnom Penh, Cambodia"
+  },
+  "I design and build Slek PDF independentl": {
+    "km": "ខ្ញុំរចនា និងបង្កើត Slek PDF ដោយខ្លួនឯង ដើម្បីឱ្យការងារជាមួយឯកសារខ្មែរនៅលើ Mac ងាយស្រួល ឯកជន និងរហ័ស។ សូមស្វាគមន៍រាល់មតិ និងការរាយការណ៍កំហុស។",
+    "en": "I design and build Slek PDF independently, to make working with Khmer documents on the Mac simple, private and fast. Feedback and bug reports are always welcome."
+  },
+  "Release Notes": {
+    "km": "កំណត់ចំណាំការចេញផ្សាយ",
+    "en": "Release Notes"
+  },
+  "Version 1 0 (Preview build 0 9 3) · macO 2": {
+    "km": "កំណែ 1.0 (កំណែសាកល្បង 0.9.3) · macOS 13 ឬថ្មីជាងនេះ · Apple Silicon និង Intel",
+    "en": "Version 1.0 (Preview build 0.9.3) · macOS 13 or later · Apple Silicon & Intel"
+  },
+  "What’s new": {
+    "km": "អ្វីដែលថ្មី",
+    "en": "What’s new"
+  },
+  "• Read, search and organize PDFs — merge": {
+    "km": "•  អាន ស្វែងរក និងរៀបចំ PDF — បញ្ចូលគ្នា បំបែក តម្រៀប និងលុបទំព័រ។",
+    "en": "•  Read, search and organize PDFs — merge, split, reorder and delete pages."
+  },
+  "• Recognize Khmer text (OCR) and review ": {
+    "km": "•  ស្គាល់អក្សរខ្មែរ (OCR) និងពិនិត្យពាក្យមិនច្បាស់ ទល់មុខនឹងទំព័រដើម។",
+    "en": "•  Recognize Khmer text (OCR) and review uncertain words side by side with the page."
+  },
+  "• Export to Word, Excel, searchable PDF ": {
+    "km": "•  នាំចេញទៅ Word, Excel, PDF ដែលអាចស្វែងរកបាន និងអត្ថបទធម្មតា។",
+    "en": "•  Export to Word, Excel, searchable PDF and plain text."
+  },
+  "• Add Khmer text boxes, highlights and c": {
+    "km": "•  បន្ថែមប្រអប់អត្ថបទខ្មែរ ការបន្លិច និងមតិយោបល់។",
+    "en": "•  Add Khmer text boxes, highlights and comments."
+  },
+  "• Customize keyboard shortcuts in Prefer": {
+    "km": "•  កំណត់ផ្លូវកាត់ក្ដារចុចផ្ទាល់ខ្លួននៅក្នុងចំណូលចិត្ត។",
+    "en": "•  Customize keyboard shortcuts in Preferences."
+  },
+  "• Everything is processed on your Mac — ": {
+    "km": "•  ដំណើរការទាំងអស់នៅលើ Mac របស់អ្នក — គ្មានអ្វីត្រូវបានផ្ទុកឡើងទេ។",
+    "en": "•  Everything is processed on your Mac — nothing is uploaded."
+  },
+  "Known limitations 2": {
+    "km": "ដែនកំណត់ដែលបានដឹង",
+    "en": "Known limitations"
+  },
+  "• Editing original PDF text, handwriting": {
+    "km": "•  មិនទាន់គាំទ្រការកែអត្ថបទ PDF ដើម ការសរសេរដោយដៃ ការលុបលាក់ ហត្ថលេខា និងទម្រង់បែបបទនៅឡើយទេ។",
+    "en": "•  Editing original PDF text, handwriting, redaction, signatures and forms are not supported yet."
+  },
+  "• Documents set in older non-Unicode Khm": {
+    "km": "•  ឯកសារដែលប្រើពុម្ពអក្សរខ្មែរចាស់ (មិនមែន Unicode) អាចនឹងស្គាល់មិនបានត្រឹមត្រូវ។",
+    "en": "•  Documents set in older non-Unicode Khmer fonts may not be recognized correctly."
+  },
+  "Report a Problem": {
+    "km": "រាយការណ៍បញ្ហា",
+    "en": "Report a Problem"
+  },
+  "Tell us what went wrong Your report open": {
+    "km": "ប្រាប់យើងថាមានអ្វីខុស។ របាយការណ៍នឹងបើកក្នុងកម្មវិធីអ៊ីមែលរបស់អ្នក ដើម្បីឱ្យអ្នកពិនិត្យមុនពេលផ្ញើ។",
+    "en": "Tell us what went wrong. Your report opens in your email app so you can check it before sending."
+  },
+  "Report opened in Mail — check it, then p": {
+    "km": "បានបើករបាយការណ៍ក្នុង Mail — សូមពិនិត្យ ហើយចុចផ្ញើ។",
+    "en": "Report opened in Mail — check it, then press Send."
+  },
+  "Send Feedback": {
+    "km": "ផ្ញើមតិ",
+    "en": "Send Feedback"
+  },
+  "Have an idea, or something you like or d": {
+    "km": "មានគំនិត ឬអ្វីដែលអ្នកចូលចិត្ត ឬមិនចូលចិត្តមែនទេ? សាររបស់អ្នកនឹងបើកក្នុងកម្មវិធីអ៊ីមែល ដើម្បីឱ្យអ្នកពិនិត្យមុនពេលផ្ញើ។",
+    "en": "Have an idea, or something you like or dislike? Your message opens in your email app so you can check it before sending."
+  },
+  "Feedback opened in Mail — check it, then": {
+    "km": "បានបើកមតិរបស់អ្នកក្នុង Mail — សូមពិនិត្យ ហើយចុចផ្ញើ។",
+    "en": "Feedback opened in Mail — check it, then press Send."
+  },
+  "About": {
+    "km": "អំពី",
+    "en": "About"
+  },
+  "Shortcut": {
+    "km": "ផ្លូវកាត់",
+    "en": "Shortcut"
+  },
+  "Licenses": {
+    "km": "អាជ្ញាប័ណ្ណ",
+    "en": "Licenses"
+  },
+  "Privacy": {
+    "km": "ឯកជនភាព",
+    "en": "Privacy"
+  },
+  "View full list": {
+    "km": "មើលបញ្ជីពេញ",
+    "en": "View full list"
+  },
+  "Check for updates…": {
+    "km": "ពិនិត្យការធ្វើបច្ចុប្បន្នភាព…",
+    "en": "Check for updates…"
+  },
+  "Help": {
+    "km": "ជំនួយ",
+    "en": "Help"
+  },
+  "Keyboard Shortcuts": {
+    "km": "ផ្លូវកាត់ក្ដារចុច",
+    "en": "Keyboard Shortcuts"
+  },
+  "HD": {
+    "km": "រាជ",
+    "en": "HD"
+  },
+  "Send feedback": {
+    "km": "ផ្ញើមតិ",
+    "en": "Send feedback"
+  },
+  "Website": {
+    "km": "គេហទំព័រ",
+    "en": "Website"
+  },
+  "Done": {
+    "km": "រួចរាល់",
+    "en": "Done"
+  },
+  "What were you doing?": {
+    "km": "តើអ្នកកំពុងធ្វើអ្វី?",
+    "en": "What were you doing?"
+  },
+  "Exporting to Word or Excel": {
+    "km": "កំពុងនាំចេញទៅ Word ឬ Excel",
+    "en": "Exporting to Word or Excel"
+  },
+  "What happened?": {
+    "km": "តើមានអ្វីកើតឡើង?",
+    "en": "What happened?"
+  },
+  "Describe what you expected and what happ": {
+    "km": "រៀបរាប់ពីអ្វីដែលអ្នករំពឹង និងអ្វីដែលបានកើតឡើងវិញ។",
+    "en": "Describe what you expected and what happened instead."
+  },
+  "Please don’t include passwords or other ": {
+    "km": "សូមកុំដាក់ពាក្យសម្ងាត់ ឬព័ត៌មានឯកជនផ្សេងទៀត។",
+    "en": "Please don’t include passwords or other private information."
+  },
+  "Include app version and macOS details": {
+    "km": "ភ្ជាប់កំណែកម្មវិធី និងព័ត៌មាន macOS",
+    "en": "Include app version and macOS details"
+  },
+  "Topic": {
+    "km": "ប្រធានបទ",
+    "en": "Topic"
+  },
+  "Idea for a feature": {
+    "km": "គំនិតសម្រាប់មុខងារថ្មី",
+    "en": "Idea for a feature"
+  },
+  "Your feedback": {
+    "km": "មតិរបស់អ្នក",
+    "en": "Your feedback"
+  },
+  "Tell me what would make Slek PDF better ": {
+    "km": "ប្រាប់ខ្ញុំពីអ្វីដែលធ្វើឱ្យ Slek PDF កាន់តែល្អសម្រាប់អ្នក។",
+    "en": "Tell me what would make Slek PDF better for you."
+  },
+  "Find in document": {
+    "km": "ស្វែងរកក្នុងឯកសារ",
+    "en": "Find in document"
+  },
+  "Save a copy": {
+    "km": "រក្សាទុកច្បាប់ចម្លង",
+    "en": "Save a copy"
+  },
+  "Find next": {
+    "km": "ស្វែងរកបន្ទាប់",
+    "en": "Find next"
+  },
+  "Recognize text": {
+    "km": "ស្គាល់អក្សរ",
+    "en": "Recognize text"
+  },
+  "Show full notices": {
+    "km": "បង្ហាញសេចក្ដីជូនដំណឹងពេញ",
+    "en": "Show full notices"
+  },
+  "Attach the open PDF": {
+    "km": "ភ្ជាប់ PDF ដែលកំពុងបើក",
+    "en": "Attach the open PDF"
+  },
+  "Send report": {
+    "km": "ផ្ញើរបាយការណ៍",
+    "en": "Send report"
+  },
+  "Settings apply immediately and are store": {
+    "km": "ការកំណត់មានប្រសិទ្ធភាពភ្លាមៗ និងរក្សាទុកនៅលើ Mac នេះ។",
+    "en": "Settings apply immediately and are stored on this Mac."
+  },
+  "General": {
+    "km": "ទូទៅ",
+    "en": "General"
+  },
+  "Interface language": {
+    "km": "ភាសាផ្ទៃប្រើប្រាស់",
+    "en": "Interface language"
+  },
+  "Appearance": {
+    "km": "រូបរាង",
+    "en": "Appearance"
+  },
+  "Use System Setting": {
+    "km": "តាមការកំណត់ប្រព័ន្ធ",
+    "en": "Use System Setting"
+  },
+  "Default OCR language": {
+    "km": "ភាសា OCR លំនាំដើម",
+    "en": "Default OCR language"
+  },
+  "Khmer + English": {
+    "km": "ខ្មែរ + អង់គ្លេស",
+    "en": "Khmer + English"
+  },
+  "Default export folder": {
+    "km": "ថតនាំចេញលំនាំដើម",
+    "en": "Default export folder"
+  },
+  "Documents": {
+    "km": "ឯកសារ (Documents)",
+    "en": "Documents"
+  },
+  "Keep recovery copies on this Mac": {
+    "km": "រក្សាច្បាប់ចម្លងសង្គ្រោះនៅលើ Mac នេះ",
+    "en": "Keep recovery copies on this Mac"
+  },
+  "Unsaved work can be recovered after a cr": {
+    "km": "ការងារមិនទាន់រក្សាទុកអាចសង្គ្រោះបានក្រោយពេលគាំង។",
+    "en": "Unsaved work can be recovered after a crash."
+  },
+  "Show OCR confidence hints": {
+    "km": "បង្ហាញការណែនាំភាពជឿជាក់ OCR",
+    "en": "Show OCR confidence hints"
+  },
+  "Mark uncertain regions on the source pag": {
+    "km": "សម្គាល់តំបន់មិនប្រាកដនៅលើទំព័រដើម។",
+    "en": "Mark uncertain regions on the source page."
+  },
+  "Privacy, help & licenses": {
+    "km": "ឯកជនភាព ជំនួយ និងអាជ្ញាប័ណ្ណ",
+    "en": "Privacy, help & licenses"
+  },
+  "Local document processing · bundled OCR ": {
+    "km": "ដំណើរការឯកសារនៅលើម៉ាស៊ីន · ម៉ូដែល OCR និងពុម្ពអក្សរភ្ជាប់មកជាមួយ · ជំនួយក្រៅបណ្ដាញ និងសេចក្ដីជូនដំណឹងភាគីទីបី។",
+    "en": "Local document processing · bundled OCR models and fonts · offline help and third-party notices."
+  },
+  "About & licenses": {
+    "km": "អំពី និងអាជ្ញាប័ណ្ណ",
+    "en": "About & licenses"
+  },
+  "Back to document": {
+    "km": "ត្រឡប់ទៅឯកសារ",
+    "en": "Back to document"
+  },
+  "Search commands or keys": {
+    "km": "ស្វែងរកពាក្យបញ្ជា ឬគ្រាប់ចុច",
+    "en": "Search commands or keys"
+  },
+  "Add custom shortcut": {
+    "km": "បន្ថែមផ្លូវកាត់ផ្ទាល់ខ្លួន",
+    "en": "Add custom shortcut"
+  },
+  "Click a shortcut to change it, then pres": {
+    "km": "ចុចលើផ្លូវកាត់ ដើម្បីប្ដូរ រួចចុចគ្រាប់ចុចថ្មី។ ផ្លូវកាត់ត្រូវមាន ⌘, ⌥ ឬ ⌃។ ការផ្លាស់ប្ដូរមានប្រសិទ្ធភាពភ្លាមៗ។",
+    "en": "Click a shortcut to change it, then press the new keys. Shortcuts must include ⌘, ⌥ or ⌃. Changes apply immediately."
+  },
+  "Custom": {
+    "km": "ផ្ទាល់ខ្លួន",
+    "en": "Custom"
+  },
+  "Slek PDF": {
+    "km": "Slek PDF",
+    "en": "Slek PDF"
+  },
+  "Preferences…": {
+    "km": "ចំណូលចិត្ត…",
+    "en": "Preferences…"
+  },
+  "Quit Slek PDF": {
+    "km": "ចាកចេញពី Slek PDF",
+    "en": "Quit Slek PDF"
+  },
+  "File": {
+    "km": "ឯកសារ",
+    "en": "File"
+  },
+  "Open PDF…": {
+    "km": "បើកឯកសារ PDF…",
+    "en": "Open PDF…"
+  },
+  "Close": {
+    "km": "បិទ",
+    "en": "Close"
+  },
+  "Save a copy…": {
+    "km": "រក្សាទុកច្បាប់ចម្លង…",
+    "en": "Save a copy…"
+  },
+  "Export…": {
+    "km": "នាំចេញ…",
+    "en": "Export…"
+  },
+  "Print…": {
+    "km": "បោះពុម្ព…",
+    "en": "Print…"
+  },
+  "Edit": {
+    "km": "កែសម្រួល",
+    "en": "Edit"
+  },
+  "Cut": {
+    "km": "កាត់",
+    "en": "Cut"
+  },
+  "Copy": {
+    "km": "ចម្លង",
+    "en": "Copy"
+  },
+  "Paste": {
+    "km": "បិទភ្ជាប់",
+    "en": "Paste"
+  },
+  "Select All": {
+    "km": "ជ្រើសទាំងអស់",
+    "en": "Select All"
+  },
+  "Find…": {
+    "km": "ស្វែងរក…",
+    "en": "Find…"
+  },
+  "Focus search field": {
+    "km": "ផ្ដោតលើប្រអប់ស្វែងរក",
+    "en": "Focus search field"
+  },
+  "View": {
+    "km": "ទិដ្ឋភាព",
+    "en": "View"
+  },
+  "Zoom in": {
+    "km": "ពង្រីក",
+    "en": "Zoom in"
+  },
+  "Zoom out": {
+    "km": "បង្រួម",
+    "en": "Zoom out"
+  },
+  "Show Page Sidebar": {
+    "km": "បង្ហាញរបារទំព័រ",
+    "en": "Show Page Sidebar"
+  },
+  "Show Inspector": {
+    "km": "បង្ហាញផ្ទាំងព័ត៌មាន",
+    "en": "Show Inspector"
+  },
+  "Enter Full Screen": {
+    "km": "បើកពេញអេក្រង់",
+    "en": "Enter Full Screen"
+  },
+  "Document 2": {
+    "km": "ទំព័រ",
+    "en": "Document"
+  },
+  "Previous page": {
+    "km": "ទំព័រមុន",
+    "en": "Previous page"
+  },
+  "Next page": {
+    "km": "ទំព័របន្ទាប់",
+    "en": "Next page"
+  },
+  "Go to Page…": {
+    "km": "ទៅកាន់ទំព័រ…",
+    "en": "Go to Page…"
+  },
+  "Rotate Left": {
+    "km": "បង្វិលទៅឆ្វេង",
+    "en": "Rotate Left"
+  },
+  "Rotate Right": {
+    "km": "បង្វិលទៅស្ដាំ",
+    "en": "Rotate Right"
+  },
+  "Move Page Earlier": {
+    "km": "ផ្លាស់ទំព័រទៅមុន",
+    "en": "Move Page Earlier"
+  },
+  "Move Page Later": {
+    "km": "ផ្លាស់ទំព័រទៅក្រោយ",
+    "en": "Move Page Later"
+  },
+  "Delete selected pages": {
+    "km": "លុបទំព័រដែលបានជ្រើស",
+    "en": "Delete selected pages"
+  },
+  "Tools": {
+    "km": "ឧបករណ៍",
+    "en": "Tools"
+  },
+  "Select": {
+    "km": "ជ្រើស",
+    "en": "Select"
+  },
+  "Add Khmer text": {
+    "km": "បន្ថែមអត្ថបទខ្មែរ",
+    "en": "Add Khmer text"
+  },
+  "Highlight text": {
+    "km": "បន្លិចអត្ថបទ",
+    "en": "Highlight text"
+  },
+  "Add comment": {
+    "km": "បន្ថែមមតិយោបល់",
+    "en": "Add comment"
+  },
+  "Recognize Text…": {
+    "km": "ស្គាល់អក្សរ…",
+    "en": "Recognize Text…"
+  },
+  "Review OCR": {
+    "km": "ពិនិត្យ OCR",
+    "en": "Review OCR"
+  },
+  "Mark reviewed": {
+    "km": "សម្គាល់ថាបានពិនិត្យ",
+    "en": "Mark reviewed"
+  },
+  "Window & Help": {
+    "km": "វីនដូ និងជំនួយ",
+    "en": "Window & Help"
+  },
+  "Minimize": {
+    "km": "បង្រួមទុក",
+    "en": "Minimize"
+  },
+  "Show Next Tab": {
+    "km": "បង្ហាញផ្ទាំងបន្ទាប់",
+    "en": "Show Next Tab"
+  },
+  "Show Previous Tab": {
+    "km": "បង្ហាញផ្ទាំងមុន",
+    "en": "Show Previous Tab"
+  },
+  "Restore defaults": {
+    "km": "ស្ដារលំនាំដើម",
+    "en": "Restore defaults"
+  },
+  "Choose any command from the menus, then ": {
+    "km": "ជ្រើសពាក្យបញ្ជាណាមួយពីម៉ឺនុយ រួចចុចគ្រាប់ចុចដែលអ្នកចង់ប្រើ។",
+    "en": "Choose any command from the menus, then press the keys you want to use."
+  },
+  "Command": {
+    "km": "ពាក្យបញ្ជា",
+    "en": "Command"
+  },
+  "Type shortcut…": {
+    "km": "វាយផ្លូវកាត់…",
+    "en": "Type shortcut…"
+  },
+  "Press a modifier (⌘ ⌥ ⌃ ⇧) and a key Esc": {
+    "km": "ចុចគ្រាប់ចុចកែប្រែ (⌘ ⌥ ⌃ ⇧) និងគ្រាប់ចុចមួយ។ Esc ដើម្បីបោះបង់។",
+    "en": "Press a modifier (⌘ ⌥ ⌃ ⇧) and a key. Esc cancels."
+  },
+  "Add shortcut": {
+    "km": "បន្ថែមផ្លូវកាត់",
+    "en": "Add shortcut"
+  },
+  "Replace": {
+    "km": "ជំនួស",
+    "en": "Replace"
+  },
+  "Choose folder…": {
+    "km": "ជ្រើសថត…",
+    "en": "Choose folder…"
+  },
+  "fmt: Shortcut is free": {
+    "km": "{0} ទំនេរ — អាចបន្ថែមបាន។",
+    "en": "{0} is free — ready to add."
+  },
+  "fmt: Shortcut is already used by command": {
+    "km": "{0} ត្រូវបានប្រើរួចសម្រាប់ “{1}”។ សូមជ្រើសផ្លូវកាត់ផ្សេង ឬជំនួសវា។",
+    "en": "{0} is already used by “{1}”. Choose another shortcut, or replace it."
+  },
+  "fmt: Shortcut added command keys": {
+    "km": "បានបន្ថែមផ្លូវកាត់ · {1} {0}",
+    "en": "Shortcut added · {1} {0}"
   }
 }

@@ -40,8 +40,11 @@ final class DocumentSession: ObservableObject {
     private var pending: (url: URL, document: PDFDocument, didAccess: Bool)?
     @Published private(set) var passwordRejected = false
 
-    /// True while an in-window dialog (password, can't open) is shown; blocks toolbar, menus and drops.
-    var isModalPresented: Bool { openError != nil }
+    /// An About/Help/Developer/Release Notes/Report/Feedback panel over the window (Slek PDF and Help menus).
+    @Published var panel: AppPanel?
+
+    /// True while an in-window dialog (password, can't open) or panel is shown; blocks toolbar, menus and drops.
+    var isModalPresented: Bool { openError != nil || panel != nil }
 
     func open(_ url: URL) async {
         dismissOpenError()

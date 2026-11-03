@@ -14,6 +14,7 @@ Build each screen against its **Regular 1280×900** frame, then check Compact (C
 | Document Canvas 109:197, Page Navigation 107:120 | `DocumentCanvas` (`PDFCanvasView`), `PageNavigationPill` | Done: PDFView, whole-page fit, zoom, editable page number (Khmer or Latin digits) |
 | Inspector Panel 159:554 (Read) / Search Results Panel 142:87 | `ReadInspectorView` | Search done (PDFium); Select/copy, Rotate view, Open Khmer OCR buttons not wired yet |
 | Status Bar 101:82, Theme Switch 179:606, Language Switch 179:633 (36) | `StatusBarView`, `ThemeSwitch`, `LanguageSwitch` | Done and live |
+| Desktop Menu Bar 296:1555, Menu / Slek PDF · File · Edit · View · Document · Tools · Window · Help, Appearance / Interface Language / Open Recent submenus | `AppCommands`, `MainMenuLocalizer` | Done: all 8 menus in Figma order with Keyboard Shortcuts panel (251:284) keys, live Khmer/English; items for unbuilt screens are disabled. `MenuBarTests` checks every row in both languages. Gaps: PROTOTYPE-GAPS §4 |
 | Responsive page 1:6 | `WindowSizeClass` (1024/1280/1440/1920; sidebar –/120/140/160, inspector 280/296/320/360) | Done |
 
 Reference renders: `Tools/render_snapshots.sh` → compare with "KM · 01 Read" (164:6246).
@@ -28,6 +29,12 @@ Reference renders: `Tools/render_snapshots.sh` → compare with "KM · 01 Read" 
 | 44 Open · drag over | Built |
 | 13 This PDF needs a password | Built — wrong-password message drafted (needs Khmer review) |
 | 35 This file can’t be opened | Built |
+
+| D-27 About · D-28 Keyboard Shortcuts · D-29 Privacy & Licenses | Built — About window tabs (About, Shortcuts, Licenses, Privacy), from Slek PDF ▸ About and Help ▸ Keyboard Shortcuts / Privacy & Licenses |
+| D-30 Slek PDF Help | Built — topics, search, Getting started article; the other four topics have no article in Figma yet (disabled) |
+| D-31 Developer · D-32 Release Notes | Built |
+| D-10 Preferences · D-10k Keyboard Shortcuts · D-10l/m/n Add custom shortcut · D-10o Shortcut added | Built — `PreferencesPanel`; shortcuts are stored in `ShortcutStore` and every menu reads its keys from there |
+| D-33/33a Report a Problem · D-34/34a Send Feedback | Built — opens a prefilled email (Mail compose service), then the "opened in Mail" toast |
 
 Snapshots of each in Khmer/English × light/dark: `Tools/render_snapshots.sh` → `build/snapshots/<screen>-<lang>-<theme>.png`.
 
@@ -51,6 +58,6 @@ Snapshots of each in Khmer/English × light/dark: `Tools/render_snapshots.sh` �
 
 ## Component library → Swift
 
-Done: `DSButton` (Button 86:390), `DSIconButton` (86:511), `DSSearchField` (142:76), `LanguageSwitch`, `ThemeSwitch`, `DSDivider`, `DSIcon` (all 70 Figma icons).
+Done: `DSButton` (Button 86:390, Regular 32 / Small 24), `DSIconButton` (86:511), `DSSearchField` (142:76), `LanguageSwitch`, `ThemeSwitch`, `DSDivider`, `DSIcon` (all 70 Figma icons), `DSToast` + `ToastCenter` (143:68), `DSBanner` (141:101), `DSProgressBar` (100:74), `DSSpinner` (100:11), `DSSwitch` (140:36), `DSBadge` (89:32), `DSSegmentedControl` (Tab 98:64 Segmented), `.dsTooltip` (91:30, replaces `.help`), `DSDropdown` (94:74), `DSTextArea` (Text Field Multiline), `DSKeyCap`/`DSShortcutRow` (139:6/139:7), `DSAvatar` (275:94), `DSWindowControls`/`DSWindowPanel` (102:10, About Window 146:343). Gallery renders: `ComponentGallerySnapshotTests`.
 Next, in roughly the order screens need them: Tab 98:64 (segmented), Text Field 93:186, Dropdown/Menu 94:*, Checkbox/Radio 95:*, Switch 140:36, Badge 89:32, Tooltip 91:30, Toast 143:68, Banner 141:101, Dialog 135:230, Progress Bar/Spinner 100:*, Empty State 144:74, Page Thumbnail 104:113, Panel Header/Resize Handle 105:4/159:411, then the feature components (Page Organizer, Annotate, OCR Review, Table Editor, Export).
 Before building each one, read its variants with `get_design_context` and match sizes, paddings and states exactly; the shell's button heights and paddings were set by eye from screenshots and still need that check.

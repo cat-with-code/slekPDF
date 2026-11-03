@@ -62,7 +62,7 @@ SlekPDF/Resources/        Fonts (OFL), copy.json, Assets.xcassets
 SlekPDFTests/             Token, copy, font, icon tests; shell snapshot renderer
 Config/                   Info.plist additions, entitlements (sandbox, user-selected files, print)
 Design/                   Figma exports (source of generated code)
-Licenses/                 Third-party licences to ship with the app (PDFium's are in Vendor/pdfium/LICENSE + licenses/)
+SlekPDF/Resources/Licenses/  Third-party licences, copied into the app (shown from About ▸ Licenses); PDFium build deps: Vendor/pdfium/licenses/
 Vendor/                   Vendored native libraries: PDFium (prebuilt), Tesseract + Leptonica (Tools/build_tesseract.sh)
 Tools/                    Generators and snapshot script
 docs/                     Prototype map and prototype-vs-native gaps

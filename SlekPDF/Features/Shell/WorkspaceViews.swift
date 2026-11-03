@@ -12,7 +12,7 @@ struct PageSidebarView: View {
                 DSLabel(.pages, style: .label).foregroundColor(DSColor.textPrimary)
                 Spacer()
                 DSIconButton(.left, size: 24, iconSize: 14) { session.setSidebarVisible(false) }
-                    .help(CopyCatalog.shared.string(.hidePageSidebar, language))
+                    .dsTooltip(.hidePageSidebar, shortcut: "⌥⌘S")
             }
             ScrollViewReader { proxy in
                 ScrollView {
@@ -68,9 +68,9 @@ struct CollapsedSidebarRail: View {
     var body: some View {
         VStack(spacing: DSSpace.s8) {
             DSIconButton(.right, size: 24, iconSize: 14) { session.setSidebarVisible(true) }
-                .help(CopyCatalog.shared.string(.showPageSidebar, language))
+                .dsTooltip(.showPageSidebar, shortcut: "⌥⌘S")
             DSIconButton(.page, size: 24, iconSize: 14) { session.setSidebarVisible(true) }
-                .help(CopyCatalog.shared.string(.pages, language))
+                .dsTooltip(.pages)
             Spacer()
         }
         .padding(.top, DSSpace.s8)
@@ -87,9 +87,9 @@ struct CollapsedInspectorRail: View {
     var body: some View {
         VStack(spacing: DSSpace.s8) {
             DSIconButton(.left, size: 24, iconSize: 14) { session.setInspectorVisible(true) }
-                .help(CopyCatalog.shared.string(.showInspector, language))
+                .dsTooltip(.showInspector, shortcut: "⌥⌘I")
             DSIconButton(.search, size: 24, iconSize: 14) { session.focusSearch(animated: true) }
-            .help(CopyCatalog.shared.string(.search, language))
+            .dsTooltip(.search, shortcut: "⌘F")
             Spacer()
         }
         .padding(.top, DSSpace.s8)
@@ -132,6 +132,7 @@ struct PageNavigationPill: View {
     var body: some View {
         HStack(spacing: DSSpace.s8) {
             DSIconButton(.left, size: 24) { session.previousPage() }
+                .dsTooltip(.menuPreviousPage, shortcut: "⌘↑")
                 .disabled(session.currentPageIndex == 0)
             TextField("", text: $pageText)
                 .textFieldStyle(.plain)
@@ -144,12 +145,16 @@ struct PageNavigationPill: View {
                 .overlay(RoundedRectangle(cornerRadius: DSRadius.xs).strokeBorder(isEditing ? DSColor.borderFocus : DSColor.borderDefault, lineWidth: DSStroke.default))
             Text("/ " + language.number(session.pageCount)).dsText(.body).foregroundColor(DSColor.textSecondary)
             DSIconButton(.right, size: 24) { session.nextPage() }
+                .dsTooltip(.menuNextPage, shortcut: "⌘↓")
                 .disabled(session.currentPageIndex >= session.pageCount - 1)
             DSDivider(axis: .vertical).frame(height: 18)
             DSIconButton(.zoomOut, size: 24) { session.zoomOut() }
+                .dsTooltip(.menuZoomOut, shortcut: "⌘−")
             Button { session.fitPage() } label: { DSLabel(.fitPage, style: .label) }
                 .buttonStyle(.plain)
+                .dsTooltip(.menuFitPage, shortcut: "⌘0")
             DSIconButton(.zoomIn, size: 24) { session.zoomIn() }
+                .dsTooltip(.menuZoomIn, shortcut: "⌘+")
         }
         .foregroundColor(DSColor.textPrimary)
         .padding(.horizontal, DSSpace.s12)
@@ -189,7 +194,7 @@ struct ReadInspectorView: View {
                     DSLabel(.readSearch, style: .heading).foregroundColor(DSColor.textPrimary)
                     Spacer()
                     DSIconButton(.right, size: 24, iconSize: 14) { session.setInspectorVisible(false) }
-                        .help(CopyCatalog.shared.string(.hideInspector, language))
+                        .dsTooltip(.hideInspector, shortcut: "⌥⌘I")
                 }
                 DSSearchField(text: $session.searchQuery,
                               matchLabel: matchLabel,
@@ -219,7 +224,7 @@ struct ReadInspectorView: View {
             DSCheckbox(label: .wholeWord, isOn: $session.wholeWord)
         }
         if session.isSearching {
-            ProgressView().controlSize(.small).frame(maxWidth: .infinity)
+            DSSpinner(size: .small).frame(maxWidth: .infinity)
         } else if session.searchResults.isEmpty {
             NoSearchResults(query: session.searchQuery)
         } else {

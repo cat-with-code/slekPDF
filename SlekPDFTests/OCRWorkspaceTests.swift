@@ -86,7 +86,9 @@ final class OCRWorkspaceTests: XCTestCase {
         session.ocrSettings.skipPagesWithText = true
         await session.startRecognition([0, 1, 2], .en)?.value
         XCTAssertTrue(session.ocrResults.isEmpty)
-        XCTAssertEqual(session.toasts.current?.message, "No text was found on these pages.")
+        // Not "No text was found": the pages have text (a digital PDF such as a CV).
+        XCTAssertEqual(session.toasts.current?.message,
+                       "These pages already have usable text. To recognize them anyway, turn off “Skip pages with usable text”.")
         await session.close()
     }
 

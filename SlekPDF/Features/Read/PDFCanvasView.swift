@@ -14,7 +14,7 @@ struct PDFCanvasView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> PDFView {
         let view = KhmerPDFView()
-        view.copyHandler = { [weak session] selection in session?.copy(selection) }
+        view.copyHandler = { [weak session, weak view] selection in session?.copy(selection, language: view?.language ?? .km) }
         view.session = session
         view.displayMode = .singlePageContinuous
         view.displaysPageBreaks = true

@@ -31,6 +31,7 @@ final class PDFiumService {
     func close(_ id: DocumentID) {
         documents[id] = nil
         pages[id] = nil
+        layers[id] = nil
     }
 
     /// A page for a new PDF: from an open document (with extra rotation) or from another PDF file.
@@ -98,8 +99,76 @@ final class PDFiumService {
     /// A layer that is mostly another script (e.g. Khmer read as Thai by other OCR software) is not usable: the page
     /// is recognized again, and Copy uses Slek's text.
     func hasUsableText(_ id: DocumentID, page: Int) -> Bool {
-        guard let text = try? documents[id]?.text(ofPage: page) else { return false }
-        return Self.isUsableText(text)
+        textLayer(id, page: page) == .usable
+    }
+
+    /// The page's own text layer, checked once per page (see `layerQuality`).
+    func textLayer(_ id: DocumentID, page index: Int) -> TextLayer {
+        if let cached = layers[id]?[index] { return cached }
+        guard let document = documents[id], let entry = page(id, index) else { return .none }
+        let layer = Self.layerQuality(text: entry.text.text, fonts: (try? document.fontUsage(onPage: index)) ?? [:])
+        layers[id, default: [:]][index] = layer
+        return layer
+    }
+
+    private var layers: [DocumentID: [Int: TextLayer]] = [:]
+
+    /// What a page's own text layer is good for.
+    nonisolated enum TextLayer: Equatable, CustomStringConvertible {
+        /// No text, or too little (a page number, a scanner stamp).
+        case none
+        case usable
+        /// Text that reads as gibberish: legacy (non-Unicode) Khmer fonts such as Limon or ABC, or Khmer whose
+        /// glyph-to-Unicode map is broken. Not copied or exported; the page needs OCR.
+        case unreadable
+
+        var description: String { switch self { case .none: "none"; case .usable: "usable"; case .unreadable: "unreadable" } }
+    }
+
+    /// Legacy Khmer fonts draw Khmer glyphs at Latin code points ("pøaksBaØa" for ផ្លាកសញ្ញា).
+    nonisolated static func isLegacyKhmerFont(_ name: String) -> Bool {
+        let name = name.lowercased()
+        return ["limon", "lmn", "abc", "khek", "baidok", "khmm"].contains { name.hasPrefix($0) }
+    }
+
+    nonisolated struct KhmerSignals: CustomStringConvertible {
+        var khmer = 0, ngCoeng = 0, orphans = 0, badCoeng = 0
+        var description: String { "khmer=\(khmer) ngCoeng=\(ngCoeng) orphans=\(orphans) badCoeng=\(badCoeng)" }
+    }
+
+    /// Counts of Khmer sequences that a broken glyph map produces: "ង្" standing for the vowel េ, dependent vowels
+    /// and signs with no consonant before them, a subscript sign (្) not followed by a consonant.
+    nonisolated static func khmerLayerSignals(_ text: String) -> KhmerSignals {
+        var signals = KhmerSignals()
+        let scalars = Array(text.unicodeScalars)
+        func isConsonant(_ s: Unicode.Scalar) -> Bool { (0x1780...0x17B3).contains(s.value) }
+        for (i, s) in scalars.enumerated() where (0x1780...0x17FF).contains(s.value) {
+            signals.khmer += 1
+            let previous = i > 0 ? scalars[i - 1] : nil
+            if s.value == 0x17D2 {
+                if previous?.value == 0x1784 { signals.ngCoeng += 1 }
+                if i + 1 >= scalars.count || !isConsonant(scalars[i + 1]) { signals.badCoeng += 1 }
+            } else if (0x17B6...0x17D1).contains(s.value), previous.map({ !(0x1780...0x17D3).contains($0.value) }) ?? true {
+                signals.orphans += 1
+            }
+        }
+        return signals
+    }
+
+    nonisolated static func layerQuality(text: String, fonts: [String: Int]) -> TextLayer {
+        // Even a short heading in a legacy font would be copied and exported as gibberish.
+        if fonts.contains(where: { isLegacyKhmerFont($0.key) && $0.value >= 5 }) { return .unreadable }
+        guard isUsableText(text) else {
+            let letters = text.unicodeScalars.filter { $0.properties.isAlphabetic }.count
+            return letters >= 20 ? .unreadable : .none
+        }
+        // Measured (docs/spikes/04-khmerocr.md): well-made Khmer PDFs have no orphan marks or bad subscripts; broken
+        // glyph maps have 1.4–4 %. "ង្" is common in real words (អង្គ, បង្ហាញ), so only a lot of it counts.
+        let s = khmerLayerSignals(text)
+        let khmer = Double(s.khmer)
+        if s.orphans + s.badCoeng >= 3, Double(s.orphans + s.badCoeng) >= khmer * 0.01 { return .unreadable }
+        if s.khmer >= 100, Double(s.ngCoeng) >= khmer * 0.03 { return .unreadable }
+        return .usable
     }
 
     nonisolated static func isUsableText(_ text: String) -> Bool {
@@ -109,8 +178,9 @@ final class PDFiumService {
     }
 
     /// Readable text lines of a page with their positions (Export).
+    /// Empty for an unreadable layer (legacy fonts, broken glyph map): the page needs OCR.
     func textLines(_ id: DocumentID, page index: Int) -> [KhmerTextRebuilder.Line] {
-        guard let chars = page(id, index)?.chars else { return [] }
+        guard textLayer(id, page: index) != .unreadable, let chars = page(id, index)?.chars else { return [] }
         return KhmerTextRebuilder.lines(chars).map {
             KhmerTextRebuilder.Line(text: KhmerNormalizer.normalize($0.text), box: $0.box, fontSize: $0.fontSize)
         }
@@ -118,7 +188,7 @@ final class PDFiumService {
 
     /// Lines split into cell candidates (Export tables).
     func textSegments(_ id: DocumentID, page index: Int) -> [[KhmerTextRebuilder.Segment]] {
-        guard let chars = page(id, index)?.chars else { return [] }
+        guard textLayer(id, page: index) != .unreadable, let chars = page(id, index)?.chars else { return [] }
         return KhmerTextRebuilder.segments(chars)
     }
 
@@ -157,7 +227,7 @@ final class PDFiumService {
     /// Readable text for a selection, given as line rectangles in PDF page space (from PDFKit's selection).
     func copyText(_ id: DocumentID, lines: [(page: Int, rect: CGRect)]) -> String {
         lines.compactMap { line -> String? in
-            guard let chars = page(id, line.page)?.chars else { return nil }
+            guard textLayer(id, page: line.page) != .unreadable, let chars = page(id, line.page)?.chars else { return nil }
             let area = line.rect.insetBy(dx: -1, dy: -2)
             let inside = chars.filter { char in
                 area.contains(char.isGenerated ? char.origin : CGPoint(x: char.box.midX, y: char.box.midY))

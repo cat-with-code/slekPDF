@@ -554,29 +554,50 @@ final class DocumentSession: ObservableObject {
     /// Readable text of a PDFKit selection: each selected line's rectangle is read from PDFium and rebuilt.
     func text(of selection: PDFSelection) async -> String {
         guard let id = pdfiumID, let document else { return selection.string ?? "" }
-        // Each line is read from the PDF its page comes from (inserted pages have their own).
+        // Each page is read from the PDF it comes from (inserted pages have their own); a page Slek recognized gives
+        // its reviewed OCR text, not the PDF's own layer (often another program's OCR, e.g. Khmer read as Thai).
         var parts: [String] = []
+        var ocrPage: (ref: PageRef, rects: [CGRect])?
+        func flushOCR() {
+            guard let (ref, rects) = ocrPage, let ocr = ocrResults[ref.id] else { return }
+            ocrPage = nil
+            // Each OCR line once, in reading order, when the selection covers at least half of its height.
+            let picked = ocr.lines.filter { line in
+                rects.contains { rect in
+                    let overlap = line.bounds.intersection(rect.insetBy(dx: -2, dy: 0))
+                    return !overlap.isNull && overlap.height >= line.bounds.height * 0.5
+                }
+            }
+            if !picked.isEmpty { parts.append(KhmerNormalizer.normalize(picked.map(\.displayText).joined(separator: "\n"))) }
+        }
         for line in selection.selectionsByLine() {
             guard let page = line.pages.first else { continue }
             let index = document.index(for: page)
             let ref = pages.indices.contains(index) ? pages[index] : nil
             let rect = line.bounds(for: page)
-            // A page Slek recognized: its reviewed OCR text, not the PDF's own layer (often another app's OCR).
             if let ref, let ocr = ocrResults[ref.id], !ocr.lines.isEmpty {
-                let hits = ocr.lines.filter { $0.bounds.intersects(rect.insetBy(dx: -1, dy: -1)) }.map(\.displayText)
-                if !hits.isEmpty { parts.append(KhmerNormalizer.normalize(hits.joined(separator: "\n"))) }
+                if ocrPage?.ref.id != ref.id { flushOCR() }
+                ocrPage = (ref, (ocrPage?.rects ?? []) + [rect])
                 continue
             }
+            flushOCR()
             let text = await PDFiumService.shared.copyText(ref.flatMap(documentID(for:)) ?? id, lines: [(ref?.source ?? index, rect)])
             if !text.isEmpty { parts.append(text) }
         }
+        flushOCR()
         return parts.joined(separator: "\n")
     }
 
-    func copy(_ selection: PDFSelection) {
+    func copy(_ selection: PDFSelection, language: AppLanguage) {
         Task {
             let text = await text(of: selection)
-            guard !text.isEmpty else { return }
+            guard !text.isEmpty else {
+                // Text in a legacy Khmer font (or with a broken glyph map) is not copied as gibberish.
+                if !(selection.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    toasts.show(.default, CopyCatalog.shared.string(.recognizeTextToEnableSearchingAndC, language))
+                }
+                return
+            }
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(text, forType: .string)
         }

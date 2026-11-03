@@ -116,7 +116,7 @@ nonisolated final class OCRWorker: @unchecked Sendable {
             }
             guard !parts.isEmpty else { continue }
             let rect = line.dropFirst().reduce(line[0].rect) { $0.union($1.rect) }
-            result.append(OCRResult.Line(text: parts.map(\.text).joined(separator: " "), pixelRect: rect,
+            result.append(OCRResult.Line(text: Self.join(parts.map(\.text)), pixelRect: rect,
                                          confidence: parts.map(\.confidence).reduce(0, +) / Double(parts.count)))
         }
         let mean = result.isEmpty ? 0 : result.map(\.confidence).reduce(0, +) / Double(result.count)
@@ -124,9 +124,30 @@ nonisolated final class OCRWorker: @unchecked Sendable {
     }
 
     /// Every line in standard Khmer Unicode order (KhmerNormalizer), so it copies and pastes correctly.
+    /// Lines that are only marks (a ruled line, the curved text of a round seal read as "+. :=4>32»--+-") are dropped.
     static func normalized(_ result: OCRResult) -> OCRResult {
-        let lines = result.lines.map { OCRResult.Line(text: KhmerNormalizer.normalize($0.text), pixelRect: $0.pixelRect, confidence: $0.confidence) }
-        return OCRResult(text: KhmerNormalizer.normalize(result.text), meanConfidence: result.meanConfidence, lines: lines)
+        let lines = result.lines.filter { !isNoise($0.text) }
+            .map { OCRResult.Line(text: KhmerNormalizer.normalize($0.text), pixelRect: $0.pixelRect, confidence: $0.confidence) }
+        let text = lines.count == result.lines.count ? KhmerNormalizer.normalize(result.text) : lines.map(\.text).joined(separator: "\n")
+        return OCRResult(text: text, meanConfidence: result.meanConfidence, lines: lines)
+    }
+
+    /// Fewer than half of the visible characters are letters or digits (Khmer vowels and signs count as letters).
+    static func isNoise(_ text: String) -> Bool {
+        let visible = text.unicodeScalars.filter { !$0.properties.isWhitespace }
+        let meaningful = visible.filter {
+            $0.properties.isAlphabetic || $0.properties.numericType != nil || (0x1780...0x17FF).contains($0.value)
+        }.count
+        return meaningful == 0 || Double(meaningful) < Double(visible.count) * 0.5
+    }
+
+    /// The boxes of a line, separated by spaces; a box that starts with a Khmer vowel or sign (a word the detector
+    /// split) is attached to the box before it.
+    static func join(_ parts: [String]) -> String {
+        parts.reduce(into: "") { line, part in
+            let continues = part.unicodeScalars.first.map { (0x17B6...0x17D3).contains($0.value) } ?? false
+            line += line.isEmpty || continues ? part : " " + part
+        }
     }
 
     private static func clean(_ text: String) -> String {

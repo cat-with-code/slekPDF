@@ -411,6 +411,7 @@ enum CopyKey: String, CaseIterable {
     case fmtNLessThanAMinuteLeft = "fmt: N% · less than a minute left"
     case deskewNeedsAnOrientationModelThatIsNotIncludedYet = "Deskew needs an orientation model that is not included yet"
     case noTextWasFoundOnThesePages = "No text was found on these pages"
+    case thesePagesAlreadyHaveText = "These pages already have text"
     case recognitionStoppedFinishedPagesAreKept = "Recognition stopped. Finished pages are kept"
     case recognizeTextToReviewItHere = "Recognize text to review it here"
     case fmtRecognizedTextOnNPages = "fmt: Recognized text on N pages"

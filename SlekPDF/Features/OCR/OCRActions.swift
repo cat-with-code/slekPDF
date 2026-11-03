@@ -97,13 +97,16 @@ extension DocumentSession {
         let skipText = ocrSettings.skipPagesWithText
         let ppi = Self.ocrPPI
         return Task { [weak self] in
-            var recognized = 0
+            var recognized = 0, skipped = 0
             for ref in refs {
                 guard !flag.isCancelled, let self else { break }
                 self.ocrJob?.currentNumber = (self.pages.firstIndex { $0.id == ref.id } ?? 0) + 1
                 defer { self.ocrJob?.finished += 1 }
                 let doc = self.documentID(for: ref) ?? id
-                if skipText, await PDFiumService.shared.hasUsableText(doc, page: ref.source) { continue }
+                if skipText, await PDFiumService.shared.hasUsableText(doc, page: ref.source) {
+                    skipped += 1
+                    continue
+                }
                 guard let image = await PDFiumService.shared.renderForOCR(doc, page: ref.source, quarterTurns: ref.quarterTurns,
                                                                           ppi: CGFloat(ppi)) else { continue }
                 guard let result = try? await OCRWorker.shared.recognize(image, ppi: ppi, languages: languages,
@@ -115,7 +118,7 @@ extension DocumentSession {
                 self.setOCR(OCRPage(lines: lines, languages: languages, date: Date(), quarterTurns: ref.quarterTurns), for: ref.id)
                 if !lines.isEmpty { recognized += 1 }
             }
-            self?.finishRecognition(cancelled: flag.isCancelled, recognizedPages: recognized, language)
+            self?.finishRecognition(cancelled: flag.isCancelled, recognizedPages: recognized, skippedPages: skipped, language)
         }
     }
 
@@ -129,12 +132,15 @@ extension DocumentSession {
         if organizeDialog == .recognizing { organizeDialog = nil }
     }
 
-    private func finishRecognition(cancelled: Bool, recognizedPages: Int, _ language: AppLanguage) {
+    private func finishRecognition(cancelled: Bool, recognizedPages: Int, skippedPages: Int, _ language: AppLanguage) {
         ocrJob = nil
         ocrCancel = nil
         if organizeDialog == .recognizing { organizeDialog = nil }
         if cancelled {
             toasts.show(.default, CopyCatalog.shared.string(.recognitionStoppedFinishedPagesAreKept, language))
+        } else if recognizedPages == 0, skippedPages > 0 {
+            // A digital PDF (e.g. a CV) with "Skip pages with usable text" on: nothing was recognized, nothing is missing.
+            toasts.show(.default, CopyCatalog.shared.string(.thesePagesAlreadyHaveText, language))
         } else if recognizedPages == 0 {
             toasts.show(.default, CopyCatalog.shared.string(.noTextWasFoundOnThesePages, language))
         } else {

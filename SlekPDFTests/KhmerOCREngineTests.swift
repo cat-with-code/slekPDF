@@ -63,6 +63,20 @@ final class KhmerOCREngineTests: XCTestCase {
         XCTAssertEqual(lines.map { $0.map(\.rect.minX) }, [[0, 200], [0]])
     }
 
+    func testMarkOnlyLinesAreDroppedAndSplitWordsRejoined() {
+        XCTAssertTrue(OCRWorker.isNoise("+. :=4>32»--+-"), "round seal text")
+        XCTAssertTrue(OCRWorker.isNoise("---------------”-”””-"), "a ruled line")
+        XCTAssertFalse(OCRWorker.isNoise("R1-01 R1-02 R1-03"))
+        XCTAssertFalse(OCRWorker.isNoise("1 - 15"))
+        XCTAssertFalse(OCRWorker.isNoise("ផ្លាកសញ្ញាចរាចរណ៍ (ROAD SIGNS)"))
+        let result = OCRResult(text: "a\nb", meanConfidence: 80, lines: [
+            OCRResult.Line(text: "ក្រសួងសាធារណការ", pixelRect: .zero, confidence: 90),
+            OCRResult.Line(text: "+. :=4>32»--+-", pixelRect: .zero, confidence: 10),
+        ])
+        XCTAssertEqual(OCRWorker.normalized(result).text, "ក្រសួងសាធារណការ")
+        XCTAssertEqual(OCRWorker.join(["ផ្លូវគ", "ោក", "ROAD"]), "ផ្លូវគោក ROAD")
+    }
+
     func testEnglishBoxesNeedLatinTextAndConfidence() {
         func result(_ text: String, _ confidence: Int) -> OCRResult { OCRResult(text: text, meanConfidence: confidence) }
         XCTAssertTrue(OCRWorker.isEnglish(result("SYNTHETIC TEST DATA", 90), confidence: 75))

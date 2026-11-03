@@ -49,6 +49,23 @@ final class KhmerNormalizerTests: XCTestCase {
         XCTAssertFalse(PDFiumService.isUsableText("12"))
     }
 
+    func testLegacyFontsAndBrokenKhmerLayersAreUnreadable() {
+        let clean = String(repeating: "ព្រះរាជាណាចក្រកម្ពុជា ជាតិ សាសនា ព្រះមហាក្សត្រ អង្គភាព លេខកូដ ", count: 3)
+        XCTAssertEqual(PDFiumService.layerQuality(text: clean, fonts: ["KhmerOS": 150]), .usable)
+        XCTAssertEqual(PDFiumService.layerQuality(text: "Quarterly report for the project team", fonts: ["ArialMT": 32]), .usable)
+        XCTAssertEqual(PDFiumService.layerQuality(text: "12", fonts: ["ArialMT": 2]), .none)
+        // Limon draws Khmer at Latin code points: even a short heading makes the layer gibberish.
+        XCTAssertEqual(PDFiumService.layerQuality(text: "pøaksBaØacracr (ROAD SIGNS) R1-01 R1-02 R1-03 R1-04",
+                                                  fonts: ["LimonS1": 14, "ArialMT": 170]), .unreadable)
+        XCTAssertTrue(PDFiumService.isLegacyKhmerFont("ABC-TEXT-05"))
+        XCTAssertTrue(PDFiumService.isLegacyKhmerFont("LmnTTFantBig"))
+        XCTAssertFalse(PDFiumService.isLegacyKhmerFont("KhmerOS"))
+        XCTAssertFalse(PDFiumService.isLegacyKhmerFont("ArialMT"))
+        // A Unicode font with a broken glyph map: "ង្" in place of េ (លេខ → ង្លខ), marks with no consonant.
+        let broken = String(repeating: "ង្លខកូដ ៖ សញ្ញា ង្ េះ ហាម ង្លើ ា ទំហំ ផ្លូវ ", count: 4)
+        XCTAssertEqual(PDFiumService.layerQuality(text: broken, fonts: ["KhmerOS": 120]), .unreadable)
+    }
+
     func testCopyOnARecognizedPageUsesSlekText() async throws {
         let url = try XCTUnwrap(Bundle(for: KhmerNormalizerTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
         let session = DocumentSession()
@@ -62,6 +79,24 @@ final class KhmerNormalizerTests: XCTestCase {
                                languages: "khm", date: Date()), for: session.pages[0].id)
         let copied = await session.text(of: firstLine)
         XCTAssertEqual(copied.unicodeScalars.map(\.value), [0x1780, 0x17D2, 0x179A, 0x17B6])
+        await session.close()
+    }
+
+    func testCopyingSeveralLinesOfARecognizedPageGivesEachLineOnce() async throws {
+        let url = try XCTUnwrap(Bundle(for: KhmerNormalizerTests.self).url(forResource: "khmer-multipage", withExtension: "pdf"))
+        let session = DocumentSession()
+        await session.open(url)
+        let page = try XCTUnwrap(session.document?.page(at: 0))
+        let selection = try XCTUnwrap(page.selection(for: page.bounds(for: .mediaBox)))
+        let lines = selection.selectionsByLine().map { $0.bounds(for: page) }.filter { !$0.isEmpty }
+        XCTAssertGreaterThanOrEqual(lines.count, 2)
+        // OCR lines a little taller than the PDF's lines, so each touches its neighbours.
+        let ocr = lines.enumerated().map { index, rect in
+            OCRLine(bounds: rect.insetBy(dx: 0, dy: -3), text: "បន្ទាត់\(index)", confidence: 95)
+        }
+        session.setOCR(OCRPage(lines: ocr, languages: "khm", date: Date()), for: session.pages[0].id)
+        let copied = await session.text(of: selection)
+        XCTAssertEqual(copied, ocr.map(\.text).joined(separator: "\n"))
         await session.close()
     }
 }

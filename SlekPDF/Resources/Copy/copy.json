@@ -1784,6 +1784,11 @@
     "en": "No text was found on these pages.",
     "note": "Not a Figma copy variable (Khmer OCR states); draft Khmer — needs review"
   },
+  "These pages already have text": {
+    "km": "ទំព័រទាំងនេះមានអត្ថបទប្រើបានរួចហើយ។ ដើម្បីស្គាល់អក្សរវាម្ដងទៀត សូមបិទ «រំលងទំព័រដែលមានអត្ថបទប្រើបាន»។",
+    "en": "These pages already have usable text. To recognize them anyway, turn off “Skip pages with usable text”.",
+    "note": "Not a Figma copy variable (Khmer OCR states); draft Khmer — needs review"
+  },
   "Recognition stopped. Finished pages are kept": {
     "km": "បានបញ្ឈប់ការស្គាល់អក្សរ។ ទំព័រដែលរួចរាល់ត្រូវបានរក្សាទុក។",
     "en": "Recognition stopped. Finished pages are kept.",

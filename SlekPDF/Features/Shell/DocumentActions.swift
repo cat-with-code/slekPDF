@@ -72,7 +72,8 @@ extension DocumentSession {
             text = await PDFiumService.shared.textLines(id, page: ref.source).map(\.text).joined(separator: "\n")
         }
         guard !text.isEmpty else {
-            toasts.show(.default, language(.noTextOnThisPageToCopy))
+            let unreadable = await PDFiumService.shared.textLayer(id, page: ref.source) == .unreadable
+            toasts.show(.default, language(unreadable ? .recognizeTextToEnableSearchingAndC : .noTextOnThisPageToCopy))
             return
         }
         NSPasteboard.general.clearContents()

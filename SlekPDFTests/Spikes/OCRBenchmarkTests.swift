@@ -51,6 +51,59 @@ final class OCRBenchmarkTests: XCTestCase {
         }
     }
 
+    /// Text-layer diagnostics for real PDFs (tmp/RealDocuments, never committed): fonts per page and the rebuilt text,
+    /// written to tmp/ocr-bench/<doc>.layer.txt, for tuning the unreadable-layer check.
+    func testDumpTextLayersOfRealDocuments() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("RealDocuments")
+        guard ProcessInfo.processInfo.environment["OCR_BENCH"] != nil,
+              let files = try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) else {
+            throw XCTSkip("Copy PDFs into the container tmp/RealDocuments and run with TEST_RUNNER_OCR_BENCH=1")
+        }
+        let out = FileManager.default.temporaryDirectory.appendingPathComponent("ocr-bench")
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        for file in files where file.pathExtension.lowercased() == "pdf" {
+            let pdf = try PDFiumDocument(url: file)
+            var report = ""
+            for page in 0..<pdf.pageCount {
+                let fonts = try pdf.fontUsage(onPage: page).sorted { $0.value > $1.value }.map { "\($0.key)=\($0.value)" }
+                let text = KhmerTextRebuilder.rebuild(try pdf.characters(onPage: page)).text
+                report += "=== p\(page + 1) layer=\(PDFiumService.layerQuality(text: text, fonts: try pdf.fontUsage(onPage: page))) "
+                    + "\(PDFiumService.khmerLayerSignals(text)) fonts: \(fonts.joined(separator: " "))\n\(text.prefix(400))\n"
+            }
+            try report.write(to: out.appendingPathComponent("\(file.deletingPathExtension().lastPathComponent).layer.txt"), atomically: true, encoding: .utf8)
+        }
+    }
+
+    /// Recognizes tmp/RealDocuments/*-ocr.pdf as the app does (Skip pages with usable text on) and writes each line
+    /// with its confidence to tmp/ocr-bench/<doc>.ocr.txt.
+    func testRecognizeRealDocuments() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("RealDocuments")
+        guard ProcessInfo.processInfo.environment["OCR_BENCH"] != nil,
+              let files = try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) else {
+            throw XCTSkip("Copy PDFs named *-ocr.pdf into the container tmp/RealDocuments and run with TEST_RUNNER_OCR_BENCH=1")
+        }
+        let out = FileManager.default.temporaryDirectory.appendingPathComponent("ocr-bench")
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        OCRWorker.shared.usesKhmerOCR = true
+        for file in files where file.lastPathComponent.hasSuffix("-ocr.pdf") {
+            let session = DocumentSession()
+            await session.open(file)
+            session.ocrSettings.skipPagesWithText = true
+            session.ocrSettings.language = .khmerEnglish
+            await session.startRecognition(Array(session.pages.indices), .en)?.value
+            var report = ""
+            for (index, ref) in session.pages.enumerated() {
+                report += "=== p\(index + 1) \(session.ocrResults[ref.id] == nil ? "skipped" : "recognized")\n"
+                for line in session.ocrResults[ref.id]?.lines ?? [] {
+                    report += String(format: "[%3.0f] ", line.confidence) + line.text + "\n"
+                }
+            }
+            report += OCRWorker.shared.routeLog.suffix(session.pageCount).joined(separator: "\n")
+            try report.write(to: out.appendingPathComponent("\(file.deletingPathExtension().lastPathComponent).ocr.txt"), atomically: true, encoding: .utf8)
+            await session.close()
+        }
+    }
+
     /// Re-reads each box KhmerOCR's detector found (tmp/ocr-bench/<doc>.kboxes.json, from Tools/ocr-eval) with Tesseract
     /// as a single line, in English and in Khmer + English, so per-box engine choice can be scored.
     func testBenchmarkTesseractOnKhmerOCRBoxes() async throws {

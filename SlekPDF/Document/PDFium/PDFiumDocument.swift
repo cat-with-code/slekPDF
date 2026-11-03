@@ -73,6 +73,27 @@ nonisolated final class PDFiumDocument {
         }
     }
 
+    /// How many characters of a page each font draws (font names without the subset prefix, e.g. "LimonS1").
+    /// Spaces and characters PDFium generated are not counted.
+    func fontUsage(onPage index: Int) throws -> [String: Int] {
+        try withTextPage(index) { textPage in
+            var usage: [String: Int] = [:]
+            var buffer = [CChar](repeating: 0, count: 256)
+            for i in 0..<Int(FPDFText_CountChars(textPage)) {
+                let code = FPDFText_GetUnicode(textPage, Int32(i))
+                guard code > 0x20, FPDFText_IsGenerated(textPage, Int32(i)) != 1 else { continue }
+                let length = FPDFText_GetFontInfo(textPage, Int32(i), &buffer, UInt(buffer.count), nil)
+                guard length > 0, length <= buffer.count else { continue }
+                var name = String(cString: buffer)
+                if let plus = name.firstIndex(of: "+"), name.distance(from: name.startIndex, to: plus) == 6 {
+                    name = String(name[name.index(after: plus)...])
+                }
+                usage[name, default: 0] += 1
+            }
+            return usage
+        }
+    }
+
     /// Every character PDFium reports on a page, with the geometry the Khmer text rebuilder needs.
     func characters(onPage index: Int) throws -> [PDFiumChar] {
         try withTextPage(index) { textPage in

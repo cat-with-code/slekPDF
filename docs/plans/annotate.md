@@ -11,9 +11,13 @@ Inspector = Annotate Panel 157:188:
 - Source of truth: a Slek-owned model, keyed by the session's PageRef id so it follows reorder, rotate and delete.
   Undo goes through the same undo manager. `hasUnsavedChanges` includes annotations.
 - **Text box** → FreeText annotation in saved work. `/Contents` holds the Unicode text. Private keys hold the properties
-  (`FPDFAnnot_SetStringValue`: font, size, line spacing, B/I/U, align, colour). The appearance is CoreText-shaped
-  Noto Sans Khmer, imported as a form XObject (as the `overlay` helper does).
-  Never let a viewer generate the appearance from `/Contents`.
+  (`FPDFAnnot_SetStringValue`, key `/SlekTextBox` = JSON `TextBoxStyle`). The appearance (`FPDFAnnot_SetAP`, /N) is
+  CoreText-shaped Noto Sans Khmer drawn as filled glyph outlines. Never let a viewer generate the appearance from `/Contents`.
+  Code: `PDFiumAnnotations.swift` (`addTextBox`, `textBoxes`, `render`).
+  **Spike result (AnnotationKhmerSpikeTests):** "ឯកសារនេះត្រូវបានពិនិត្យរួចហើយ" (Bold 18) was saved and reopened.
+  Rect, style and exact Unicode scalars all came back through PDFium. PDFKit reads the same `/Contents`.
+  PDFium and PDFKit both draw ink matching CoreText's own drawing (≥ 98 % within 1 px at 3×), with coeng stacks correct.
+  `qpdf --check` reports no errors. PDFKit draws the stored appearance; it does not regenerate it.
 - **Highlight** → Highlight annotation. QuadPoints come from PDFium character boxes (rebuilt Khmer text), not PDFKit selection.
 - **Comment** → Text (note) annotation with `/Contents`. The quoted source text goes in a private key.
 - **Delivery copies (Export / flatten)** → spike E5/E7: outlines plus invisible Unicode text on an overlay page.

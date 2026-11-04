@@ -1,74 +1,128 @@
-# Slek PDF — macOS app
+<div align="center">
 
-Native Swift app (SwiftUI + AppKit, PDFKit for display, PDFium for Khmer text/search and delivered copies), minimum macOS 13.0, Apple Silicon and Intel.
-Product spec: `../../Assets/Khmer-PDF-App-Setup.md` and `Khmer-PDF-App-Release-Checklist.md`.
-Visual reference: Figma file `GrvVYMZQvBs11vwtYNfYvH` (KhmerPDF), Prototype page — see `docs/PROTOTYPE-MAP.md`.
+# Slek PDF
 
-## Requirements
+**A Khmer-first PDF app for macOS.**
+Read, organize, annotate and edit PDFs, recognize Khmer text, and export to Word, Excel, searchable PDF or plain text —
+all on your Mac.
 
-- Xcode 27.1 or later that still supports a macOS 13.0 deployment target.
-- Vendored PDFium binary in `Vendor/pdfium` (see `Vendor/pdfium/SOURCE.md`); it is linked and embedded by the project, nothing to install. Unit tests need macOS 14+ (XCTest); the app itself runs on 13+.
-- No package manager or code generators. The project uses Xcode synchronized folders, so new files in `SlekPDF/` or `SlekPDFTests/` are picked up automatically.
+![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black?logo=apple)
+![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
+![Apple Silicon and Intel](https://img.shields.io/badge/Apple%20Silicon%20%7C%20Intel-universal-555)
+![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)
 
-## Commands
+<img src="docs/images/read-khmer.png" alt="Slek PDF in Khmer: a document open in the Read workspace" width="860">
 
-| Task | Command |
+</div>
+
+## Why Slek PDF
+
+Most PDF apps get Khmer wrong: copied text comes out scrambled, search misses words, scans can't be read, and
+editing breaks the letters. Slek PDF is built around Khmer from the start — and nothing ever leaves your Mac.
+
+## Features
+
+| Workspace | What you can do |
 | --- | --- |
-| Build | `xcodebuild build -scheme SlekPDF -destination 'platform=macOS' -derivedDataPath build/DerivedData` |
-| Test | `xcodebuild test -scheme SlekPDF -destination 'platform=macOS' -derivedDataPath build/DerivedData` |
-| Universal release build | `xcodebuild build -scheme SlekPDF -configuration Release -destination 'generic/platform=macOS' -derivedDataPath build/DerivedData ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO` |
-| Render shell snapshots (KM/EN × Light/Dark, 1280×900) | `Tools/render_snapshots.sh` → `build/snapshots/` |
-| Regenerate tokens + copy keys | `python3 Tools/generate_tokens.py` |
-| Regenerate icons + app icon | `python3 Tools/import_icons.py` |
-| Rebuild Tesseract/Leptonica | `Tools/build_tesseract.sh <source dir>` (needs `brew install cmake`) |
-| Spikes | `Tools/fixtures/run_pdfkit_spike.sh`, `Tools/fixtures/run_ocr_spike.sh` — findings in `docs/spikes/` |
+| **Read** | Fast page view, search that understands Khmer, copy text that pastes correctly anywhere, rotate the view |
+| **Organize pages** | Reorder by dragging, rotate, delete, insert pages from another PDF, split and merge PDFs |
+| **Annotate** | Click a line of the PDF's own text to change it in place · add Khmer text boxes · highlight · comment |
+| **Khmer OCR** | Recognize scanned pages in Khmer and English, then check the uncertain lines marked on the page |
+| **Export** | Word (`.docx`), Excel (`.xlsx`) with detected tables, Word + Excel, searchable PDF, plain text (UTF-8) |
 
-Verify a release binary: `lipo -info …/SlekPDF.app/Contents/MacOS/SlekPDF` (x86_64 arm64) and `otool -l … | grep minos` (13.0) — check `Contents/Frameworks/libpdfium.dylib` too.
+And around them:
 
-## Figma → code pipeline
+- **Khmer and English interface** — switch at any time; light and dark appearance.
+- **Your original is never changed** — *Save work* keeps your edits editable in a separate file; every export is a new file.
+- **Print**, keyboard shortcuts you can change, and recovery of unsaved work after a crash.
 
-Nothing visual is hand-typed; it is exported from Figma and generated.
+## Khmer OCR
 
-| Figma | Export in repo | Generated Swift |
-| --- | --- | --- |
-| Variables: Color (Light/Dark), primitives, Spacing, Typography (Khmer/English); text + effect styles | `Design/figma-variables.json` | `DesignSystem/Generated/DSColors.swift`, `DSSpacing.swift`, `DSTypography.swift`, `DSElevation.swift` |
-| `Copy/*` string variables (Khmer + English) | `SlekPDF/Resources/Copy/copy.json` | `DesignSystem/Generated/CopyKey.swift` |
-| Iconography page (30:1316): 67 IconPark icons + Word/Excel/PDF marks, app icon 106:189 | `Design/icons/*.svg`, `Design/appicon/AppIcon-1024.png` | `Resources/Assets.xcassets`, `DesignSystem/Generated/DSIcon.swift` |
+<img src="docs/images/khmer-ocr.png" alt="Khmer OCR: recognized lines marked on the page, the Review panel on the right" width="860">
 
-Rules carried over from the design system:
+Recognition runs entirely on your Mac:
 
-- Use `DSColor.*` (semantic), never `DSPrimitive.*` or literal colours, in views.
-- Use `DSLabel(.key, style:)` / `.dsText(style)` for all text; the font, size and line height follow the interface language (Noto Sans Khmer for Khmer, Inter for English).
-- Use `DSIcon.*` for all icons (Figma IconPark set). IconPark icons are template images tinted with `foregroundColor`; Word/Excel/PDF marks keep their colours.
-- Text buttons are pills (`DSButton`); icon-only buttons are rounded squares (`DSIconButton`).
-- Spacing/radius/stroke come from `DSSpace`, `DSRadius`, `DSStroke`.
-- Interface language switches live (status bar, View ▸ Interface Language) and is independent of the system language.
-- No macOS 14+ API without `if #available` (no `@Observable`/Observation, `onChange(of:initial:)` two-parameter form, `ContentUnavailableView`). macOS 13 APIs (`NavigationSplitView`, `Grid`, `ViewThatFits`, `defaultSize`) are fine.
-- PDF text: use `PDFiumDocument` for Khmer text extraction, search and writing delivered copies; never redraw an original page to add content (it damages Khmer text — docs/spikes/01-pdfkit-khmer.md). PDFKit is for display and annotations.
+- **KhmerOCR** (detector + Khmer recognizer, ONNX) and **Tesseract** (Khmer + English) work together — each line is read
+  by the engine that does it best.
+- Text printed **over pictures** (a title on an emblem) and **curved text around round seals** are read too.
+- Copy and export use **standard Khmer Unicode order**, so text pastes cleanly into other apps.
+- Old PDFs in legacy fonts (Limon, ABC) or with broken text layers are detected and recognized instead of copied as gibberish.
 
-### Adding copy
+On our 15-document test set (Khmer, English and bilingual; digital, scanned and photographed; tables) the error rate is
+**7.9 % of characters** on average, and under 3 % on clean pages. Details and per-document results:
+[docs/spikes/04-khmerocr.md](docs/spikes/04-khmerocr.md).
 
-Only the strings used by the shell are in `copy.json` so far (25 of ~1,060 Figma `Copy/*` variables; part of the rest is website copy).
-Export more from the Figma Typography collection (Khmer + English values) in chunks of about 100 per `use_figma` call (48 KB return limit), merge into `copy.json` (`{"<Figma name without Copy/>": {"km": …, "en": …}}`), then run `python3 Tools/generate_tokens.py`. The generator rejects missing values and Khmer glyphs in English values.
+## Export
 
-## Layout
+<img src="docs/images/export.png" alt="Export: the output preview on the page and the format list" width="860">
 
-```text
-SlekPDF/App/              App entry, AppState (language, appearance, workspace), menu commands
-SlekPDF/DesignSystem/     Token support, typography, fonts, components; Generated/ is tool output
-SlekPDF/Features/Shell/   Main window: title bar, toolbar, workspace tabs, sidebar, canvas, inspector, status bar
-SlekPDF/Localization/     Copy catalog (km/en) and language environment
-SlekPDF/Resources/        Fonts (OFL), copy.json, Assets.xcassets
-SlekPDFTests/             Token, copy, font, icon tests; shell snapshot renderer
-Config/                   Info.plist additions, entitlements (sandbox, user-selected files, print)
-Design/                   Figma exports (source of generated code)
-SlekPDF/Resources/Licenses/  Third-party licences, copied into the app (shown from About ▸ Licenses); PDFium build deps: Vendor/pdfium/licenses/
-Vendor/                   Vendored native libraries: PDFium (prebuilt), Tesseract + Leptonica (Tools/build_tesseract.sh)
-Tools/                    Generators and snapshot script
-docs/                     Prototype map and prototype-vs-native gaps
+Choose a format, see the result on the page before you export, check the review issues (pages without text,
+unreviewed OCR lines), and export. Tables found on the pages become real tables in Word and sheets in Excel.
+
+## Privacy
+
+Slek PDF works offline. Documents, recognized text and edits stay on your Mac — nothing is uploaded, and there is no
+account and no tracking. The app is sandboxed and only opens the files you choose.
+
+## Getting started
+
+Requirements: macOS 13 or later to run; Xcode 27.1 or later to build. Everything else is in the repository.
+
+```bash
+git clone https://github.com/cat-with-code/slekPDF.git
+cd slekPDF
+open SlekPDF.xcodeproj   # then press ⌘R
 ```
 
-## Placeholders to replace before release
+Or from the command line:
 
-- Bundle identifier `com.example.SlekPDF` and ad-hoc signing (`CODE_SIGN_IDENTITY = "-"`); needs the real identifier and a Developer ID team.
-- Not yet run on a Mac with macOS 13: building with a 13.0 target only shows that the APIs it uses exist on macOS 13.
+```bash
+xcodebuild build -scheme SlekPDF -destination 'platform=macOS'   # build
+xcodebuild test  -scheme SlekPDF -destination 'platform=macOS'   # run the tests
+```
+
+> **Note:** KhmerOCR needs Apple Silicon (ONNX Runtime ships for arm64 only). On Intel Macs, Khmer OCR uses Tesseract alone.
+
+## For developers
+
+The design lives in Figma and is the source of truth: colours, type, spacing, icons and every interface string
+(Khmer and English) are exported from it and turned into Swift by the scripts in `Tools/`.
+
+- **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** — commands, Figma → code pipeline, design-system rules, project layout, branches
+- **[docs/plans/](docs/plans)** — how Annotate and Khmer OCR are built, step by step
+- **[docs/spikes/](docs/spikes)** — the measurements behind key decisions (PDFKit and Khmer, Tesseract, Office export, KhmerOCR)
+- **[docs/PROTOTYPE-MAP.md](docs/PROTOTYPE-MAP.md)** — which screen implements which Figma frame
+
+<details>
+<summary><b>Dark appearance</b></summary>
+<br>
+<img src="docs/images/read-dark.png" alt="Slek PDF in dark appearance" width="860">
+</details>
+
+## Status
+
+Slek PDF is in active development and not yet released. Known gaps:
+
+- Exported files don't yet include text you changed with **Edit PDF text** (printing and saved work do).
+- Copy and search still find a line's original text after you edit it.
+- New Khmer interface strings are drafts awaiting a native-speaker review.
+- Release setup: the bundle identifier is a placeholder and builds are signed ad hoc; not yet tested on a macOS 13 machine.
+
+## Acknowledgements
+
+Slek PDF stands on these open-source projects. Licence texts of the bundled libraries and fonts are in
+[`SlekPDF/Resources/Licenses`](SlekPDF/Resources/Licenses) and shown in the app under *About ▸ Licenses*.
+
+| Project | Used for | Licence |
+| --- | --- | --- |
+| [PDFium](https://pdfium.googlesource.com/pdfium/) (prebuilt by [pdfium-binaries](https://github.com/bblanchon/pdfium-binaries)) | Khmer text, search, writing PDFs | BSD-3-Clause; binaries MIT |
+| [Tesseract](https://github.com/tesseract-ocr/tesseract) + [Leptonica](http://www.leptonica.org/) | OCR (Khmer, English) | Apache 2.0 / BSD-2-Clause |
+| [KhmerOCR](https://github.com/seanghay/KhmerOCR) | Khmer text detection and recognition | MIT |
+| [ONNX Runtime](https://github.com/microsoft/onnxruntime) | Running the KhmerOCR models | MIT |
+| [khmernormalizer](https://github.com/seanghay/khmernormalizer) (SIL khnormal) | Standard Khmer Unicode order | MIT |
+| [Noto Sans Khmer](https://fonts.google.com/noto/specimen/Noto+Sans+Khmer), [Inter](https://rsms.me/inter/) | Interface and Khmer text | SIL OFL 1.1 |
+| [IconPark](https://github.com/bytedance/IconPark) | Interface icons | Apache 2.0 |
+
+## License
+
+Slek PDF is released under the [Apache License 2.0](LICENSE).

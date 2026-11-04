@@ -229,11 +229,7 @@ final class ComponentGallerySnapshotTests: XCTestCase {
             report += "page \(index + 1): \(session.ocrResults[ref.id]?.lines.count ?? -1) lines, uncertain \(session.ocrResults[ref.id]?.lines.filter(\.isUncertain).count ?? -1)\n"
         }
         report += "review items \(session.ocrReviewItems.count) toasts \(session.toasts.current?.message ?? "-")\n"
-        for line in session.ocrResults[session.pages[1].id]?.lines ?? [] { report += "p2 line \(line.bounds) \(line.text)\n" }
-        if let engine = KhmerOCREngine.load(), let pdf = try? PDFiumDocument(url: url),
-           let image = pdf.renderForOCR(page: 1, quarterTurns: 0, ppi: 300), let lines = try? engine.detectLines(image) {
-            for line in lines { report += "detected line: " + line.map { "\($0.isText ? "T" : "F") \($0.rect.integral)" }.joined(separator: " | ") + "\n" }
-        }
+        for line in session.ocrResults[session.pages[0].id]?.lines ?? [] { report += "p1 line \(line.text)\n" }
         try report.write(to: dir.appendingPathComponent("real-ocr.txt"), atomically: true, encoding: .utf8)
         for page in [0, 1] {
             session.goToPage(page)

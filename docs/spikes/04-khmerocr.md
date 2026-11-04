@@ -86,3 +86,15 @@ mean CER 8.69 → 8.59 % (14 bilingual scanned scores 16 → 14.7 %).
 Not done: converting Limon/ABC text to Unicode directly (exact, no OCR). The known converters are LGPL
 (KhmerConverter, packaged as `khmerconverter` in Debian) or show no licence (github.com/danhhong/limon_unicode_converter,
 github.com/chamnap/khmer_unicode_converter); a clean-room table would be needed.
+
+## Text over pictures (4 Nov 2026)
+
+The detector takes a whole emblem (a ministry cover) as one picture, with the title printed over it, so the title was
+never read. Each picture is now searched again on a copy of the page where only that picture is turned to ink on
+white (dark pixels black, the pale drawing white; the page keeps its scale — scaled up alone, a title is too big for
+the detector). Lines found there are read from the ink-only image and kept only when clearly read (KhmerOCR ≥ 0.85
+or Tesseract English ≥ 85), and do not count in the page's language routing. Also: picture boxes are no longer
+grouped with text lines (a tall one glued two lines together), and text boxes much taller than the page's usual line
+are cut at blank rows. The road-signs cover now reads ឧបសម្ព័ន្ធ / ស្តីពី / សញ្ញាចរាចរណ៍ផ្លូវគោក. TestDocuments: 09
+noisy photocopy 22.9 → 13.6 %, 08 dim photo 2.7 → 2.1 %, mean 8.6 → 7.9 %; no document worse. Curved text (around a
+seal) is still not read.

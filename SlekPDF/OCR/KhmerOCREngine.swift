@@ -13,6 +13,8 @@ nonisolated final class KhmerOCREngine {
         var rect: CGRect
         var isText: Bool
         var score: Float
+        /// Found by looking again inside a picture (text over an emblem or photo): kept only when read with confidence.
+        var insidePicture = false
     }
 
     struct Reading: Equatable {
@@ -87,8 +89,69 @@ nonisolated final class KhmerOCREngine {
 
     // MARK: Detection
 
-    /// Text and figure regions, grouped into lines (top to bottom, each left to right).
+    /// Text and figure regions, grouped into lines (top to bottom, each left to right). Pictures are searched again on
+    /// their own: the detector takes a whole emblem as one picture, with the title printed over it.
     func detectLines(_ image: CGImage) throws -> [[Box]] {
+        let boxes = try detectBoxes(image)
+        let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+        var text = boxes.filter(\.isText)
+        for picture in boxes where !picture.isText {
+            let rect = picture.rect.intersection(bounds).integral
+            // The page again with only the picture turned to ink on white, so its text keeps the page's scale (scaled
+            // up alone, a title is too big for the detector).
+            guard rect.width >= 64, rect.height >= 64, let ink = image.cropping(to: rect).flatMap(Self.inkOnly),
+                  let page = Self.replacing(rect, of: image, with: ink) else { continue }
+            let inner = try detectBoxes(page).filter { box in
+                box.isText && rect.contains(CGPoint(x: box.rect.midX, y: box.rect.midY))
+            }.map { box -> Box in
+                var found = box
+                found.insidePicture = true
+                return found
+            }
+            // Not what the page pass already found.
+            text += inner.filter { box in
+                !text.contains { other in
+                    let overlap = other.rect.intersection(box.rect)
+                    return !overlap.isNull && overlap.width * overlap.height > 0.5 * min(box.rect.width * box.rect.height, other.rect.width * other.rect.height)
+                }
+            }
+        }
+        // Text boxes are grouped into lines; picture boxes (never read) stay apart: a tall one sorted among the
+        // lines joined two lines of a title page into one (“គ ឃ. …”).
+        let split = Self.splitTallBoxes(text + boxes.filter { !$0.isText }, in: image)
+        return Self.lines(split.filter(\.isText)) + split.filter { !$0.isText }.map { [$0] }
+    }
+
+    /// `image` with `rect` (top-left pixels) painted over by `patch`.
+    static func replacing(_ rect: CGRect, of image: CGImage, with patch: CGImage) -> CGImage? {
+        guard let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return nil }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        // CoreGraphics has its origin at the bottom left.
+        context.draw(patch, in: CGRect(x: rect.minX, y: CGFloat(image.height) - rect.maxY, width: rect.width, height: rect.height))
+        return context.makeImage()
+    }
+
+    /// Dark pixels black, everything lighter white: printed text over a pale emblem or photo stands out alone.
+    static func inkOnly(_ image: CGImage) -> CGImage? {
+        let width = image.width, height = image.height
+        var pixels = [UInt8](repeating: 255, count: width * height)
+        let ok = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+                                          space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard ok else { return nil }
+        for i in pixels.indices { pixels[i] = pixels[i] < 110 ? 0 : 255 }
+        guard let provider = CGDataProvider(data: Data(pixels) as CFData) else { return nil }
+        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: width,
+                       space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+    }
+
+    /// One detector pass over `image`: boxes in its pixels.
+    private func detectBoxes(_ image: CGImage) throws -> [Box] {
         let side = 1024
         let ratio = min(CGFloat(side) / CGFloat(image.width), CGFloat(side) / CGFloat(image.height))
         let width = Int(CGFloat(image.width) * ratio), height = Int(CGFloat(image.height) * ratio)
@@ -122,15 +185,11 @@ nonisolated final class KhmerOCREngine {
             boxes.append(Box(rect: CGRect(x: CGFloat(cx - w / 2), y: CGFloat(cy - h / 2), width: CGFloat(w), height: CGFloat(h)),
                              isText: best == 1, score: score))
         }
-        let kept = Self.dropContained(Self.nms(boxes, threshold: 0.45)).map { box -> Box in
+        return Self.dropContained(Self.nms(boxes, threshold: 0.45)).map { box -> Box in
             var scaled = box
             scaled.rect = CGRect(x: box.rect.minX / ratio, y: box.rect.minY / ratio, width: box.rect.width / ratio, height: box.rect.height / ratio)
             return scaled
         }
-        // Text boxes are grouped into lines; picture boxes (never read) stay apart: a tall one sorted among the
-        // lines joined two lines of a title page into one (“គ ឃ. …”).
-        let split = Self.splitTallBoxes(kept, in: image)
-        return Self.lines(split.filter(\.isText)) + split.filter { !$0.isText }.map { [$0] }
     }
 
     /// The detector sometimes returns one box over two lines with a gap between them (a list on a title page): read

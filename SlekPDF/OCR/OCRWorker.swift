@@ -77,6 +77,8 @@ nonisolated final class OCRWorker: @unchecked Sendable {
             let crop: CGImage
             let khmer: KhmerOCREngine.Reading
             let english: OCRResult?
+            /// Found inside a picture (title over an emblem): kept only when clearly read.
+            var insidePicture = false
         }
         var lines: [[Read]] = []
         for line in detected {
@@ -85,14 +87,21 @@ nonisolated final class OCRWorker: @unchecked Sendable {
                 guard !isCancelled() else { throw OCRError.cancelledOrTimedOut }
                 // KhmerOCR reads the exact box (as trained); Tesseract gets a little margin.
                 let exact = box.rect.intersection(bounds).integral, rect = box.rect.insetBy(dx: -4, dy: -4).intersection(bounds).integral
-                guard exact.width >= 2, exact.height >= 2, let tight = image.cropping(to: exact), let crop = image.cropping(to: rect),
-                      let reading = try? khmer.recognize(tight) else { continue }
+                guard exact.width >= 2, exact.height >= 2, var tight = image.cropping(to: exact), var crop = image.cropping(to: rect) else { continue }
+                if box.insidePicture {
+                    // Text over a picture is read as ink on white, without the drawing behind it.
+                    tight = KhmerOCREngine.inkOnly(tight) ?? tight
+                    crop = KhmerOCREngine.inkOnly(crop) ?? crop
+                }
+                guard let reading = try? khmer.recognize(tight) else { continue }
                 reads.append(Read(rect: rect, crop: crop, khmer: reading,
-                                  english: try? english?.recognize(crop, ppi: ppi, deadline: 5, singleLine: true, isCancelled: isCancelled)))
+                                  english: try? english?.recognize(crop, ppi: ppi, deadline: 5, singleLine: true, isCancelled: isCancelled),
+                                  insidePicture: box.insidePicture))
             }
             if !reads.isEmpty { lines.append(reads) }
         }
-        let all = lines.flatMap { $0 }
+        // Text found inside pictures does not decide the page's language.
+        let all = lines.flatMap { $0 }.filter { !$0.insidePicture }
         let englishShare = Double(all.filter { Self.isEnglish($0.english, confidence: 60) }.count) / Double(max(1, all.count))
         routeLog.append("\(all.isEmpty || englishShare >= 0.8 ? "tesseract" : "khmerocr") \(String(format: "%.2f", englishShare)) of \(all.count)")
         if all.isEmpty || englishShare >= 0.8 {
@@ -104,6 +113,15 @@ nonisolated final class OCRWorker: @unchecked Sendable {
             var parts: [(text: String, confidence: Double)] = []
             for read in line {
                 guard !isCancelled() else { throw OCRError.cancelledOrTimedOut }
+                if read.insidePicture {
+                    // Drawings read as letters: only a clear reading counts, and no second guess.
+                    if let english = read.english, Self.isEnglish(english, confidence: 85) {
+                        parts.append((Self.clean(english.text), Double(english.meanConfidence)))
+                    } else if read.khmer.confidence >= 0.85, !read.khmer.text.isEmpty {
+                        parts.append((read.khmer.text, read.khmer.confidence * 100))
+                    }
+                    continue
+                }
                 if let english = read.english, Self.isEnglish(english, confidence: 75) {
                     parts.append((Self.clean(english.text), Double(english.meanConfidence)))
                 } else if read.khmer.confidence < 0.9,

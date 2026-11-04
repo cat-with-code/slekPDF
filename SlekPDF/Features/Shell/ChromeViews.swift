@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Figma "Title Bar" (102:39). The system traffic lights sit over the leading inset; in full screen there are none
-/// and the content starts at the edge padding (Window=Full screen). Home goes back to the start screen.
+/// and the content starts at the edge padding (Window=Full screen). The app icon and name are Home: back to the start
+/// screen.
 struct TitleBarView: View {
     let fileName: String?
     @EnvironmentObject private var session: DocumentSession
@@ -10,13 +11,20 @@ struct TitleBarView: View {
     var body: some View {
         HStack(spacing: DSSpace.s16) {
             if !session.isFullScreen { Color.clear.frame(width: 64) }
-            DSIconButton(.home) { session.goHome() }
-                .dsTooltip(.home)
-                .accessibilityLabel(CopyCatalog.shared.string(.home, language))
-                .disabled(session.document == nil || session.isModalPresented)
-            Text("Slek PDF")
-                .font(.custom("Inter-SemiBold", fixedSize: 13))
-                .foregroundColor(DSColor.textPrimary)
+            // Home (Figma Title Bar): the app icon with the app name, 6 pt apart.
+            Button { session.goHome() } label: {
+                HStack(spacing: DSSpace.s6) {
+                    Image(nsImage: NSApp.applicationIconImage).resizable().interpolation(.high).frame(width: 18, height: 18)
+                    Text("Slek PDF")
+                        .font(.custom("Inter-SemiBold", fixedSize: 13))
+                        .foregroundColor(DSColor.textPrimary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .dsTooltip(.home)
+            .accessibilityLabel(CopyCatalog.shared.string(.home, language))
+            .disabled(session.document == nil || session.isModalPresented)
             HStack(spacing: DSSpace.s6) {
                 if let fileName {
                     DSIcon.fileTypePdf.image()

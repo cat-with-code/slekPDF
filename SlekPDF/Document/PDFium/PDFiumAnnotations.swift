@@ -285,7 +285,11 @@ nonisolated struct TextEditInfo: Codable, Equatable, Sendable {
     func layoutBounds(pageBox: CGRect) -> CGRect {
         let longest = text.components(separatedBy: "\n").map { KhmerGlyphOutlines.lineWidth(text: $0, style: style) }.max() ?? 0
         let width = min(max(cover.width, longest + 2), max(cover.width, pageBox.maxX - cover.minX))
-        let height = KhmerGlyphOutlines.fittedHeight(text: text, width: width, style: style, insets: Self.insets, minimum: cover.height)
+        // One line is exactly the original line; each further line (typed line breaks or wrapping) adds a line height.
+        let lineHeight = style.fontSize * style.lineSpacing
+        let laidOut = KhmerGlyphOutlines.fittedHeight(text: text, width: width, style: style, insets: Self.insets, minimum: 0)
+        let lines = max(1, Int((laidOut / lineHeight).rounded()))
+        let height = cover.height + CGFloat(lines - 1) * lineHeight
         return CGRect(x: cover.minX, y: cover.maxY - height, width: width, height: height).union(cover)
     }
 }

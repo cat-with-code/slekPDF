@@ -771,8 +771,10 @@ final class DocumentSession: ObservableObject {
                 }
             }
         }
-        // The page draws Slek's annotations itself (SlekPDFPage): redraw the pages whose annotations changed.
+        // The page draws Slek's annotations itself (SlekPDFPage), and PDFKit keeps pages as cached images:
+        // annotationsChanged alone left the old image (an edit kept showing the original text).
         for page in touched { pdfView?.annotationsChanged(on: page) }
+        if !touched.isEmpty { (pdfView as? KhmerPDFView)?.redraw(touched) }
     }
 
     /// PDFKit's copy of an annotation Slek wrote into saved work. PDFKit does not expose the private keys, so the

@@ -277,6 +277,50 @@ final class EditPDFTextTests: XCTestCase {
         await session.close()
     }
 
+    /// A visible window after an edit, for capturing with `screencapture -l` (tmp/live-window.txt holds the window
+    /// number). Runs only with LIVE_CAPTURE and tmp/RealDocuments/cv.pdf.
+    func testLiveWindowAfterAnEdit() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("RealDocuments/cv.pdf")
+        guard ProcessInfo.processInfo.environment["LIVE_CAPTURE"] != nil, FileManager.default.fileExists(atPath: url.path) else {
+            throw XCTSkip("Set LIVE_CAPTURE and copy a PDF to tmp/RealDocuments/cv.pdf")
+        }
+        let session = try await open(url)
+        let found = await session.editableLines(onPageAt: 0)
+        let line = try XCTUnwrap(found?.first)
+        let window = NSWindow(contentRect: CGRect(x: 100, y: 100, width: 900, height: 500), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let view = KhmerPDFView(frame: CGRect(x: 0, y: 0, width: 900, height: 500))
+        window.contentView = view
+        view.document = session.document
+        view.session = session
+        session.pdfView = view
+        view.autoScales = false
+        view.scaleFactor = 2
+        let page = try XCTUnwrap(session.document?.page(at: 0))
+        view.go(to: line.box.insetBy(dx: -10, dy: -60), on: page)
+        window.makeKeyAndOrderFront(nil)
+        let marker = FileManager.default.temporaryDirectory.appendingPathComponent("live-window.txt")
+        try await Task.sleep(for: .seconds(4))
+        let clip = try XCTUnwrap(view.documentView?.enclosingScrollView?.contentView)
+        func pageFrame() -> String { "\(view.documentView!.frame) page \(view.documentView!.subviews.first?.frame ?? .zero) convert \(view.convert(CGPoint(x: 0, y: 800), from: page))" }
+        var origins = "start \(clip.bounds.origin) \(pageFrame())\n"
+        try "before \(window.windowNumber)".write(to: marker, atomically: true, encoding: .utf8)
+        try await Task.sleep(for: .seconds(4))
+        origins += "pre-edit \(clip.bounds.origin) \(pageFrame())\n"
+        await session.beginEditingLine(onPageAt: 0, at: CGPoint(x: line.box.maxX - 2, y: line.box.midY))
+        view.syncTextEditor()
+        session.typeInTextBox("EDITED NAME")
+        session.commitTextEditing()
+        view.syncTextEditor()
+        try await Task.sleep(for: .seconds(4))
+        origins += "after \(clip.bounds.origin) \(pageFrame())\n"
+        try origins.write(to: FileManager.default.temporaryDirectory.appendingPathComponent("origins.txt"), atomically: true, encoding: .utf8)
+        try "after \(window.windowNumber)".write(to: marker, atomically: true, encoding: .utf8)
+        try await Task.sleep(for: .seconds(6))
+        window.orderOut(nil)
+        await session.close()
+    }
+
     /// The on-page editor over a real PDF's title while typing (tmp/edit-editor.png and .txt). Snapshot runs only.
     func testRenderTheEditorOnARealPDF() async throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("RealDocuments/cv.pdf")

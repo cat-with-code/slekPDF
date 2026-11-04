@@ -320,6 +320,17 @@ final class KhmerPDFView: PDFView {
         editor.frame = frame.integral
     }
 
+    /// Makes PDFKit render `pages` again (its cached page images do not include a changed annotation drawn by
+    /// `SlekPDFPage`). Toggling whether the page shows annotations is a change PDFKit re-renders the page for, with no
+    /// change of geometry (no tile seams, no scroll jump).
+    func redraw(_ pages: [PDFPage]) {
+        for page in pages {
+            let shown = page.displaysAnnotations
+            page.displaysAnnotations = !shown
+            page.displaysAnnotations = shown
+        }
+    }
+
     override func mouseUp(with event: NSEvent) {
         super.mouseUp(with: event)
         if annotating?.annotateTool == .highlight { finishHighlight() }

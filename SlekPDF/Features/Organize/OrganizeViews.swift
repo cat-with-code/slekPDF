@@ -8,6 +8,8 @@ struct OrganizeCanvas: View {
     @EnvironmentObject private var session: DocumentSession
     @Environment(\.appLanguage) private var language
     @State private var draggedID: DocumentSession.PageRef.ID?
+    /// The tile the dragged pages are over (its Drop Indicator shows).
+    @State private var dropTarget: Int?
 
     private let columns = [GridItem(.adaptive(minimum: 152, maximum: 152), spacing: DSSpace.s24, alignment: .topLeading)]
 
@@ -22,13 +24,14 @@ struct OrganizeCanvas: View {
                     }
                     LazyVGrid(columns: columns, alignment: .leading, spacing: DSSpace.s24) {
                         ForEach(Array(session.pages.enumerated()), id: \.element.id) { index, page in
-                            PageTile(index: index, page: page, isDragging: draggedID != nil)
+                            PageTile(index: index, page: page, showsDropIndicator: draggedID != nil && dropTarget == index)
                                 .onDrag {
                                     draggedID = page.id
                                     if !session.selectedPageIDs.contains(page.id) { session.selectedPageIDs = [page.id] }
                                     return NSItemProvider(object: page.id.uuidString as NSString)
                                 }
-                                .onDrop(of: [.text], delegate: PageDropDelegate(target: index, session: session, draggedID: $draggedID))
+                                .onDrop(of: [.text], delegate: PageDropDelegate(target: index, session: session, draggedID: $draggedID,
+                                                                               dropTarget: $dropTarget))
                         }
                     }
                     HStack(spacing: DSSpace.s8) {
@@ -63,10 +66,9 @@ private extension AppLanguage {
 private struct PageTile: View {
     let index: Int
     let page: DocumentSession.PageRef
-    var isDragging = false
+    var showsDropIndicator = false
     @EnvironmentObject private var session: DocumentSession
     @Environment(\.appLanguage) private var language
-    @State private var isTargeted = false
 
     private var isSelected: Bool { session.selectedPageIDs.contains(page.id) }
 
@@ -91,11 +93,10 @@ private struct PageTile: View {
         .padding(DSSpace.s4)
         .overlay(alignment: .leading) {
             // Drop Indicator: where the dragged pages will land.
-            if isDragging, isTargeted {
+            if showsDropIndicator {
                 Capsule().fill(DSColor.accentDefault).frame(width: 3).padding(.vertical, DSSpace.s4).offset(x: -DSSpace.s12)
             }
         }
-        .onDrop(of: [.text], isTargeted: $isTargeted) { _ in false }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
@@ -142,9 +143,17 @@ private struct PageDropDelegate: DropDelegate {
     let target: Int
     let session: DocumentSession
     @Binding var draggedID: DocumentSession.PageRef.ID?
+    @Binding var dropTarget: Int?
+
+    // The only drop handler on a tile (a second one, for the indicator, took the drop and refused it).
+    func dropEntered(info: DropInfo) { dropTarget = target }
+    func dropExited(info: DropInfo) { if dropTarget == target { dropTarget = nil } }
 
     func performDrop(info: DropInfo) -> Bool {
-        defer { draggedID = nil }
+        defer {
+            draggedID = nil
+            dropTarget = nil
+        }
         guard draggedID != nil else { return false }
         let firstMoving = session.selectedPageIndices.first ?? target
         // Dropping on a later page puts the pages after it; on an earlier page, before it.

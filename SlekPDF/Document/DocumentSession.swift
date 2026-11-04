@@ -37,7 +37,8 @@ final class DocumentSession: ObservableObject {
 
     private(set) var pdfiumID: PDFiumService.DocumentID?
     private var accessedURL: URL?
-    private var thumbnailCache: [Int: NSImage] = [:]
+    /// By page index and size: the sidebar's small thumbnails must not be stretched into Organize's large tiles.
+    private var thumbnailCache: [String: NSImage] = [:]
     weak var pdfView: PDFView?
 
     var pageCount: Int { document?.pageCount ?? 0 }
@@ -792,10 +793,11 @@ final class DocumentSession: ObservableObject {
     }
 
     func thumbnail(for index: Int, size: CGSize) -> NSImage? {
-        if let cached = thumbnailCache[index] { return cached }
+        let key = "\(index)-\(Int(size.width))x\(Int(size.height))"
+        if let cached = thumbnailCache[key] { return cached }
         guard let page = document?.page(at: index) else { return nil }
         let image = page.thumbnail(of: CGSize(width: size.width * 2, height: size.height * 2), for: .cropBox)
-        thumbnailCache[index] = image
+        thumbnailCache[key] = image
         return image
     }
 }

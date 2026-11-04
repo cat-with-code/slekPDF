@@ -152,4 +152,14 @@ final class DocumentActionsTests: XCTestCase {
         XCTAssertNil(session.document)
         XCTAssertFalse(session.discardChanges)
     }
+
+    /// Organize's large tiles were the sidebar's small thumbnails stretched (blurry): each size is its own image.
+    func testThumbnailsAreRenderedForTheSizeAsked() async throws {
+        let session = try await open()
+        let small = try XCTUnwrap(session.thumbnail(for: 0, size: CGSize(width: 60, height: 80)))
+        let large = try XCTUnwrap(session.thumbnail(for: 0, size: CGSize(width: 144, height: 196)))
+        XCTAssertLessThanOrEqual(small.size.width, 120)
+        XCTAssertGreaterThanOrEqual(max(large.size.width, large.size.height), 380, "2 px per point for the 144 × 196 tile")
+        await session.close()
+    }
 }

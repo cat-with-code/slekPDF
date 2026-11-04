@@ -43,11 +43,15 @@ nonisolated final class SlekPDFAnnotation: PDFAnnotation {
         // Room around the content for the selection outline and handles.
         super.init(bounds: model.bounds.insetBy(dx: -Self.handleSize, dy: -Self.handleSize), forType: type, withProperties: nil)
         isReadOnly = true
+        // Slek draws these itself (SlekAnnotationOverlay / SlekPDFPage); PDFKit's own highlight appearance showed as
+        // a second, larger yellow box.
+        color = .clear
     }
 
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
 
     var isComment: Bool { if case .comment = model.content { true } else { false } }
+    var isHighlight: Bool { if case .highlight = model.content { true } else { false } }
     var isTextEdit: Bool { if case .textEdit = model.content { true } else { false } }
 
     /// Whether a click at `point` (page space) lands on this annotation (a selected text box includes its handles).
@@ -207,12 +211,14 @@ nonisolated final class SlekPDFAnnotation: PDFAnnotation {
     }
 }
 
-/// A page that draws Slek's annotations as part of itself, at the resolution PDFKit renders the page (see
-/// `SlekPDFAnnotation.drawsItself`). Annotations hidden with `shouldDisplay` (print options) are skipped.
+/// A page that draws Slek's annotations as part of itself for thumbnails, printing and tests (drawn on the main
+/// thread). On screen the PDF view renders pages on background threads and caches them, which showed an edit only
+/// seconds later: there `SlekAnnotationOverlay` draws them instead, at once. Annotations hidden with `shouldDisplay`
+/// (print options) are skipped.
 nonisolated final class SlekPDFPage: PDFPage {
     override func draw(with box: PDFDisplayBox, to context: CGContext) {
         super.draw(with: box, to: context)
-        guard !SlekPDFAnnotation.drawsItself else { return }
+        guard !SlekPDFAnnotation.drawsItself, Thread.isMainThread else { return }
         let slek = annotations.compactMap { $0 as? SlekPDFAnnotation }.filter(\.shouldDisplay)
         guard !slek.isEmpty else { return }
         context.saveGState()
@@ -226,4 +232,47 @@ nonisolated final class SlekPDFPage: PDFPage {
 nonisolated final class SlekPageFactory: NSObject, PDFDocumentDelegate, @unchecked Sendable {
     static let shared = SlekPageFactory()
     func classForPage() -> AnyClass { SlekPDFPage.self }
+}
+
+/// Draws Slek's annotations over the PDF view's pages (Figma Added Text Box, PDF Text Line, Highlight, Comment Pin):
+/// vector drawing at the screen's resolution, redrawn the moment the model, the scroll position or the zoom changes —
+/// PDFKit's own page images update seconds later. Highlights are a separate overlay that multiplies with the page
+/// (text under them stays crisp); everything else covers it (an edited line hides the original).
+final class SlekAnnotationOverlay: NSView {
+    enum Kind { case highlights, content }
+    weak var pdfView: PDFView?
+    let kind: Kind
+
+    init(kind: Kind, frame: NSRect) {
+        self.kind = kind
+        super.init(frame: frame)
+        wantsLayer = true
+        if kind == .highlights { layer?.compositingFilter = CIFilter(name: "CIMultiplyBlendMode") }
+        autoresizingMask = [.width, .height]
+    }
+
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
+
+    override var isFlipped: Bool { pdfView?.isFlipped ?? false }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let pdfView, let context = NSGraphicsContext.current?.cgContext else { return }
+        for page in pdfView.visiblePages {
+            let slek = page.annotations.compactMap { $0 as? SlekPDFAnnotation }
+                .filter { $0.shouldDisplay && $0.isHighlight == (kind == .highlights) }
+            guard !slek.isEmpty else { continue }
+            // Page space → this view (the PDF view's coordinates): scale, rotation and scroll in one transform.
+            let origin = pdfView.convert(CGPoint.zero, from: page)
+            let x = pdfView.convert(CGPoint(x: 100, y: 0), from: page), y = pdfView.convert(CGPoint(x: 0, y: 100), from: page)
+            let transform = CGAffineTransform(a: (x.x - origin.x) / 100, b: (x.y - origin.y) / 100, c: (y.x - origin.x) / 100,
+                                              d: (y.y - origin.y) / 100, tx: origin.x, ty: origin.y)
+            context.saveGState()
+            context.addRect(pdfView.convert(page.bounds(for: pdfView.displayBox), from: page))
+            context.clip()
+            context.concatenate(transform)
+            for annotation in slek { annotation.render(in: context) }
+            context.restoreGState()
+        }
+    }
 }

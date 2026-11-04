@@ -22,6 +22,7 @@ struct PDFCanvasView: NSViewRepresentable {
         view.backgroundColor = DSNSColor.backgroundCanvas
         view.postsFrameChangedNotifications = true
         session.pdfView = view
+        // Over the pages: Slek's annotations (KhmerPDFView's own overlays), then search matches.
         let highlights = SearchHighlightView(frame: view.bounds)
         highlights.autoresizingMask = [.width, .height]
         highlights.pdfView = view
@@ -89,6 +90,7 @@ struct PDFCanvasView: NSViewRepresentable {
                 tokens.append(center.addObserver(forName: NSView.boundsDidChangeNotification, object: clip, queue: .main) { [weak self, weak view] _ in
                     MainActor.assumeIsolated {
                         self?.highlights?.needsDisplay = true
+                        (view as? KhmerPDFView)?.redrawAnnotations()
                         (view as? KhmerPDFView)?.syncTextEditor()
                     }
                 })
@@ -98,6 +100,7 @@ struct PDFCanvasView: NSViewRepresentable {
                     guard let view else { return }
                     self?.session.pdfViewDidChangeScale(view.scaleFactor)
                     self?.highlights?.needsDisplay = true
+                    (view as? KhmerPDFView)?.redrawAnnotations()
                     (view as? KhmerPDFView)?.syncTextEditor()
                 }
             })
@@ -175,6 +178,18 @@ final class KhmerPDFView: PDFView {
     }
 
     private var annotating: DocumentSession? { session?.workspace == .annotate ? session : nil }
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        // Slek's annotations are drawn over the pages (highlights multiply, the rest covers).
+        for kind in [SlekAnnotationOverlay.Kind.highlights, .content] {
+            let overlay = SlekAnnotationOverlay(kind: kind, frame: bounds)
+            overlay.pdfView = self
+            addSubview(overlay)
+        }
+    }
+
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
 
     /// The page under `event` and the point on it (page space).
     private func pagePoint(_ event: NSEvent) -> (index: Int, page: PDFPage, point: CGPoint)? {
@@ -320,15 +335,9 @@ final class KhmerPDFView: PDFView {
         editor.frame = frame.integral
     }
 
-    /// Makes PDFKit render `pages` again (its cached page images do not include a changed annotation drawn by
-    /// `SlekPDFPage`). Toggling whether the page shows annotations is a change PDFKit re-renders the page for, with no
-    /// change of geometry (no tile seams, no scroll jump).
-    func redraw(_ pages: [PDFPage]) {
-        for page in pages {
-            let shown = page.displaysAnnotations
-            page.displaysAnnotations = !shown
-            page.displaysAnnotations = shown
-        }
+    /// Redraws Slek's annotations over the pages (immediately; see `SlekAnnotationOverlay`).
+    func redrawAnnotations() {
+        for overlay in subviews.compactMap({ $0 as? SlekAnnotationOverlay }) { overlay.needsDisplay = true }
     }
 
     override func mouseUp(with event: NSEvent) {

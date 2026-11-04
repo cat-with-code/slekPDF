@@ -87,3 +87,10 @@ the edit editable; nothing is written unless the person saves.
      rewrites the page stream). Only then show “Exported copies replace the original text” and update the known-limits
      copy.
    - Copy and search inside Slek return the edited text; rotated pages.
+
+On-screen drawing (4 Nov 2026): PDFKit cached Slek's annotation drawing at low resolution (blurry next to the page
+text, lagging while zooming), and when drawn into the page an edit showed only seconds later (PDFKit re-renders page
+tiles lazily — measured in a live window). Now `SlekAnnotationOverlay` (two views over the PDF view: highlights with a
+multiply filter, everything else covering) draws them as vectors at screen resolution, redrawn at once on model,
+scroll and zoom changes. `SlekPDFPage` draws them into the page only on the main thread (thumbnails, printing,
+tests). PDFKit's own appearance of Slek's annotation objects is made clear.

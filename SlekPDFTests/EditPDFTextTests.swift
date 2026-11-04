@@ -310,8 +310,17 @@ final class EditPDFTextTests: XCTestCase {
         await session.beginEditingLine(onPageAt: 0, at: CGPoint(x: line.box.maxX - 2, y: line.box.midY))
         view.syncTextEditor()
         session.typeInTextBox("EDITED NAME")
+        if ProcessInfo.processInfo.environment["LIVE_TIMING"] != nil {
+            // Let the editor show, then commit and signal capture times (the capture script polls this file).
+            try await Task.sleep(for: .seconds(3))
+            try "commit \(window.windowNumber) \(Date().timeIntervalSince1970)".write(to: marker, atomically: true, encoding: .utf8)
+        }
         session.commitTextEditing()
         view.syncTextEditor()
+        if ProcessInfo.processInfo.environment["LIVE_TIMING"] != nil, let second = found?.dropFirst().first {
+            session.addAnnotation(PageAnnotation(bounds: second.box, content: .highlight(HighlightInfo(lines: [second.box], text: second.text))),
+                                  toPageAt: 0)
+        }
         try await Task.sleep(for: .seconds(4))
         origins += "after \(clip.bounds.origin) \(pageFrame())\n"
         try origins.write(to: FileManager.default.temporaryDirectory.appendingPathComponent("origins.txt"), atomically: true, encoding: .utf8)

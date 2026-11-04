@@ -509,4 +509,6 @@ enum CopyKey: String, CaseIterable {
     case change = "Change…"
     case notSelected = "Not selected"
     case suggested = "Suggested"
+    case noLinesToCheckOnThisPage = "No lines to check on this page"
+    case fmtNextLineToCheckPageN = "fmt: Next line to check · page N"
 }

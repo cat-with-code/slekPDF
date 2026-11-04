@@ -2233,5 +2233,15 @@
     "km": "ណែនាំ",
     "en": "Suggested",
     "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "No lines to check on this page": {
+    "km": "គ្មានបន្ទាត់ត្រូវពិនិត្យនៅលើទំព័រនេះទេ។",
+    "en": "No lines to check on this page.",
+    "note": "Figma Copy variable (Khmer OCR Panel, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "fmt: Next line to check · page N": {
+    "km": "បន្ទាត់បន្ទាប់ត្រូវពិនិត្យ · ទំព័រ {0}",
+    "en": "Next line to check · page {0}",
+    "note": "Figma Copy variable (Khmer OCR Panel, 4 Nov 2026); draft Khmer — needs review"
   }
 }

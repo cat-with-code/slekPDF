@@ -127,7 +127,63 @@ nonisolated final class KhmerOCREngine {
             scaled.rect = CGRect(x: box.rect.minX / ratio, y: box.rect.minY / ratio, width: box.rect.width / ratio, height: box.rect.height / ratio)
             return scaled
         }
-        return Self.lines(kept)
+        // Text boxes are grouped into lines; picture boxes (never read) stay apart: a tall one sorted among the
+        // lines joined two lines of a title page into one (“គ ឃ. …”).
+        let split = Self.splitTallBoxes(kept, in: image)
+        return Self.lines(split.filter(\.isText)) + split.filter { !$0.isText }.map { [$0] }
+    }
+
+    /// The detector sometimes returns one box over two lines with a gap between them (a list on a title page): read
+    /// as one line, their words got mixed. A text box much taller than the page's usual line is cut at its blank rows.
+    static func splitTallBoxes(_ boxes: [Box], in image: CGImage) -> [Box] {
+        let heights = boxes.filter(\.isText).map(\.rect.height).sorted()
+        guard heights.count >= 3 else { return boxes }
+        let typical = heights[heights.count / 2]
+        return boxes.flatMap { box -> [Box] in
+            guard box.isText, box.rect.height > typical * 1.7 else { return [box] }
+            let rect = box.rect.intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height)).integral
+            guard let crop = image.cropping(to: rect), let rows = inkPerRow(crop) else { return [box] }
+            // Blank bands (almost no ink) at least a quarter of a line tall separate lines.
+            let blank = rows.map { $0 <= max(1, crop.width / 200) }
+            let minGap = max(3, Int(typical * 0.25))
+            var parts: [ClosedRange<Int>] = []
+            var start: Int?
+            var gap = 0
+            for (y, isBlank) in blank.enumerated() {
+                if isBlank {
+                    gap += 1
+                    if let s = start, gap >= minGap { parts.append(s...(y - gap)); start = nil }
+                } else {
+                    if start == nil { start = y }
+                    gap = 0
+                }
+            }
+            if let s = start { parts.append(s...(rows.count - 1 - gap)) }
+            let lines = parts.filter { CGFloat($0.count) >= typical * 0.3 }
+            guard lines.count >= 2 else { return [box] }
+            return lines.map { part in
+                // A little margin above and below, as the detector draws its boxes.
+                let pad = typical * 0.12
+                let top = max(rect.minY, rect.minY + CGFloat(part.lowerBound) - pad)
+                let bottom = min(rect.maxY, rect.minY + CGFloat(part.upperBound + 1) + pad)
+                return Box(rect: CGRect(x: rect.minX, y: top, width: rect.width, height: bottom - top), isText: true, score: box.score)
+            }
+        }
+    }
+
+    /// Dark pixels in each row of `image` (top to bottom).
+    private static func inkPerRow(_ image: CGImage) -> [Int]? {
+        let width = image.width, height = image.height
+        var pixels = [UInt8](repeating: 255, count: width * height)
+        let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+                                          space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn else { return nil }
+        // Memory rows run top-down, as the image's.
+        return (0..<height).map { y in pixels[(y * width)..<((y + 1) * width)].reduce(0) { $0 + ($1 < 160 ? 1 : 0) } }
     }
 
     /// Greedy non-maximum suppression over all classes (as the reference).

@@ -31,6 +31,26 @@ extension DocumentSession {
         return items.first { ocrLine($0)?.reviewed == false } ?? items.last
     }
 
+    /// The item the Review tab and the canvas show: the current item when it is on the page shown, else the first
+    /// line to check on that page (nil when the page has none). Keeps the panel and the page together.
+    var pageOCRItem: OCRItemRef? {
+        guard pages.indices.contains(currentPageIndex) else { return nil }
+        let pageID = pages[currentPageIndex].id
+        if let item = currentOCRItem, item.pageID == pageID { return item }
+        let onPage = ocrReviewItems.filter { $0.pageID == pageID }
+        return onPage.first { ocrLine($0)?.reviewed == false } ?? onPage.first
+    }
+
+    /// The next line still to check after the page shown (wrapping), for the Review tab's empty page.
+    var nextOCRItemElsewhere: OCRItemRef? {
+        let items = ocrReviewItems
+        let order = pages.map(\.id)
+        let here = currentPageIndex
+        let open = items.filter { ocrLine($0)?.reviewed == false }
+        func pageIndex(_ item: OCRItemRef) -> Int { order.firstIndex(of: item.pageID) ?? 0 }
+        return open.first { pageIndex($0) > here } ?? open.first
+    }
+
     var allOCRItemsReviewed: Bool {
         let items = ocrReviewItems
         return !items.isEmpty && items.allSatisfy { ocrLine($0)?.reviewed == true }
@@ -132,6 +152,21 @@ struct OCRSourcePage: View {
                             .offset(x: drag.minX, y: drag.minY)
                             .allowsHitTesting(false)
                     }
+                    // Every line Slek read, faintly, so a page shows what was recognized (lines to check are numbered).
+                    ForEach(recognized, id: \.id) { line in
+                        let frame = Self.rect(line.bounds, rotation: page.rotation, box: box, size: size)
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(DSColor.accentDefault.opacity(0.06))
+                            .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(DSColor.accentDefault.opacity(0.35), lineWidth: 1))
+                            .frame(width: frame.width, height: frame.height)
+                            .offset(x: frame.minX, y: frame.minY)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                // Open it for correcting: show all text, then select the line.
+                                session.ocrReviewFilter = .all
+                                session.selectOCRItem(OCRItemRef(pageID: session.pages[session.currentPageIndex].id, lineID: line.id))
+                            }
+                    }
                     ForEach(regions, id: \.item) { region in
                         let frame = Self.rect(region.line.bounds, rotation: page.rotation, box: box, size: size)
                         UncertainRegion(number: region.number, state: region.state)
@@ -162,6 +197,14 @@ struct OCRSourcePage: View {
         }
     }
 
+    /// Recognized lines on the page shown that are not in the review list.
+    private var recognized: [OCRLine] {
+        guard showsRegions, session.pages.indices.contains(session.currentPageIndex) else { return [] }
+        let pageID = session.pages[session.currentPageIndex].id
+        let listed = Set(session.ocrReviewItems.filter { $0.pageID == pageID }.map(\.lineID))
+        return (session.ocrResults[pageID]?.lines ?? []).filter { !listed.contains($0.id) }
+    }
+
     private struct Region {
         let item: OCRItemRef
         let line: OCRLine
@@ -174,7 +217,7 @@ struct OCRSourcePage: View {
         guard showsRegions, session.pages.indices.contains(session.currentPageIndex) else { return [] }
         let pageID = session.pages[session.currentPageIndex].id
         // Once everything is reviewed, no item is “being corrected”: all show as Reviewed.
-        let current = session.allOCRItemsReviewed ? nil : session.currentOCRItem
+        let current = session.allOCRItemsReviewed ? nil : session.pageOCRItem
         return session.ocrReviewItems.enumerated().compactMap { index, item in
             guard item.pageID == pageID, let line = session.ocrLine(item) else { return nil }
             let state: UncertainRegion.State = item == current ? .active : line.reviewed ? .reviewed : .default
@@ -279,13 +322,21 @@ struct OCRReviewSection: View {
 
     var body: some View {
         let items = session.ocrReviewItems
-        let current = session.currentOCRItem
+        let current = session.pageOCRItem
         let line = current.flatMap(session.ocrLine)
         VStack(alignment: .leading, spacing: DSSpace.s12) {
             if session.ocrResults.isEmpty {
                 DSLabel(.recognizeTextToReviewItHere, style: .body).foregroundColor(DSColor.textSecondary)
             } else if items.isEmpty {
                 DSLabel(.noUncertainRegionsOnRecognizedPages, style: .body).foregroundColor(DSColor.textSecondary)
+            } else if current == nil {
+                // The page shown has nothing to check: say so, and offer the next one.
+                DSLabel(.noLinesToCheckOnThisPage, style: .body).foregroundColor(DSColor.textSecondary)
+                if let next = session.nextOCRItemElsewhere, let page = session.pages.firstIndex(where: { $0.id == next.pageID }) {
+                    DSButton(text: CopyCatalog.shared.format(.fmtNextLineToCheckPageN, language, language.number(page + 1)), icon: .right, fullWidth: true) {
+                        session.selectOCRItem(next)
+                    }
+                }
             } else if let current, let line {
                 navigation(items: items, current: current)
                 badge(line)

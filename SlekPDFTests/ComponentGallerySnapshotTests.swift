@@ -209,6 +209,46 @@ final class ComponentGallerySnapshotTests: XCTestCase {
         }
     }
 
+    /// The Khmer OCR workspace after a real recognition of a real PDF (tmp/RealDocuments/traffic-subset.pdf, never
+    /// committed), pages 1–3: shell-snapshots/real-ocr-pN.png.
+    func testRenderRealOCR() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("RealDocuments/traffic-subset.pdf")
+        guard ProcessInfo.processInfo.environment["SNAPSHOT_DIR"] != nil, FileManager.default.fileExists(atPath: url.path) else {
+            throw XCTSkip("Set SNAPSHOT_DIR and copy a PDF to tmp/RealDocuments/traffic-subset.pdf")
+        }
+        FontRegistry.registerBundledFonts()
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("shell-snapshots")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let session = DocumentSession()
+        await session.open(url)
+        session.workspace = .khmerOCR
+        session.ocrSettings.language = .khmerEnglish
+        await session.startRecognition([0, 1, 2], .en)?.value
+        var report = ""
+        for (index, ref) in session.pages.prefix(3).enumerated() {
+            report += "page \(index + 1): \(session.ocrResults[ref.id]?.lines.count ?? -1) lines, uncertain \(session.ocrResults[ref.id]?.lines.filter(\.isUncertain).count ?? -1)\n"
+        }
+        report += "review items \(session.ocrReviewItems.count) toasts \(session.toasts.current?.message ?? "-")\n"
+        for line in session.ocrResults[session.pages[1].id]?.lines ?? [] { report += "p2 line \(line.bounds) \(line.text)\n" }
+        if let engine = KhmerOCREngine.load(), let pdf = try? PDFiumDocument(url: url),
+           let image = pdf.renderForOCR(page: 1, quarterTurns: 0, ppi: 300), let lines = try? engine.detectLines(image) {
+            for line in lines { report += "detected line: " + line.map { "\($0.isText ? "T" : "F") \($0.rect.integral)" }.joined(separator: " | ") + "\n" }
+        }
+        try report.write(to: dir.appendingPathComponent("real-ocr.txt"), atomically: true, encoding: .utf8)
+        for page in [0, 1] {
+            session.goToPage(page)
+            let state = AppState(defaults: UserDefaults(suiteName: "real-\(UUID())")!)
+            state.language = .en
+            let view = MainWindowView()
+                .environmentObject(state).environmentObject(session)
+                .environmentObject(RecentDocuments(defaults: UserDefaults(suiteName: "real-recents-\(UUID())")!))
+                .environmentObject(session.toasts)
+                .environment(\.appLanguage, .en)
+            try render(view, size: ChromeMetrics.defaultWindowSize, appearance: .aqua, to: dir.appendingPathComponent("real-ocr-p\(page + 1).png"))
+        }
+        await session.close()
+    }
+
     private func render(_ view: some View, size: CGSize, appearance: NSAppearance.Name, to url: URL) throws {
         let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height))
         host.frame = CGRect(origin: .zero, size: size)

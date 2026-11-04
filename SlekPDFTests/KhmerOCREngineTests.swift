@@ -61,6 +61,26 @@ final class KhmerOCREngineTests: XCTestCase {
                        "a box inside a longer one would be read twice")
         let lines = KhmerOCREngine.lines([box(200, 4, 80, 20), box(0, 0, 80, 20), box(0, 60, 80, 20)])
         XCTAssertEqual(lines.map { $0.map(\.rect.minX) }, [[0, 200], [0]])
+        // A tall picture box among the lines used to glue two text lines together; pictures are grouped apart.
+        var picture = box(400, 0, 300, 400)
+        picture.isText = false
+        let withPicture = KhmerOCREngine.lines([box(0, 0, 80, 20), box(0, 60, 80, 20)])
+        XCTAssertEqual(withPicture.count, 2)
+        XCTAssertFalse(KhmerOCREngine.lines([box(0, 0, 80, 20), picture, box(0, 60, 80, 20)]).isEmpty)
+    }
+
+    func testABoxOverTwoLinesIsCutAtTheGap() throws {
+        // Two lines 60 px apart; the detector's box covers both (as on a title page's list).
+        let image = try render(["សញ្ញាចរាចរណ៍", "", "", "ភ្លើងសញ្ញា"], size: 30)
+        func box(_ y: CGFloat, _ h: CGFloat) -> KhmerOCREngine.Box {
+            KhmerOCREngine.Box(rect: CGRect(x: 40, y: y, width: 500, height: h), isText: true, score: 0.9)
+        }
+        // Three ordinary lines elsewhere set the usual height (about 46 px).
+        let ordinary = [box(1000, 46), box(1100, 46), box(1200, 46)]
+        let tall = box(30, CGFloat(image.height) - 60)
+        let split = KhmerOCREngine.splitTallBoxes(ordinary + [tall], in: image)
+        XCTAssertEqual(split.count, ordinary.count + 2, "\(split.map(\.rect))")
+        XCTAssertEqual(KhmerOCREngine.splitTallBoxes(ordinary, in: image).count, ordinary.count, "ordinary lines are left alone")
     }
 
     func testMarkOnlyLinesAreDroppedAndSplitWordsRejoined() {

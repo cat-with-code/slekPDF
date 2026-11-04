@@ -2158,5 +2158,10 @@
     "km": "បានកែ",
     "en": "Edited",
     "note": "Figma Copy variable (Edit PDF text, 3 Nov 2026); draft Khmer — needs review"
+  },
+  "Home": {
+    "km": "ទំព័រដើម",
+    "en": "Home",
+    "note": "Figma Copy variable (Title Bar Home, 4 Nov 2026); draft Khmer — needs review"
   }
 }

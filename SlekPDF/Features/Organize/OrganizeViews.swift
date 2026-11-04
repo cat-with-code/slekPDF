@@ -239,6 +239,7 @@ extension DocumentSession {
         } catch {
             closeAfterSave = false
             quitAfterClose = false
+            goHomeAfterDecision = false
             toasts.show(.error, error.localizedDescription)
         }
     }

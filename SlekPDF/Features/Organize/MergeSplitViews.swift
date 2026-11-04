@@ -51,7 +51,27 @@ extension DocumentSession {
     }
 
     /// Closes the window after "Don’t save" or a finished save; continues quitting if that started it.
+    /// Title Bar Home: back to the start screen, asking 16 Save changes? first when there is unsaved work.
+    func goHome() {
+        guard document != nil, !isModalPresented else { return }
+        commitTextEditing()
+        if hasUnsavedChanges && !discardChanges {
+            goHomeAfterDecision = true
+            organizeDialog = .closeConfirm
+        } else {
+            Task { await close() }
+        }
+    }
+
     func closeWindowAfterDecision() {
+        if goHomeAfterDecision {
+            goHomeAfterDecision = false
+            Task {
+                await close()
+                discardChanges = false
+            }
+            return
+        }
         let quit = quitAfterClose
         window?.performClose(nil)
         if quit { DispatchQueue.main.async { NSApp.terminate(nil) } }
@@ -343,6 +363,7 @@ struct CloseConfirmDialog: View {
                  onCancel: {
                      session.organizeDialog = nil
                      session.quitAfterClose = false
+                     session.goHomeAfterDecision = false
                  },
                  onConfirm: {
                      session.organizeDialog = nil

@@ -220,6 +220,10 @@ final class DocumentSession: ObservableObject {
     weak var window: NSWindow?
     /// Set by "Save" in 16 Save changes before closing?: close the window once the work is saved.
     var closeAfterSave = false
+    /// Home (Title Bar): after the 16 Save changes? decision, go back to the start screen instead of closing the window.
+    var goHomeAfterDecision = false
+    /// The window is in full screen (no window controls: the title bar drops their space).
+    @Published var isFullScreen = false
     /// Set by "Don’t save": the window may close with unsaved changes.
     var discardChanges = false
     /// The close was part of quitting the app: quit again once this window is closed.

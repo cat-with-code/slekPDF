@@ -29,6 +29,13 @@ struct WindowCloseGuard: NSViewRepresentable {
             let proxy = CloseGuardDelegate(session: session, original: window.delegate)
             window.delegate = proxy
             self.proxy = proxy
+            // Full screen hides the window controls; the title bar drops their space.
+            session.isFullScreen = window.styleMask.contains(.fullScreen)
+            for (name, value) in [(NSWindow.didEnterFullScreenNotification, true), (NSWindow.willExitFullScreenNotification, false)] {
+                NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak session] _ in
+                    MainActor.assumeIsolated { session?.isFullScreen = value }
+                }
+            }
         }
     }
 }

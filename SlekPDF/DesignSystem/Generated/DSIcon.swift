@@ -37,6 +37,7 @@ enum DSIcon: String, CaseIterable {
     case help = "help"
     case highLight = "high-light"
     case history = "history"
+    case home = "home"
     case info = "info"
     case keyboard = "keyboard"
     case leftBar = "left-bar"

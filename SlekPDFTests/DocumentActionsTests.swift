@@ -123,4 +123,33 @@ final class DocumentActionsTests: XCTestCase {
         XCTAssertNil(CommentsSummary.page([], size: CGSize(width: 595, height: 842), language: .en))
         await session.close()
     }
+
+    /// Title Bar Home: back to the start screen; unsaved work asks 16 Save changes? first (Cancel stays, Don't Save goes).
+    func testHomeGoesBackToTheStartScreenAndAsksAboutUnsavedWork() async throws {
+        let clean = try await open()
+        clean.goHome()
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertNil(clean.document, "nothing to save: straight to the start screen")
+
+        let session = try await open()
+        session.rotateView()
+        session.selectedPageIDs = [session.pages[0].id]
+        session.rotateSelectedPages()
+        XCTAssertTrue(session.hasUnsavedChanges)
+        session.goHome()
+        XCTAssertEqual(session.organizeDialog, .closeConfirm)
+        XCTAssertNotNil(session.document)
+        // Cancel: stays on the document.
+        session.organizeDialog = nil
+        session.goHomeAfterDecision = false
+        XCTAssertNotNil(session.document)
+        // Don't Save: goes home, the window stays open.
+        session.goHome()
+        session.organizeDialog = nil
+        session.discardChanges = true
+        session.closeWindowAfterDecision()
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertNil(session.document)
+        XCTAssertFalse(session.discardChanges)
+    }
 }

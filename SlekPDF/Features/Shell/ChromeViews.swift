@@ -1,13 +1,19 @@
 import SwiftUI
 
-/// Figma "Title Bar" (102:39). The system traffic lights sit over the leading inset.
+/// Figma "Title Bar" (102:39). The system traffic lights sit over the leading inset; in full screen there are none
+/// and the content starts at the edge padding (Window=Full screen). Home goes back to the start screen.
 struct TitleBarView: View {
     let fileName: String?
+    @EnvironmentObject private var session: DocumentSession
     @Environment(\.appLanguage) private var language
 
     var body: some View {
         HStack(spacing: DSSpace.s16) {
-            Color.clear.frame(width: 64)
+            if !session.isFullScreen { Color.clear.frame(width: 64) }
+            DSIconButton(.home) { session.goHome() }
+                .dsTooltip(.home)
+                .accessibilityLabel(CopyCatalog.shared.string(.home, language))
+                .disabled(session.document == nil || session.isModalPresented)
             Text("Slek PDF")
                 .font(.custom("Inter-SemiBold", fixedSize: 13))
                 .foregroundColor(DSColor.textPrimary)
@@ -23,7 +29,7 @@ struct TitleBarView: View {
             }
             Spacer()
         }
-        .padding(.horizontal, DSSpace.s12)
+        .padding(.horizontal, session.isFullScreen ? DSSpace.s16 : DSSpace.s12)
         .frame(height: ChromeMetrics.titleBarHeight)
         .background(DSColor.backgroundWindow)
     }

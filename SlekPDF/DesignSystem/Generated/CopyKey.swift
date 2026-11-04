@@ -494,4 +494,5 @@ enum CopyKey: String, CaseIterable {
     case pdfTextProperties = "PDF text properties"
     case appliesToTheSelectedLineOfPDFText = "Applies to the selected line of PDF text"
     case edited = "Edited"
+    case home = "Home"
 }

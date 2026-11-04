@@ -289,12 +289,35 @@ final class KhmerPDFView: PDFView {
         editor.apply(draft.style, scale: scaleFactor, insets: draft.line == nil ? KhmerGlyphOutlines.textBoxInsets : TextEditInfo.insets,
                      background: draft.line?.coverColor)
         editor.frame = convert(draft.bounds, from: page).integral
+        if let line = draft.line { placeOnBaseline(editor, line: line, page: page) }
         // An edited line opens with the caret where it was clicked.
         if isNew, let caret = draft.caret {
             editor.layoutManager?.ensureLayout(for: editor.textContainer!)
             let index = editor.characterIndexForInsertion(at: editor.convert(convert(caret, from: page), from: self))
             editor.setSelectedRange(NSRange(location: min(index, (editor.string as NSString).length), length: 0))
         }
+    }
+
+    /// An edited line's editor: as tall as its text and moved so its first baseline is the original line's baseline
+    /// (where the committed text is drawn), at any zoom.
+    private func placeOnBaseline(_ editor: TextBoxEditor, line: TextBoxDraft.LineEdit, page: PDFPage) {
+        guard let layout = editor.layoutManager, let container = editor.textContainer else { return }
+        layout.ensureLayout(for: container)
+        let used = layout.usedRect(for: container)
+        let fragment = layout.numberOfGlyphs > 0 ? layout.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil) : used
+        // An empty line has no glyph to measure: its baseline is the font's ascent below the top.
+        let baselineInLine = layout.numberOfGlyphs > 0 ? layout.location(forGlyphAt: 0).y : (editor.font?.ascender ?? 0)
+        let baselineFromTop = editor.textContainerInset.height + fragment.minY + baselineInLine
+        let height = max(ceil(max(used.maxY, fragment.maxY) + 2 * editor.textContainerInset.height), 1)
+        let baseline = convert(CGPoint(x: 0, y: line.baseline), from: page).y
+        var frame = editor.frame
+        frame.size.height = height
+        frame.origin.y = isFlipped ? baseline - baselineFromTop : baseline + baselineFromTop - height
+        // Keep covering the original line below the text (its background is the page colour).
+        let cover = convert(line.cover, from: page)
+        if isFlipped, cover.maxY > frame.maxY { frame.size.height += cover.maxY - frame.maxY }
+        if !isFlipped, cover.minY < frame.minY { frame.size.height += frame.minY - cover.minY; frame.origin.y = cover.minY }
+        editor.frame = frame.integral
     }
 
     override func mouseUp(with event: NSEvent) {

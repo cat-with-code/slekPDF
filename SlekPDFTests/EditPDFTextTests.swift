@@ -240,6 +240,98 @@ final class EditPDFTextTests: XCTestCase {
         await session.close()
     }
 
+    /// While typing, the editor's text starts at the line's start, sits on the original baseline and fits in the box
+    /// (the caret and the text spilled out of it, and the text could drift away from the line's start).
+    func testTheEditorSitsOnTheOriginalBaselineAndFitsItsText() async throws {
+        let session = try await open()
+        let line = try await firstLine(session)
+        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 900, height: 900), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let view = KhmerPDFView(frame: CGRect(x: 0, y: 0, width: 900, height: 900))
+        window.contentView = view
+        view.document = session.document
+        view.session = session
+        let page = try XCTUnwrap(session.document?.page(at: 0))
+        for scale: CGFloat in [1, 2.5] {
+            view.autoScales = false
+            view.scaleFactor = scale
+            view.go(to: line.box.insetBy(dx: -10, dy: -40), on: page)
+            view.layoutDocumentView()
+            await session.beginEditingLine(onPageAt: 0, at: CGPoint(x: line.box.midX, y: line.box.midY))
+            view.syncTextEditor()
+            let editor = try XCTUnwrap(view.subviews.compactMap { $0 as? TextBoxEditor }.first)
+            let layout = try XCTUnwrap(editor.layoutManager)
+            layout.ensureLayout(for: editor.textContainer!)
+            let used = layout.usedRect(for: editor.textContainer!)
+            XCTAssertEqual(layout.location(forGlyphAt: 0).x, 0, accuracy: 0.5, "text starts at the line's start (scale \(scale))")
+            XCTAssertLessThanOrEqual(used.maxY, editor.bounds.height + 0.5, "the text and caret fit in the box (scale \(scale))")
+            let fragment = layout.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil)
+            let baselineInView = view.isFlipped ? editor.frame.minY + fragment.minY + layout.location(forGlyphAt: 0).y
+                : editor.frame.maxY - fragment.minY - layout.location(forGlyphAt: 0).y
+            let expected = view.convert(CGPoint(x: 0, y: try XCTUnwrap(session.textEditing?.line?.baseline)), from: page).y
+            XCTAssertEqual(baselineInView, expected, accuracy: 1.5, "on the original baseline (scale \(scale))")
+            session.commitTextEditing()
+            view.syncTextEditor()
+        }
+        window.orderOut(nil)
+        await session.close()
+    }
+
+    /// The on-page editor over a real PDF's title while typing (tmp/edit-editor.png and .txt). Snapshot runs only.
+    func testRenderTheEditorOnARealPDF() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("RealDocuments/cv.pdf")
+        guard ProcessInfo.processInfo.environment["SNAPSHOT_DIR"] != nil, FileManager.default.fileExists(atPath: url.path) else {
+            throw XCTSkip("Set SNAPSHOT_DIR and copy a PDF to tmp/RealDocuments/cv.pdf")
+        }
+        let session = try await open(url)
+        let found = await session.editableLines(onPageAt: 0)
+        let line = try XCTUnwrap(found?.first)
+        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 900, height: 700), styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let view = KhmerPDFView(frame: CGRect(x: 0, y: 0, width: 900, height: 700))
+        window.contentView = view
+        view.document = session.document
+        view.session = session
+        view.autoScales = false
+        view.scaleFactor = 2
+        let page = try XCTUnwrap(session.document?.page(at: 0))
+        view.go(to: line.box.insetBy(dx: -10, dy: -40), on: page)
+        view.layoutDocumentView()
+        await session.beginEditingLine(onPageAt: 0, at: CGPoint(x: line.box.maxX - 2, y: line.box.midY))
+        view.syncTextEditor()
+        let first = try XCTUnwrap(view.subviews.compactMap { $0 as? TextBoxEditor }.first)
+        first.setSelectedRange(NSRange(location: 7, length: (first.string as NSString).length - 7))
+        first.insertText("", replacementRange: first.selectedRange())
+        // Finish, then click the edited line again (the user's flow).
+        session.commitTextEditing()
+        view.syncTextEditor()
+        await session.beginEditingLine(onPageAt: 0, at: CGPoint(x: line.box.minX + 20, y: line.box.midY))
+        view.syncTextEditor()
+        let editor2 = try XCTUnwrap(view.subviews.compactMap { $0 as? TextBoxEditor }.first)
+        editor2.layoutManager!.ensureLayout(for: editor2.textContainer!)
+        let again = "second: frame \(editor2.frame) glyph0 \(editor2.layoutManager!.location(forGlyphAt: 0)) used \(editor2.layoutManager!.usedRect(for: editor2.textContainer!)) draft \(session.textEditing!.bounds) align \(session.textEditing!.style.alignment)"
+        let editor = editor2
+        editor.layoutManager!.ensureLayout(for: editor.textContainer!)
+        let glyph0 = editor.layoutManager!.location(forGlyphAt: 0)
+        let used = editor.layoutManager!.usedRect(for: editor.textContainer!)
+        let fragment = editor.layoutManager!.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil)
+        let paragraph = editor.textStorage!.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle
+        let report = """
+        text \(editor.string) frame \(editor.frame) bounds \(editor.bounds) inset \(editor.textContainerInset)
+        container \(editor.textContainer!.size) glyph0 \(glyph0) used \(used) fragment \(fragment)
+        alignment \(paragraph?.alignment.rawValue ?? -1) textView.alignment \(editor.alignment.rawValue) font \(editor.font?.fontName ?? "-") \(editor.font?.pointSize ?? 0)
+        line box \(line.box) draft bounds \(session.textEditing!.bounds) style \(session.textEditing!.style)
+        \(again)
+        """
+        try report.write(to: FileManager.default.temporaryDirectory.appendingPathComponent("edit-editor.txt"), atomically: true, encoding: .utf8)
+        let rep = try XCTUnwrap(editor.bitmapImageRepForCachingDisplay(in: editor.bounds))
+        editor.cacheDisplay(in: editor.bounds, to: rep)
+        try rep.representation(using: .png, properties: [:])!.write(to: FileManager.default.temporaryDirectory.appendingPathComponent("edit-editor.png"))
+        session.commitTextEditing()
+        window.orderOut(nil)
+        await session.close()
+    }
+
     /// Before/after picture of an edited line (tmp/edit-pdf-text.png), for checking placement by eye. Snapshot runs only.
     func testRenderAnEditedLine() async throws {
         guard ProcessInfo.processInfo.environment["SNAPSHOT_DIR"] != nil else { throw XCTSkip("Set SNAPSHOT_DIR to write snapshots") }

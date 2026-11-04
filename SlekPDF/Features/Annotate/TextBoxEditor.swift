@@ -54,7 +54,20 @@ final class TextBoxEditor: NSTextView, NSTextViewDelegate {
         self.insets = insets
         let size = style.fontSize * scale
         let font = style.ctFont(size: size) as NSFont
-        let paragraph = style.paragraphStyle(scale: scale)
+        // An edited PDF line uses the font's own line height (a fixed one taller than the line made the caret and the
+        // text spill out of the box); `PDFView` places the editor so its baseline sits on the original line's.
+        let paragraph: NSParagraphStyle
+        if insets == TextEditInfo.insets {
+            let plain = NSMutableParagraphStyle()
+            plain.alignment = style.paragraphStyle().alignment
+            paragraph = plain
+        } else {
+            paragraph = style.paragraphStyle(scale: scale)
+        }
+        // Plain-text views fall back to their own defaults for new text: pin font, alignment and paragraph style.
+        self.font = font
+        alignment = paragraph.alignment
+        defaultParagraphStyle = paragraph
         var attributes: [NSAttributedString.Key: Any] = [
             .font: font, .paragraphStyle: paragraph,
             .foregroundColor: NSColor(srgbRed: style.color[0], green: style.color[1], blue: style.color[2], alpha: 1),

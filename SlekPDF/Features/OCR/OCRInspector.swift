@@ -1,54 +1,37 @@
 import SwiftUI
 
-/// Figma Recognition Settings (129:231), the Khmer OCR inspector: language, page scope (custom range with the 41 error),
-/// deskew and skip-text options, Recognize text — or, while running, a progress bar with Cancel and locked settings.
+/// Figma Khmer OCR Panel (570:625): one inspector with Recognize | Review · N tabs. Recognize = Recognition Settings
+/// (129:231: language, page scope with the 41 error, options, Recognize text — or, while running, progress with
+/// Cancel and locked settings). Review = the lines to check (OCRReviewSection). Opens on Review once there is
+/// something recognized.
 struct OCRInspector: View {
+    enum Tab: Hashable { case recognize, review }
+
     @EnvironmentObject private var session: DocumentSession
     @EnvironmentObject private var appState: AppState
     @Environment(\.appLanguage) private var language
     @State private var appliedDefault = false
+    @State private var chosenTab: Tab?
+
+    private var tab: Tab { chosenTab ?? (session.ocrResults.isEmpty || session.ocrJob != nil ? .recognize : .review) }
 
     var body: some View {
-        let isRunning = session.ocrJob != nil
         ScrollView {
-            VStack(alignment: .leading, spacing: DSSpace.s12) {
+            VStack(alignment: .leading, spacing: DSSpace.s16) {
                 HStack {
-                    DSLabel(.recognitionSettings, style: .heading).foregroundColor(DSColor.textPrimary)
+                    DSLabel(.khmerOCR, style: .heading).foregroundColor(DSColor.textPrimary)
                     Spacer()
                     DSIconButton(.right, size: 24, iconSize: 14) { session.setInspectorVisible(false) }
                         .dsTooltip(.hideInspector, shortcut: "⌥⌘I")
                 }
-                Group {
-                    DSDropdown(label: string(.language), selection: $session.ocrSettings.language,
-                               options: OCRLanguage.allCases.map { (value: $0, title: $0.title(language)) })
-                    DSDropdown(label: string(.pageScope), selection: $session.ocrSettings.scope, options: [
-                        (value: OCRSettings.Scope.all, title: string(.allPages)),
-                        (value: .current, title: string(.currentPage)),
-                        (value: .custom, title: string(.customRange)),
-                    ])
-                    if session.ocrSettings.scope == .custom {
-                        DSTextField(label: .customRange, text: $session.ocrSettings.customRange, errorText: rangeError, autofocus: false,
-                                    onSubmit: { session.requestRecognition(language) })
-                    }
-                    // Needs Tesseract's orientation model (osd), which is not bundled yet: shown, but honestly off.
-                    DSCheckbox(label: .correctOrientationDeskew, isOn: .constant(false))
-                        .disabled(true)
-                        .dsTooltip(.deskewNeedsAnOrientationModelThatIsNotIncludedYet)
-                    DSCheckbox(label: .skipPagesWithUsableText, isOn: $session.ocrSettings.skipPagesWithText)
+                DSSegmentedControl(selection: Binding(get: { tab }, set: { chosenTab = $0 }), segments: [
+                    .init(value: Tab.recognize, title: string(.recognize)),
+                    .init(value: .review, title: reviewTitle),
+                ], fillsWidth: true)
+                switch tab {
+                case .recognize: recognizeSection
+                case .review: OCRReviewSection()
                 }
-                .disabled(isRunning)
-                if let job = session.ocrJob {
-                    RecognitionProgress(job: job, showsCancel: true)
-                } else {
-                    DSButton(.recognizeText, icon: .textRecognition, style: .primary, fullWidth: true) { session.requestRecognition(language) }
-                        .disabled(session.ocrPageIndices?.isEmpty ?? true)
-                        .dsTooltip(.recognizeText, shortcut: ShortcutStore.shared.shortcut(.recognizeText)?.display)
-                }
-                DSLabel(.runsOnThisMacNothingIsUploadedE, style: .caption).foregroundColor(DSColor.textTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-                DSDivider()
-                DSButton(.reviewExportOptions, fullWidth: true) { session.workspace = .export }
-                DSLabel(.txtSearchablePDFWordOrExcel, style: .caption).foregroundColor(DSColor.textTertiary)
             }
             .padding(DSSpace.s16)
         }
@@ -59,6 +42,48 @@ struct OCRInspector: View {
             guard !appliedDefault else { return }
             appliedDefault = true
             if session.ocrResults.isEmpty, session.ocrJob == nil { session.ocrSettings.language = appState.ocrLanguage }
+        }
+        // A finished run shows its results.
+        .onChange(of: session.ocrJob == nil) { finished in if finished, !session.ocrResults.isEmpty { chosenTab = .review } }
+    }
+
+    /// "Review · 3": lines still to check.
+    private var reviewTitle: String {
+        let open = session.ocrReviewItems.filter { session.ocrLine($0)?.reviewed == false }.count
+        return open > 0 ? CopyCatalog.shared.format(.fmtReviewN, language, language.number(open)) : string(.review)
+    }
+
+    @ViewBuilder private var recognizeSection: some View {
+        let isRunning = session.ocrJob != nil
+        VStack(alignment: .leading, spacing: DSSpace.s12) {
+            Group {
+                DSDropdown(label: string(.language), selection: $session.ocrSettings.language,
+                           options: OCRLanguage.allCases.map { (value: $0, title: $0.title(language)) })
+                DSDropdown(label: string(.pageScope), selection: $session.ocrSettings.scope, options: [
+                    (value: OCRSettings.Scope.all, title: string(.allPages)),
+                    (value: .current, title: string(.currentPage)),
+                    (value: .custom, title: string(.customRange)),
+                ])
+                if session.ocrSettings.scope == .custom {
+                    DSTextField(label: .customRange, text: $session.ocrSettings.customRange, errorText: rangeError, autofocus: false,
+                                onSubmit: { session.requestRecognition(language) })
+                }
+                // Needs Tesseract's orientation model (osd), which is not bundled yet: shown, but honestly off.
+                DSCheckbox(label: .correctOrientationDeskew, isOn: .constant(false))
+                    .disabled(true)
+                    .dsTooltip(.deskewNeedsAnOrientationModelThatIsNotIncludedYet)
+                DSCheckbox(label: .skipPagesWithUsableText, isOn: $session.ocrSettings.skipPagesWithText)
+            }
+            .disabled(isRunning)
+            if let job = session.ocrJob {
+                RecognitionProgress(job: job, showsCancel: true)
+            } else {
+                DSButton(.recognizeText, icon: .textRecognition, style: .primary, fullWidth: true) { session.requestRecognition(language) }
+                    .disabled(session.ocrPageIndices?.isEmpty ?? true)
+                    .dsTooltip(.recognizeText, shortcut: ShortcutStore.shared.shortcut(.recognizeText)?.display)
+            }
+            DSLabel(.runsOnThisMacNothingIsUploadedE, style: .caption).foregroundColor(DSColor.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

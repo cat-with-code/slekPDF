@@ -109,11 +109,13 @@ struct DSSegmentedControl<Value: Hashable>: View {
 
     @Binding var selection: Value
     let segments: [Segment]
+    /// Segments share the full width (tabs at the top of a panel).
+    var fillsWidth = false
 
     var body: some View {
         HStack(spacing: DSSpace.s2) {
             ForEach(segments, id: \.value) { segment in
-                SegmentButton(segment: segment, isSelected: segment.value == selection) { selection = segment.value }
+                SegmentButton(segment: segment, isSelected: segment.value == selection, fillsWidth: fillsWidth) { selection = segment.value }
             }
         }
         .padding(DSSpace.s2)
@@ -123,6 +125,7 @@ struct DSSegmentedControl<Value: Hashable>: View {
     private struct SegmentButton: View {
         let segment: Segment
         let isSelected: Bool
+        var fillsWidth = false
         let action: () -> Void
         @Environment(\.isEnabled) private var isEnabled
         @State private var isHovered = false
@@ -135,6 +138,7 @@ struct DSSegmentedControl<Value: Hashable>: View {
                 }
                 .foregroundColor(!isEnabled ? DSColor.textDisabled : isSelected || isHovered ? DSColor.textPrimary : DSColor.textSecondary)
                 .padding(.horizontal, DSSpace.s12)
+                .frame(maxWidth: fillsWidth ? .infinity : nil)
                 .frame(height: 28)
                 .background(
                     Capsule().fill(isSelected ? DSColor.backgroundSurface : isHovered && isEnabled ? DSColor.backgroundPressed : .clear)

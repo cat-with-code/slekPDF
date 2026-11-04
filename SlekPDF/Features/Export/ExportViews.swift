@@ -180,6 +180,9 @@ extension DocumentSession {
 
 // MARK: - Inspector (Export Options 132:409)
 
+/// Figma Export Panel (572:465): Format as a list (icon, name, one-line description; the suggested one is marked),
+/// Pages and options, file name and Save to (folder · Change…), then the review issues and the Export button at the
+/// bottom with the safety note. The canvas shows the output preview (ExportCanvas).
 struct ExportInspector: View {
     @EnvironmentObject private var session: DocumentSession
     @EnvironmentObject private var appState: AppState
@@ -187,57 +190,53 @@ struct ExportInspector: View {
 
     var body: some View {
         let format = session.exportSettings.format
-        ScrollView {
-            VStack(alignment: .leading, spacing: DSSpace.s12) {
-                HStack {
-                    DSLabel(.export, style: .heading).foregroundColor(DSColor.textPrimary)
-                    Spacer()
-                    DSIconButton(.right, size: 24, iconSize: 14) { session.setInspectorVisible(false) }
-                        .dsTooltip(.hideInspector, shortcut: "⌥⌘I")
-                }
-                if let suggestion { FormatSuggestion(format: suggestion, tables: tableCount) { formatBinding.wrappedValue = suggestion } }
-                DSDropdown(label: language(.fileFormat), selection: formatBinding,
-                           options: ExportFormat.allCases.map { (value: $0, title: language($0.title)) })
-                DSDropdown(label: language(.pagesToInclude), selection: $session.exportSettings.scope, options: [
-                    (value: OCRSettings.Scope.all, title: language(.allPages)),
-                    (value: .current, title: language(.currentPage)),
-                    (value: .custom, title: language(.customRange)),
-                ])
-                if session.exportSettings.scope == .custom {
-                    DSTextField(label: .customRange, text: $session.exportSettings.customRange, errorText: rangeError, autofocus: false)
-                }
-                if format == .searchablePDF {
-                    // The page image is always kept in this version: the delivery copy never redraws the source.
-                    DSCheckbox(label: .keepOriginalPageImages, isOn: .constant(true)).disabled(true)
-                }
-                if format.writesExcel {
-                    ForEach(Array(tablesInScope.enumerated()), id: \.element.id) { number, table in
-                        DSCheckbox(text: CopyCatalog.shared.format(.fmtTableNPageM, language, number + 1, session.pageNumber(of: table) ?? 1),
-                                   isOn: includedBinding(table.id))
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: DSSpace.s16) {
+                    HStack {
+                        DSLabel(.export, style: .heading).foregroundColor(DSColor.textPrimary)
+                        Spacer()
+                        DSIconButton(.right, size: 24, iconSize: 14) { session.setInspectorVisible(false) }
+                            .dsTooltip(.hideInspector, shortcut: "⌥⌘I")
                     }
-                    DSButton(.selectTableRegion, icon: .table, fullWidth: true) { session.exportTableSelecting = true }
-                    if session.exportTableSelecting {
-                        DSLabel(.dragOverATableOnTheSourcePage, style: .caption).foregroundColor(DSColor.textAccent)
+                    VStack(alignment: .leading, spacing: DSSpace.s6) {
+                        DSLabel(.format, style: .labelSmall).foregroundColor(DSColor.textSecondary)
+                        ForEach(ExportFormat.allCases, id: \.self) { option in
+                            FormatRow(format: option, isSelected: option == format, isSuggested: option == suggestion) {
+                                formatBinding.wrappedValue = option
+                            }
+                        }
+                        if format == .searchablePDF {
+                            DSLabel(session.exportPreview.allSatisfy(\.hasText) ? .selectSearchAndCopyNowWorkOnReco
+                                    : .onlyThePageImagesAreKeptThereIsNoTextToSearchYet, style: .caption)
+                                .foregroundColor(DSColor.textTertiary).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    DSDivider()
+                    options(format)
+                    DSDivider()
+                    VStack(alignment: .leading, spacing: DSSpace.s12) {
+                        DSTextField(label: outputNameLabel(format), text: $session.exportSettings.fileName, autofocus: false,
+                                    onSubmit: { session.requestExport(language, appState) })
+                        if format == .wordExcel {
+                            DSTextField(label: .excelOutputName, text: $session.exportSettings.excelFileName, autofocus: false,
+                                        onSubmit: { session.requestExport(language, appState) })
+                        }
+                        saveTo
+                    }
+                    Spacer(minLength: 0)
+                    ForEach(Array(issues.enumerated()), id: \.offset) { _, issue in ExportIssueRow(issue: issue) }
+                    VStack(alignment: .leading, spacing: DSSpace.s8) {
+                        DSButton(exportLabel(format), icon: .download, style: .primary, fullWidth: true) { session.requestExport(language, appState) }
+                            .disabled(session.exportJob != nil || (session.exportPageIndices?.isEmpty ?? true))
+                        DSLabel(.exportCreatesANewFileTheSourcePD, style: .caption).foregroundColor(DSColor.textTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                DSCheckbox(label: .includeAddedText, isOn: $session.exportSettings.includeAddedText)
-                DSLabel(.reviewedOCRCorrectionsAreIncludedC, style: .caption).foregroundColor(DSColor.textTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-                DSDivider()
-                DSTextField(label: outputNameLabel(format), text: $session.exportSettings.fileName, autofocus: false,
-                            onSubmit: { session.requestExport(language, appState) })
-                if format == .wordExcel {
-                    DSTextField(label: .excelOutputName, text: $session.exportSettings.excelFileName, autofocus: false,
-                                onSubmit: { session.requestExport(language, appState) })
-                }
-                DSButton(.chooseFolder, icon: .folderOpen, fullWidth: true) { session.chooseExportFolder() }
-                Text(destination).dsText(.caption).foregroundColor(DSColor.textTertiary)
-                DSButton(exportLabel(format), icon: .download, style: .primary, fullWidth: true) { session.requestExport(language, appState) }
-                    .disabled(session.exportJob != nil || (session.exportPageIndices?.isEmpty ?? true))
-                DSLabel(.exportCreatesANewFileTheSourcePD, style: .caption).foregroundColor(DSColor.textTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+                .padding(DSSpace.s16)
+                // The Export button sits at the bottom when everything fits.
+                .frame(minHeight: proxy.size.height, alignment: .top)
             }
-            .padding(DSSpace.s16)
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(DSColor.backgroundSurface)
@@ -247,16 +246,84 @@ struct ExportInspector: View {
         }
     }
 
+    @ViewBuilder private func options(_ format: ExportFormat) -> some View {
+        VStack(alignment: .leading, spacing: DSSpace.s12) {
+            DSDropdown(label: language(.pagesToInclude), selection: $session.exportSettings.scope, options: [
+                (value: OCRSettings.Scope.all, title: language(.allPages)),
+                (value: .current, title: language(.currentPage)),
+                (value: .custom, title: language(.customRange)),
+            ])
+            if session.exportSettings.scope == .custom {
+                DSTextField(label: .customRange, text: $session.exportSettings.customRange, errorText: rangeError, autofocus: false)
+            }
+            if format == .searchablePDF {
+                // The page image is always kept in this version: the delivery copy never redraws the source.
+                DSCheckbox(label: .keepOriginalPageImages, isOn: .constant(true)).disabled(true)
+            }
+            if format.writesExcel {
+                ForEach(Array(tablesInScope.enumerated()), id: \.element.id) { number, table in
+                    DSCheckbox(text: CopyCatalog.shared.format(.fmtTableNPageM, language, number + 1, session.pageNumber(of: table) ?? 1),
+                               isOn: includedBinding(table.id))
+                }
+                DSButton(.selectTableRegion, icon: .table, fullWidth: true) { session.exportTableSelecting = true }
+                if session.exportTableSelecting {
+                    DSLabel(.dragOverATableOnTheSourcePage, style: .caption).foregroundColor(DSColor.textAccent)
+                }
+            }
+            DSCheckbox(label: .includeAddedText, isOn: $session.exportSettings.includeAddedText)
+        }
+    }
+
+    /// Save to: the folder, and Change….
+    private var saveTo: some View {
+        VStack(alignment: .leading, spacing: DSSpace.s4) {
+            DSLabel(.saveTo, style: .labelSmall).foregroundColor(DSColor.textSecondary)
+            HStack(spacing: DSSpace.s8) {
+                DSIcon.folderOpen.image(size: 16).foregroundColor(DSColor.textSecondary)
+                Text(folderName).dsText(.body).foregroundColor(folder == nil ? DSColor.textTertiary : DSColor.textPrimary)
+                    .lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: DSSpace.s8)
+                DSButton(.change, size: .small) { session.chooseExportFolder() }
+            }
+        }
+    }
+
+    private var folder: URL? { session.exportSettings.folder ?? appState.exportFolder }
+    private var folderName: String { folder.map { FileManager.default.displayName(atPath: $0.path) } ?? language(.notSelected) }
+
+    /// What needs a look before exporting: pages with no text, and uncertain OCR lines nobody reviewed.
+    private var issues: [ExportIssue] {
+        var list: [ExportIssue] = []
+        let empty = session.exportPreview.filter { !$0.hasText }.map(\.number)
+        if !empty.isEmpty {
+            let numbers = empty.map { language.number($0) }.joined(separator: ", ")
+            list.append(ExportIssue(tone: .warning, title: language(.pagesWithoutText),
+                                    detail: CopyCatalog.shared.variant(.fmtPagesNHaveNoText, language, singular: empty.count == 1, numbers),
+                                    show: { session.workspace = .khmerOCR }))
+        }
+        let indices = session.exportPageIndices ?? []
+        let uncertain = indices.filter { session.pages.indices.contains($0) }
+            .compactMap { session.ocrResults[session.pages[$0].id] }
+            .flatMap(\.lines).filter { $0.isUncertain && !$0.reviewed }.count
+        if uncertain > 0 {
+            list.append(ExportIssue(tone: .info, title: language(.uncertainOCRText),
+                                    detail: CopyCatalog.shared.count(.fmtNUncertainLinesNotReviewed, language, uncertain),
+                                    show: {
+                                        session.ocrReviewFilter = .uncertain
+                                        session.workspace = .khmerOCR
+                                    }))
+        }
+        return list
+    }
+
     private var tablesInScope: [ExportTable] {
         let scope = Set((session.exportPageIndices ?? []).filter { session.pages.indices.contains($0) }.map { session.pages[$0].id })
         return session.exportTables.filter { scope.contains($0.pageID) }
     }
 
-    private var tableCount: Int { tablesInScope.count }
-
-    /// Figma Format Suggestion (132:36): Word + Excel when the pages have text and tables, else none.
+    /// Word + Excel when the pages have text and tables (marked Suggested in the list).
     private var suggestion: ExportFormat? {
-        guard session.exportTablesDetected, tableCount > 0 else { return nil }
+        guard session.exportTablesDetected, !tablesInScope.isEmpty else { return nil }
         return .wordExcel
     }
 
@@ -285,11 +352,6 @@ struct ExportInspector: View {
         return CopyCatalog.shared.count(.fmtDocumentHasNPagesUsePagesLike, language, session.pageCount)
     }
 
-    private var destination: String {
-        guard let folder = session.exportSettings.folder ?? appState.exportFolder else { return language(.destinationNotSelected) }
-        return CopyCatalog.shared.format(.fmtDestinationFolder, language, folder.lastPathComponent)
-    }
-
     private func outputNameLabel(_ format: ExportFormat) -> CopyKey {
         switch format {
         case .word, .wordExcel: .wordOutputName
@@ -308,43 +370,118 @@ struct ExportInspector: View {
         case .plainText: .exportTextUTF8
         }
     }
+
+    /// One format in the list (Figma Export Panel · Format row).
+    private struct FormatRow: View {
+        let format: ExportFormat
+        let isSelected: Bool
+        let isSuggested: Bool
+        let action: () -> Void
+        @Environment(\.appLanguage) private var language
+        @State private var isHovered = false
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: DSSpace.s12) {
+                    icon.image(size: 24).foregroundColor(isSelected ? DSColor.textAccent : DSColor.textSecondary)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(language(title)).dsText(.bodyStrong).foregroundColor(DSColor.textPrimary)
+                        Text(language(subtitle)).dsText(.caption).foregroundColor(DSColor.textSecondary)
+                    }
+                    Spacer(minLength: 0)
+                    if isSuggested { DSBadge(label: language(.suggested), tone: .accent) }
+                }
+                .padding(.horizontal, DSSpace.s12)
+                .padding(.vertical, DSSpace.s8)
+                .background(RoundedRectangle(cornerRadius: DSRadius.md)
+                    .fill(isSelected ? DSColor.backgroundSelected : isHovered ? DSColor.backgroundHover : .clear))
+                .overlay(RoundedRectangle(cornerRadius: DSRadius.md)
+                    .strokeBorder(isSelected ? DSColor.accentDefault : DSColor.borderSubtle, lineWidth: isSelected ? 1.5 : DSStroke.default))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { isHovered = $0 }
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+        }
+
+        private var icon: DSIcon {
+            switch format {
+            case .word, .wordExcel: .fileWord
+            case .excel: .fileExcel
+            case .searchablePDF: .filePdf
+            case .plainText: .fileTxt
+            }
+        }
+
+        private var title: CopyKey {
+            switch format {
+            case .word: .word
+            case .excel: .excel
+            case .wordExcel: .wordExcel
+            case .searchablePDF: .searchablePDF
+            case .plainText: .plainText
+            }
+        }
+
+        private var subtitle: CopyKey {
+            switch format {
+            case .word: .editableDocument
+            case .excel: .tablesAsSpreadsheets
+            case .wordExcel: .documentAndItsTables
+            case .searchablePDF: .pagesWithSearchableText
+            case .plainText: .textOnlyUTF8
+            }
+        }
+    }
 }
 
-// MARK: - Canvas (Source & output preview)
+// MARK: - Canvas (Figma KM · 05 Export Word — refined: the output preview alone)
 
 struct ExportCanvas: View {
     @EnvironmentObject private var session: DocumentSession
     @Environment(\.appLanguage) private var language
     @State private var bannerDismissed = false
+    /// Word + Excel: which output is shown.
+    @State private var tab: ExportFormat = .word
+
+    private struct PreviewKey: Equatable {
+        let revision: Int
+        let pages: [Int]?
+        let include: Bool
+        let tables: [ExportTable]
+    }
 
     var body: some View {
+        let format = session.exportSettings.format
         ZStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: DSSpace.s16) {
-                DSLabel(.sourceOutputPreview, style: .caption).foregroundColor(DSColor.textSecondary)
-                    .padding(.top, DSSpace.s24)
-                HStack(alignment: .top, spacing: DSSpace.s24) {
-                    VStack(alignment: .leading, spacing: DSSpace.s8) {
-                        DSLabel(.sourcePage, style: .caption).foregroundColor(DSColor.textSecondary)
-                        OCRSourcePage(showsRegions: false, tableRegions: tableRegions,
-                                      onRegionSelected: session.exportTableSelecting ? { rect in
-                                          Task {
-                                              await session.addExportTable(in: rect, onPageAt: session.currentPageIndex)
-                                              session.exportTableSelecting = false
-                                          }
-                                      } : nil)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    VStack(alignment: .leading, spacing: DSSpace.s8) {
-                        DSLabel(.outputPreview, style: .caption).foregroundColor(DSColor.textSecondary)
-                        ExportPreviewCard()
-                    }
-                    .frame(width: 396)
+            Group {
+                if session.exportTableSelecting {
+                    // Select table region: drag over the table on the source page.
+                    OCRSourcePage(showsRegions: false, tableRegions: tableRegions, onRegionSelected: { rect in
+                        Task {
+                            await session.addExportTable(in: rect, onPageAt: session.currentPageIndex)
+                            session.exportTableSelecting = false
+                        }
+                    })
+                } else {
+                    ExportOutputPreview(showsExcel: format == .excel || (format == .wordExcel && tab == .excel))
                 }
-                .padding(.top, DSSpace.s16)
+            }
+            .padding(.top, 64)
+            .padding([.horizontal, .bottom], DSSpace.s24)
+            HStack {
+                if format == .wordExcel, !session.exportTableSelecting {
+                    DSSegmentedControl(selection: $tab, segments: [.init(value: .word, title: language(.wordPreview)),
+                                                                   .init(value: .excel, title: language(.excelPreview))])
+                        .fixedSize()
+                } else {
+                    Text(language(session.exportTableSelecting ? .sourcePage : previewTitle(format)))
+                        .dsText(.caption).foregroundColor(DSColor.textSecondary)
+                }
+                Spacer()
             }
             .padding(.horizontal, DSSpace.s24)
-            .padding(.bottom, DSSpace.s24)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(.top, DSSpace.s16)
             PageNavigationPill().padding(.top, DSSpace.s12)
             if !changedPages.isEmpty, !bannerDismissed {
                 // Figma 40: pages turned after recognition.
@@ -360,12 +497,29 @@ struct ExportCanvas: View {
         .background(DSColor.backgroundCanvas)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
+        .onAppear { tab = format == .excel ? .excel : .word }
+        .onChange(of: format) { tab = $0 == .excel ? .excel : .word }
+        .task(id: PreviewKey(revision: session.contentRevision, pages: session.exportPageIndices,
+                             include: session.exportSettings.includeAddedText, tables: session.exportTables)) {
+            if !session.exportTablesDetected { await session.detectExportTables() }
+            session.exportPreview = await session.exportPages(session.exportPageIndices ?? [],
+                                                              includeAddedText: session.exportSettings.includeAddedText,
+                                                              tables: session.includedExportTables, language: language)
+        }
+    }
+
+    private func previewTitle(_ format: ExportFormat) -> CopyKey {
+        switch format {
+        case .word, .wordExcel: .wordPreview
+        case .excel: .excelPreview
+        case .searchablePDF: .searchablePDFPreview
+        case .plainText: .textPreviewUTF8
+        }
     }
 
     /// Tables on the page shown (outlined on the source page).
     private var tableRegions: [CGRect] {
-        guard session.exportSettings.format.writesExcel || session.exportSettings.format == .word,
-              session.pages.indices.contains(session.currentPageIndex) else { return [] }
+        guard session.pages.indices.contains(session.currentPageIndex) else { return [] }
         let pageID = session.pages[session.currentPageIndex].id
         return session.includedExportTables.filter { $0.pageID == pageID }.map(\.region)
     }
@@ -380,144 +534,52 @@ struct ExportCanvas: View {
     }
 }
 
-/// Figma Format Suggestion (132:36).
-struct FormatSuggestion: View {
-    let format: ExportFormat
-    let tables: Int
-    let apply: () -> Void
-    @Environment(\.appLanguage) private var language
-
-    var body: some View {
-        Button(action: apply) {
-            HStack(alignment: .top, spacing: DSSpace.s8) {
-                DSIcon.brandMicrosoftWord.image(size: 20)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(CopyCatalog.shared.format(.fmtSuggestedFormat, language, language(format.title)))
-                        .dsText(.label).foregroundColor(DSColor.textAccent)
-                    Text(CopyCatalog.shared.count(.fmtDocumentContainsTextAndNTables, language, tables))
-                        .dsText(.caption).foregroundColor(DSColor.textSecondary)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(DSSpace.s12)
-            .background(RoundedRectangle(cornerRadius: DSRadius.md).fill(DSColor.backgroundSelected))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-/// Figma Export Preview (133:399) with Review Issues (133:44).
-struct ExportPreviewCard: View {
+/// The current page as the chosen format will write it, on a page-shaped sheet (Excel: the table editor).
+struct ExportOutputPreview: View {
+    let showsExcel: Bool
     @EnvironmentObject private var session: DocumentSession
     @Environment(\.appLanguage) private var language
-    @State private var content: [ExportPage] = []
-    @State private var tab: ExportFormat = .word
     @State private var tableIndex = 0
-
-    private struct PreviewKey: Equatable {
-        let revision: Int
-        let pages: [Int]?
-        let include: Bool
-        let tables: [ExportTable]
-    }
 
     var body: some View {
         let format = session.exportSettings.format
-        let issues = self.issues
-        VStack(alignment: .leading, spacing: DSSpace.s12) {
-            HStack {
-                if format == .searchablePDF || format == .plainText {
-                    Text(language(previewTitle(format))).dsText(.heading).foregroundColor(DSColor.textPrimary)
-                } else {
-                    DSSegmentedControl(selection: $tab, segments: [.init(value: .word, title: language(.wordPreview)),
-                                                                   .init(value: .excel, title: language(.excelPreview))])
-                        .fixedSize()
+        if showsExcel {
+            excelPreview
+        } else if format == .searchablePDF {
+            OCRSourcePage(showsRegions: false)
+        } else {
+            GeometryReader { proxy in
+                let sheet = Self.sheetSize(in: proxy.size)
+                ScrollView {
+                    pageContent(format)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .padding(sheet.width * 0.08)
                 }
-                Spacer()
-                badge(format)
+                .frame(width: sheet.width, height: sheet.height)
+                .background(DSColor.backgroundPage)
+                .dsElevation(.raised)
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
             }
-            if tab == .excel, format != .searchablePDF, format != .plainText {
-                excelPreview
+        }
+    }
+
+    /// A4 proportions, as large as fits.
+    static func sheetSize(in space: CGSize) -> CGSize {
+        let ratio: CGFloat = 1.414
+        let width = min(space.width, space.height / ratio)
+        return CGSize(width: max(width, 1), height: max(width * ratio, 1))
+    }
+
+    private var page: ExportPage? { session.exportPreview.first { $0.number == session.currentPageIndex + 1 } }
+
+    @ViewBuilder private func pageContent(_ format: ExportFormat) -> some View {
+        if let page {
+            if format == .plainText {
+                Text(ExportBuilder.plainText(pages: [page]))
+                    .dsText(.body).foregroundColor(DSColor.textOnPage).textSelection(.enabled)
             } else {
-                preview(format)
-            }
-            DSDivider()
-            Text(CopyCatalog.shared.format(.fmtReviewIssuesN, language, issues.count)).dsText(.label).foregroundColor(DSColor.textPrimary)
-            ForEach(Array(issues.enumerated()), id: \.offset) { index, issue in
-                if index > 0 { DSDivider() }
-                ExportIssueRow(issue: issue)
-            }
-            DSButton(.reviewOCR, icon: .textRecognition, size: .small) { session.workspace = .khmerOCR }
-        }
-        .padding(DSSpace.s16)
-        .background(RoundedRectangle(cornerRadius: DSRadius.md).fill(DSColor.backgroundSurface))
-        .overlay(RoundedRectangle(cornerRadius: DSRadius.md).strokeBorder(DSColor.borderSubtle, lineWidth: DSStroke.default))
-        .onAppear { tab = format == .excel ? .excel : .word }
-        .onChange(of: format) { tab = $0 == .excel ? .excel : .word }
-        .task(id: PreviewKey(revision: session.contentRevision, pages: session.exportPageIndices,
-                             include: session.exportSettings.includeAddedText, tables: session.exportTables)) {
-            if !session.exportTablesDetected { await session.detectExportTables() }
-            content = await session.exportPages(session.exportPageIndices ?? [], includeAddedText: session.exportSettings.includeAddedText,
-                                                tables: session.includedExportTables, language: language)
-        }
-    }
-
-    private func previewTitle(_ format: ExportFormat) -> CopyKey {
-        switch format {
-        case .word, .wordExcel: .wordPreview
-        case .excel: .excelPreview
-        case .searchablePDF: .searchablePDFPreview
-        case .plainText: .textPreviewUTF8
-        }
-    }
-
-    /// Figma Table Editor (131:*): the chosen table's cells, editable; tabs for each table below.
-    @ViewBuilder private var excelPreview: some View {
-        let tables = session.includedExportTables
-        if tables.isEmpty {
-            VStack(alignment: .leading, spacing: DSSpace.s8) {
-                DSLabel(.noTablesWereDetected, style: .body).foregroundColor(DSColor.textSecondary)
-                DSButton(.selectTableRegion, icon: .table, size: .small) { session.exportTableSelecting = true }
-            }
-            .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
-        } else {
-            let current = tables[min(tableIndex, tables.count - 1)]
-            if let index = session.exportTables.firstIndex(where: { $0.id == current.id }) {
-                ExportTableGrid(table: $session.exportTables[index])
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: DSSpace.s4) {
-                    ForEach(Array(tables.enumerated()), id: \.element.id) { number, table in
-                        Button { tableIndex = number } label: {
-                            Text(CopyCatalog.shared.format(.fmtTableNPageM2, language, number + 1, session.pageNumber(of: table) ?? 1))
-                                .dsText(number == tableIndex ? .label : .body)
-                                .foregroundColor(number == tableIndex ? DSColor.textPrimary : DSColor.textSecondary)
-                                .padding(.horizontal, DSSpace.s12).padding(.vertical, DSSpace.s4)
-                                .background(Capsule().fill(number == tableIndex ? DSColor.backgroundSurface : .clear))
-                                .overlay(Capsule().strokeBorder(number == tableIndex ? DSColor.borderSubtle : .clear))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder private func badge(_ format: ExportFormat) -> some View {
-        if format == .searchablePDF {
-            if !content.isEmpty, content.allSatisfy(\.hasText) { DSBadge(label: language(.textLayerAligned), tone: .success) }
-        } else {
-            DSBadge(label: language(.editable))
-        }
-    }
-
-    @ViewBuilder private func preview(_ format: ExportFormat) -> some View {
-        switch format {
-        case .word, .excel, .wordExcel:
-            ScrollView {
                 VStack(alignment: .leading, spacing: DSSpace.s8) {
-                    ForEach(Array(content.flatMap(\.blocks).prefix(40).enumerated()), id: \.offset) { _, block in
+                    ForEach(Array(page.blocks.enumerated()), id: \.offset) { _, block in
                         switch block {
                         case let .heading(level, text):
                             Text(text).dsText(level == 1 ? .title : .heading).foregroundColor(DSColor.textOnPage)
@@ -539,60 +601,49 @@ struct ExportPreviewCard: View {
                         }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(DSSpace.s24)
             }
-            .frame(height: 260)
-            .background(DSColor.backgroundPage)
-            .overlay(Rectangle().strokeBorder(DSColor.borderSubtle, lineWidth: DSStroke.default))
-        case .searchablePDF:
-            if let page = session.document?.page(at: session.currentPageIndex) {
-                Image(nsImage: page.thumbnail(of: CGSize(width: 600, height: 600), for: .mediaBox))
-                    .resizable().aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: .infinity).frame(height: 220)
-                    .padding(DSSpace.s12)
-                    .background(RoundedRectangle(cornerRadius: DSRadius.md).fill(DSColor.backgroundHover))
-            }
-            DSLabel(content.allSatisfy(\.hasText) ? .selectSearchAndCopyNowWorkOnReco : .onlyThePageImagesAreKeptThereIsNoTextToSearchYet,
-                    style: .caption)
-                .foregroundColor(DSColor.textSecondary).fixedSize(horizontal: false, vertical: true)
-        case .plainText:
-            ScrollView {
-                Text(ExportBuilder.plainText(pages: content).prefix(3000))
-                    .dsText(.body).foregroundColor(DSColor.textPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-                    .padding(DSSpace.s12)
-            }
-            .frame(height: 200)
-            .background(RoundedRectangle(cornerRadius: DSRadius.md).fill(DSColor.backgroundHover))
-            DSLabel(.pageBreaksAreMarkedTablesBecomeTa, style: .caption).foregroundColor(DSColor.textSecondary)
+        } else if session.exportPreview.isEmpty {
+            ProgressView().controlSize(.small).frame(maxWidth: .infinity)
+        } else {
+            // This page is not in “Pages to include”.
+            DSLabel(.pagesWithoutText, style: .body).foregroundColor(DSColor.textTertiary)
         }
     }
 
-    /// What needs a look before exporting: pages with no text, and uncertain OCR lines nobody reviewed.
-    private var issues: [ExportIssue] {
-        var list: [ExportIssue] = []
-        let empty = content.filter { !$0.hasText }.map(\.number)
-        if !empty.isEmpty {
-            let numbers = empty.map { language.number($0) }.joined(separator: ", ")
-            list.append(ExportIssue(tone: .warning, title: language(.pagesWithoutText),
-                                    detail: CopyCatalog.shared.variant(.fmtPagesNHaveNoText, language, singular: empty.count == 1, numbers),
-                                    show: { session.workspace = .khmerOCR }))
+    /// Figma Table Editor (131:*): the chosen table's cells, editable; tabs for each table below.
+    @ViewBuilder private var excelPreview: some View {
+        let tables = session.includedExportTables
+        VStack(alignment: .leading, spacing: DSSpace.s12) {
+            if tables.isEmpty {
+                DSLabel(.noTablesWereDetected, style: .body).foregroundColor(DSColor.textSecondary)
+                DSButton(.selectTableRegion, icon: .table, size: .small) { session.exportTableSelecting = true }
+            } else {
+                let current = tables[min(tableIndex, tables.count - 1)]
+                if let index = session.exportTables.firstIndex(where: { $0.id == current.id }) {
+                    ExportTableGrid(table: $session.exportTables[index])
+                }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: DSSpace.s4) {
+                        ForEach(Array(tables.enumerated()), id: \.element.id) { number, table in
+                            Button { tableIndex = number } label: {
+                                Text(CopyCatalog.shared.format(.fmtTableNPageM2, language, number + 1, session.pageNumber(of: table) ?? 1))
+                                    .dsText(number == tableIndex ? .label : .body)
+                                    .foregroundColor(number == tableIndex ? DSColor.textPrimary : DSColor.textSecondary)
+                                    .padding(.horizontal, DSSpace.s12).padding(.vertical, DSSpace.s4)
+                                    .background(Capsule().fill(number == tableIndex ? DSColor.backgroundSurface : .clear))
+                                    .overlay(Capsule().strokeBorder(number == tableIndex ? DSColor.borderSubtle : .clear))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
         }
-        let indices = session.exportPageIndices ?? []
-        let uncertain = indices.filter { session.pages.indices.contains($0) }
-            .compactMap { session.ocrResults[session.pages[$0].id] }
-            .flatMap(\.lines).filter { $0.isUncertain && !$0.reviewed }.count
-        if uncertain > 0 {
-            list.append(ExportIssue(tone: .info, title: language(.uncertainOCRText),
-                                    detail: CopyCatalog.shared.count(.fmtNUncertainLinesNotReviewed, language, uncertain),
-                                    show: {
-                                        session.ocrReviewFilter = .uncertain
-                                        session.workspace = .khmerOCR
-                                    }))
-        }
-        return list
+        .padding(DSSpace.s24)
+        .frame(maxWidth: 640, alignment: .topLeading)
+        .background(RoundedRectangle(cornerRadius: DSRadius.md).fill(DSColor.backgroundSurface))
+        .overlay(RoundedRectangle(cornerRadius: DSRadius.md).strokeBorder(DSColor.borderSubtle, lineWidth: DSStroke.default))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 

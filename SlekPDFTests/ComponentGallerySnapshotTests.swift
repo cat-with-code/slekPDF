@@ -168,6 +168,8 @@ final class ComponentGallerySnapshotTests: XCTestCase {
                     session.workspace = .export
                     session.exportSettings.format = name == "05-export-word" ? .word : name == "08-export-pdf" ? .searchablePDF : .plainText
                     session.exportSettings.fileName = session.defaultExportFileName(for: session.exportSettings.format)
+                    // The canvas loads the preview asynchronously; have it ready for the picture.
+                    session.exportPreview = await session.exportPages(Array(session.pages.indices), includeAddedText: false, language: language)
                 case "12-recognizing":
                     session.ocrJob = OCRJob(pages: [0, 1, 2], finished: 1, currentNumber: 2)
                     session.organizeDialog = .recognizing

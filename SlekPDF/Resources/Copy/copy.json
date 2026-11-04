@@ -2163,5 +2163,75 @@
     "km": "ទំព័រដើម",
     "en": "Home",
     "note": "Figma Copy variable (Title Bar Home, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Recognize": {
+    "km": "ស្គាល់អក្សរ",
+    "en": "Recognize",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Review": {
+    "km": "ពិនិត្យ",
+    "en": "Review",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Lines to review": {
+    "km": "បន្ទាត់ត្រូវពិនិត្យ",
+    "en": "Lines to review",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "fmt: Review · N": {
+    "km": "ពិនិត្យ · {0}",
+    "en": "Review · {0}",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Editable document": {
+    "km": "ឯកសារដែលអាចកែបាន",
+    "en": "Editable document",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Tables as spreadsheets": {
+    "km": "តារាងជាសៀវភៅបញ្ជី",
+    "en": "Tables as spreadsheets",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Document and its tables": {
+    "km": "ឯកសារ និងតារាងរបស់វា",
+    "en": "Document and its tables",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Pages with searchable text": {
+    "km": "ទំព័រដែលស្វែងរកអត្ថបទបាន",
+    "en": "Pages with searchable text",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Text only (UTF-8)": {
+    "km": "តែអត្ថបទ (UTF-8)",
+    "en": "Text only (UTF-8)",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Plain text": {
+    "km": "អត្ថបទធម្មតា",
+    "en": "Plain text",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Save to": {
+    "km": "រក្សាទុកក្នុង",
+    "en": "Save to",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Change…": {
+    "km": "ប្ដូរ…",
+    "en": "Change…",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Not selected": {
+    "km": "មិនទាន់ជ្រើស",
+    "en": "Not selected",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
+  },
+  "Suggested": {
+    "km": "ណែនាំ",
+    "en": "Suggested",
+    "note": "Figma Copy variable (refined OCR / Export panels, 4 Nov 2026); draft Khmer — needs review"
   }
 }

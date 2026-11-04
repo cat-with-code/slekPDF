@@ -74,34 +74,18 @@ extension DocumentSession {
     }
 }
 
-// MARK: - Canvas (Figma 04: Source page | Recognized text)
+// MARK: - Canvas (Figma KM · 04 Khmer OCR review — refined)
 
-/// Figma 04 Document Canvas · Side by side: the page with Uncertain Regions next to the OCR Review Panel.
+/// The current page alone, large and centred, with the lines to review marked on it (the review itself is in the
+/// inspector's Review tab).
 struct OCRCanvas: View {
     @EnvironmentObject private var session: DocumentSession
 
     var body: some View {
         ZStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: DSSpace.s16) {
-                DSLabel(.sourceTextReview, style: .caption).foregroundColor(DSColor.textSecondary)
-                    .padding(.top, DSSpace.s24)
-                HStack(alignment: .top, spacing: DSSpace.s24) {
-                    VStack(alignment: .leading, spacing: DSSpace.s8) {
-                        DSLabel(.sourcePage, style: .caption).foregroundColor(DSColor.textSecondary)
-                        OCRSourcePage()
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    VStack(alignment: .leading, spacing: DSSpace.s8) {
-                        DSLabel(.recognizedText, style: .caption).foregroundColor(DSColor.textSecondary)
-                        OCRReviewPanel()
-                    }
-                    .frame(width: 396)
-                }
-                .padding(.top, DSSpace.s16)
-            }
-            .padding(.horizontal, DSSpace.s24)
-            .padding(.bottom, DSSpace.s24)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            OCRSourcePage()
+                .padding(.top, 64)
+                .padding([.horizontal, .bottom], DSSpace.s24)
             PageNavigationPill().padding(.top, DSSpace.s12)
         }
         .background(DSColor.backgroundCanvas)
@@ -172,6 +156,8 @@ struct OCRSourcePage: View {
                         onRegionSelected(Self.pageRect(selected, rotation: page.rotation, box: box, size: size))
                     },
                     including: onRegionSelected == nil ? .subviews : .all)
+                // Centred in the space given (after the drag gesture, which measures in page-image points).
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
             }
         }
     }
@@ -282,7 +268,10 @@ struct UncertainRegion: View {
 
 // MARK: - OCR Review Panel (129:111)
 
-struct OCRReviewPanel: View {
+/// Figma Khmer OCR Panel, Tab=Review: the line being checked (Lines to review · n of N with ‹ ›, confidence hint,
+/// correction, Skip / Mark reviewed), then the list of lines (number colour: warning = to check, accent = current,
+/// success = reviewed; a click goes to that line).
+struct OCRReviewSection: View {
     @EnvironmentObject private var session: DocumentSession
     @Environment(\.appLanguage) private var language
     @State private var correction = ""
@@ -293,10 +282,6 @@ struct OCRReviewPanel: View {
         let current = session.currentOCRItem
         let line = current.flatMap(session.ocrLine)
         VStack(alignment: .leading, spacing: DSSpace.s12) {
-            DSDropdown(label: string(.reviewText), selection: $session.ocrReviewFilter, options: [
-                (value: OCRReviewFilter.uncertain, title: string(.uncertainRegions)),
-                (value: .all, title: string(.allText)),
-            ])
             if session.ocrResults.isEmpty {
                 DSLabel(.recognizeTextToReviewItHere, style: .body).foregroundColor(DSColor.textSecondary)
             } else if items.isEmpty {
@@ -311,24 +296,38 @@ struct OCRReviewPanel: View {
                 }
                 actions(current)
             }
+            if !session.ocrResults.isEmpty {
+                DSDivider()
+                DSDropdown(label: string(.reviewText), selection: $session.ocrReviewFilter, options: [
+                    (value: OCRReviewFilter.uncertain, title: string(.uncertainRegions)),
+                    (value: .all, title: string(.allText)),
+                ])
+                VStack(spacing: DSSpace.s2) {
+                    ForEach(Array(items.enumerated()), id: \.element) { index, item in
+                        if let line = session.ocrLine(item) {
+                            LineRow(number: index + 1, text: line.displayText, isCurrent: item == current && !session.allOCRItemsReviewed,
+                                    isReviewed: line.reviewed) { session.selectOCRItem(item) }
+                        }
+                    }
+                }
+            }
         }
-        .padding(DSSpace.s16)
-        .background(RoundedRectangle(cornerRadius: DSRadius.md).fill(DSColor.backgroundSurface))
-        .overlay(RoundedRectangle(cornerRadius: DSRadius.md).strokeBorder(DSColor.borderSubtle, lineWidth: DSStroke.default))
         .onAppear { load(current) }
         .onChange(of: current) { load($0) }
     }
 
     private func navigation(items: [OCRItemRef], current: OCRItemRef) -> some View {
         let index = items.firstIndex(of: current) ?? 0
-        return HStack(spacing: DSSpace.s8) {
-            Text(session.allOCRItemsReviewed
-                 ? CopyCatalog.shared.count(.fmtAllNItemsReviewed, language, items.count)
-                 : CopyCatalog.shared.format(.fmtItemNOfM, language, index + 1, items.count))
-                .dsText(.label).foregroundColor(DSColor.textPrimary)
+        return HStack(spacing: DSSpace.s4) {
+            Text(session.allOCRItemsReviewed ? CopyCatalog.shared.count(.fmtAllNItemsReviewed, language, items.count) : string(.linesToReview))
+                .dsText(.labelSmall).foregroundColor(DSColor.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            DSButton(.previous, size: .small) { session.moveOCRItem(by: -1) }.disabled(index == 0)
-            DSButton(.next, size: .small) { session.moveOCRItem(by: 1) }.disabled(index == items.count - 1)
+            Text(CopyCatalog.shared.format(.fmtNOfM, language, language.number(index + 1), language.number(items.count)))
+                .dsText(.caption).foregroundColor(DSColor.textSecondary)
+            DSIconButton(.left, size: 24, iconSize: 14) { session.moveOCRItem(by: -1) }
+                .dsTooltip(.previous).disabled(index == 0)
+            DSIconButton(.right, size: 24, iconSize: 14) { session.moveOCRItem(by: 1) }
+                .dsTooltip(.next).disabled(index == items.count - 1)
         }
     }
 
@@ -360,4 +359,35 @@ struct OCRReviewPanel: View {
     }
 
     private func string(_ key: CopyKey) -> String { CopyCatalog.shared.string(key, language) }
+
+    /// One line in the list: numbered dot and the line's text on one row.
+    private struct LineRow: View {
+        let number: Int
+        let text: String
+        let isCurrent: Bool
+        let isReviewed: Bool
+        let action: () -> Void
+        @Environment(\.appLanguage) private var language
+        @State private var isHovered = false
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: DSSpace.s8) {
+                    Text(language.number(number))
+                        .dsText(.caption).foregroundColor(DSColor.textOnAccent)
+                        .frame(width: 20, height: 20)
+                        .background(Circle().fill(isCurrent ? DSColor.accentDefault : isReviewed ? DSColor.statusSuccess : DSColor.statusWarning))
+                    Text(text).dsText(.body).foregroundColor(DSColor.textPrimary).lineLimit(1).truncationMode(.tail)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, DSSpace.s8)
+                .padding(.vertical, DSSpace.s6)
+                .background(RoundedRectangle(cornerRadius: DSRadius.sm)
+                    .fill(isCurrent ? DSColor.backgroundSelected : isHovered ? DSColor.backgroundHover : .clear))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { isHovered = $0 }
+        }
+    }
 }

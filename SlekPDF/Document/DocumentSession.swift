@@ -147,6 +147,8 @@ final class DocumentSession: ObservableObject {
     @Published var exportTablesDetected = false
     /// Select table region: the next drag on the source page marks a table.
     @Published var exportTableSelecting = false
+    /// What the export would contain (Export canvas preview and the inspector's review issues).
+    @Published var exportPreview: [ExportPage] = []
     /// The export being written (37 Exporting… toast).
     @Published var exportJob: ExportJob?
     /// Destination waiting for 36 (already exists) or 14 (could not save).

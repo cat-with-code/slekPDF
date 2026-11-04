@@ -96,5 +96,17 @@ the detector). Lines found there are read from the ink-only image and kept only 
 or Tesseract English ≥ 85), and do not count in the page's language routing. Also: picture boxes are no longer
 grouped with text lines (a tall one glued two lines together), and text boxes much taller than the page's usual line
 are cut at blank rows. The road-signs cover now reads ឧបសម្ព័ន្ធ / ស្តីពី / សញ្ញាចរាចរណ៍ផ្លូវគោក. TestDocuments: 09
-noisy photocopy 22.9 → 13.6 %, 08 dim photo 2.7 → 2.1 %, mean 8.6 → 7.9 %; no document worse. Curved text (around a
-seal) is still not read.
+noisy photocopy 22.9 → 13.6 %, 08 dim photo 2.7 → 2.1 %, mean 8.6 → 7.9 %; no document worse.
+
+## Curved text around seals (4 Nov 2026)
+
+`RingText`: a roughly square picture (≥ 20 % of the page's shorter side) may be a seal. Its outer band (74–98 % of the
+radius) is unrolled into two straight strips — the top arc read clockwise with the letters' tops outward, the bottom
+arc anticlockwise with their tops inward — and made ink on white with Otsu's threshold (the minority side is the ink:
+white letters on a coloured ring, or dark ones on white). Khmer: the detector finds the words in the strip (it leaves
+the ornaments) and KhmerOCR reads them (≥ 0.8). English: Tesseract reads the strip's middle as one line (the detector
+misses tall capitals there), ≥ 75; stray single characters at the ends (ornaments) are trimmed. The confident reading
+wins; boxes in the strip's ends (past the horizontal: the other arc upside down) are ignored; lines found earlier on
+the ring band give way. The ministry cover now reads “ក្រសួងសាធារណការ និង ដឹកជញ្ជូន” over the top and “MINISTRY OF
+PUBLIC WORKS AND TRANSPORT” under the bottom. TestDocuments unchanged (no seals). Text on other curves, or seals whose
+text runs the other way, is not handled.

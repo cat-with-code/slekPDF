@@ -137,6 +137,40 @@ nonisolated final class OCRWorker: @unchecked Sendable {
             result.append(OCRResult.Line(text: Self.join(parts.map(\.text)), pixelRect: rect,
                                          confidence: parts.map(\.confidence).reduce(0, +) / Double(parts.count)))
         }
+        // Text around round seals and emblems: each ring unrolled into straight strips (RingText), read piece by
+        // piece, kept only when clearly read; placed by its position on the page.
+        for picture in detected.flatMap({ $0 }) where !picture.isText && RingText.isRoundCandidate(picture.rect, page: bounds.size) {
+            for strip in RingText.strips(of: image, circleIn: picture.rect) {
+                // The unrolled strip is an ordinary line: the detector finds its words (and leaves the ornaments);
+                // boxes in the strip's ends, past the horizontal, hold the other arc upside down.
+                let end = CGFloat(strip.image.width) * CGFloat(RingText.endFraction)
+                let boxes = ((try? khmer.detectLines(strip.image)) ?? []).flatMap { $0 }
+                    .filter { $0.isText && $0.rect.midX > end && $0.rect.midX < CGFloat(strip.image.width) - end }
+                    .sorted { $0.rect.minX < $1.rect.minX }
+                // Khmer: the detector's words. English: Tesseract reads the strip's middle as one line (the detector
+                // misses tall capitals there). The confident reading wins.
+                var parts: [(text: String, confidence: Double)] = []
+                for box in boxes {
+                    guard !isCancelled() else { throw OCRError.cancelledOrTimedOut }
+                    guard let piece = strip.image.cropping(to: box.rect.insetBy(dx: -4, dy: -4).integral),
+                          let read = try? khmer.recognize(piece), read.confidence >= 0.8, !read.text.isEmpty else { continue }
+                    parts.append((read.text, read.confidence * 100))
+                }
+                let khmerConfidence = parts.isEmpty ? 0 : parts.map(\.confidence).reduce(0, +) / Double(parts.count)
+                let middle = CGRect(x: end, y: 0, width: CGFloat(strip.image.width) - 2 * end, height: CGFloat(strip.image.height)).integral
+                if let crop = strip.image.cropping(to: middle),
+                   let read = try? english?.recognize(crop, ppi: ppi, deadline: 5, singleLine: true, isCancelled: isCancelled),
+                   Self.isEnglish(read, confidence: 75), Double(read.meanConfidence) >= khmerConfidence {
+                    parts = [(Self.trimmingStrayEnds(Self.clean(read.text)), Double(read.meanConfidence))]
+                }
+                guard !parts.isEmpty else { continue }
+                let line = OCRResult.Line(text: Self.join(parts.map(\.text)), pixelRect: strip.pageRect,
+                                          confidence: parts.map(\.confidence).reduce(0, +) / Double(parts.count))
+                // Bits of the ring read before (by the search inside the picture) give way to the whole ring.
+                result.removeAll { strip.ringContains(CGPoint(x: $0.pixelRect.midX, y: $0.pixelRect.midY)) }
+                result.insert(line, at: result.firstIndex { $0.pixelRect.minY > line.pixelRect.minY } ?? result.count)
+            }
+        }
         let mean = result.isEmpty ? 0 : result.map(\.confidence).reduce(0, +) / Double(result.count)
         return OCRResult(text: result.map(\.text).joined(separator: "\n"), meanConfidence: Int(mean), lines: result)
     }
@@ -166,6 +200,14 @@ nonisolated final class OCRWorker: @unchecked Sendable {
             let continues = part.unicodeScalars.first.map { (0x17B6...0x17D3).contains($0.value) } ?? false
             line += line.isEmpty || continues ? part : " " + part
         }
+    }
+
+    /// A ring's ornaments read as single stray characters at its ends ("3 MINISTRY … TRANSPORT i").
+    static func trimmingStrayEnds(_ text: String) -> String {
+        var words = text.split(separator: " ")
+        while let first = words.first, words.count > 1, first.count <= 1 { words.removeFirst() }
+        while let last = words.last, words.count > 1, last.count <= 1 { words.removeLast() }
+        return words.joined(separator: " ")
     }
 
     private static func clean(_ text: String) -> String {

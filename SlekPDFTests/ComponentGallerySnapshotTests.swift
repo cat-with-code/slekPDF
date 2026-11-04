@@ -230,6 +230,22 @@ final class ComponentGallerySnapshotTests: XCTestCase {
         }
         report += "review items \(session.ocrReviewItems.count) toasts \(session.toasts.current?.message ?? "-")\n"
         for line in session.ocrResults[session.pages[0].id]?.lines ?? [] { report += "p1 line \(line.text)\n" }
+        // The cover's ring, unrolled, for checking by eye.
+        if let pdf = try? PDFiumDocument(url: url), let image = pdf.renderForOCR(page: 0, quarterTurns: 0, ppi: 300) {
+            for (n, strip) in RingText.strips(of: image, circleIn: CGRect(x: 438, y: 855, width: 1820, height: 1797)).enumerated() {
+                if let png = NSBitmapImageRep(cgImage: strip.image).representation(using: .png, properties: [:]) {
+                    try png.write(to: dir.appendingPathComponent("real-ocr-ring\(n).png"))
+                }
+                if let engine = KhmerOCREngine.load(), let models = OCRModelSet.best.directory(), let eng = try? TesseractEngine(languages: "eng", models: models) {
+                    for box in ((try? engine.detectLines(strip.image)) ?? []).flatMap({ $0 }) where box.isText {
+                        guard let piece = strip.image.cropping(to: box.rect.insetBy(dx: -4, dy: -4).integral) else { continue }
+                        let e = try? eng.recognize(piece, ppi: 300, deadline: 5, singleLine: true)
+                        let k = try? engine.recognize(piece)
+                        report += "ring\(n) box \(box.rect.integral): eng '\(e?.text.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")' \(e?.meanConfidence ?? -1) · khm '\(k?.text ?? "")' \(String(format: "%.2f", k?.confidence ?? 0))\n"
+                    }
+                }
+            }
+        }
         try report.write(to: dir.appendingPathComponent("real-ocr.txt"), atomically: true, encoding: .utf8)
         for page in [0, 1] {
             session.goToPage(page)

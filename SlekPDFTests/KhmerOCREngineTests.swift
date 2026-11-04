@@ -83,6 +83,49 @@ final class KhmerOCREngineTests: XCTestCase {
         XCTAssertEqual(KhmerOCREngine.splitTallBoxes(ordinary, in: image).count, ordinary.count, "ordinary lines are left alone")
     }
 
+    /// A seal's bottom text (“MINISTRY OF …” around the circle, tops inward) is unrolled into a straight strip and read.
+    func testTextAroundACircleIsUnrolledAndRead() throws {
+        let side = 1200, center = CGPoint(x: 600, y: 600)
+        let context = try XCTUnwrap(CGContext(data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0,
+                                              space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
+        context.setFillColor(.white)
+        context.fill(CGRect(x: 0, y: 0, width: side, height: side))
+        let font = CTFontCreateWithName("Helvetica-Bold" as CFString, 64, nil)
+        let text = "MINISTRY OF PUBLIC WORKS"
+        let radius: CGFloat = 540  // the letters' baseline (outer side: tops point inward)
+        let advances = text.map { CTLineGetTypographicBounds(CTLineCreateWithAttributedString(NSAttributedString(string: String($0),
+                                                              attributes: [.font: font])), nil, nil, nil) }
+        var phi = .pi / 2 + CGFloat(advances.reduce(0, +)) / radius / 2  // image angle (y down); bottom = π/2
+        for (character, advance) in zip(text, advances) {
+            let mid = phi - CGFloat(advance) / radius / 2
+            // CoreGraphics is y-up: the glyph's position and its rotation (tops toward the centre).
+            let x = center.x + radius * cos(phi), y = CGFloat(side) - (center.y + radius * sin(phi))
+            context.saveGState()
+            context.translateBy(x: x, y: y)
+            context.rotate(by: .pi / 2 - mid)
+            context.textPosition = .zero
+            CTLineDraw(CTLineCreateWithAttributedString(NSAttributedString(string: String(character), attributes: [.font: font])), context)
+            context.restoreGState()
+            phi -= CGFloat(advance) / radius
+        }
+        let image = try XCTUnwrap(context.makeImage())
+        let rect = CGRect(x: 0, y: 0, width: side, height: side)
+        XCTAssertTrue(RingText.isRoundCandidate(rect, page: CGSize(width: 2480, height: 3508)))
+        XCTAssertFalse(RingText.isRoundCandidate(CGRect(x: 0, y: 0, width: 1000, height: 2000), page: CGSize(width: 2480, height: 3508)))
+        let strips = RingText.strips(of: image, circleIn: rect)
+        XCTAssertEqual(strips.count, 2)
+        let bottom = try XCTUnwrap(strips.last)
+        XCTAssertGreaterThan(bottom.pageRect.minY, center.y, "the bottom arc")
+        let models = try XCTUnwrap(OCRModelSet.best.directory())
+        let english = try TesseractEngine(languages: "eng", models: models)
+        let end = CGFloat(bottom.image.width) * CGFloat(RingText.endFraction)
+        let middle = try XCTUnwrap(bottom.image.cropping(to: CGRect(x: end, y: 0, width: CGFloat(bottom.image.width) - 2 * end,
+                                                                   height: CGFloat(bottom.image.height)).integral))
+        let read = try english.recognize(middle, ppi: 300, deadline: 10, singleLine: true)
+        XCTAssertTrue(read.text.contains("MINISTRY") && read.text.contains("PUBLIC"), read.text)
+        XCTAssertEqual(OCRWorker.trimmingStrayEnds("3 MINISTRY OF PUBLIC WORKS i"), "MINISTRY OF PUBLIC WORKS")
+    }
+
     func testMarkOnlyLinesAreDroppedAndSplitWordsRejoined() {
         XCTAssertTrue(OCRWorker.isNoise("+. :=4>32»--+-"), "round seal text")
         XCTAssertTrue(OCRWorker.isNoise("---------------”-”””-"), "a ruled line")
